@@ -1,0 +1,62 @@
+<html>
+	<head>
+		<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+		<script type="text/javascript">
+			// Setup
+			google.load('visualization', '1.1', {
+				'packages': ['timeline', 'corechart'],
+			});
+			google.setOnLoadCallback(drawStuff);
+
+			function drawStuff() {
+				var timelineData = new google.visualization.DataTable();
+				timelineData.addColumn('string', 'Boy');
+				timelineData.addColumn('string', 'Intensity');
+				timelineData.addColumn('date', 'Start');
+				timelineData.addColumn('date', 'End');
+				timelineData.addRows([
+					['A', 'high', new Date(2002, 11), new Date(2006, 11)],
+					['A', 'marriage', new Date(2006, 11), new Date(2014, 2)],
+					['B', 'low', new Date(2012, 3), new Date(2012, 10)],
+					['B', 'high', new Date(2012, 10), new Date(2014, 2)],
+					['C', 'low', new Date(2010, 9), new Date(2013, 2)],
+					['D', 'low', new Date(2008, 6), new Date(2009, 4)],
+					['D', 'high', new Date(2009, 4), new Date(2012, 11)],
+					['E', 'high', new Date(2004, 0), new Date(2004, 5)],
+					['E', 'medium', new Date(2004, 5), new Date(2006, 5)],
+					['E', 'low', new Date(2006, 5), new Date(2012, 2)],
+					['F', 'low', new Date(2007, 0), new Date(2007, 8)],
+					['G', 'medium', new Date(2006, 6), new Date(2006, 11)],
+					['H', 'low', new Date(2006, 5), new Date(2006, 7)],
+					['I', 'low', new Date(2005, 2), new Date(2005, 4)],
+					['J', 'medium', new Date(2002, 9), new Date(2002, 10)],
+					['J', 'low', new Date(2002, 10), new Date(2004, 5)],
+					['K', 'low', new Date(2002, 7), new Date(2003, 7)],
+					['L', 'medium', new Date(2002, 8), new Date(2002, 9)],
+					['M', 'low', new Date(2001, 2), new Date(2002, 11)],
+					['N', 'low', new Date(2001, 2), new Date(2001, 4)],
+					['N', 'high', new Date(2001, 4), new Date(2002, 8)],
+					['O', 'low', new Date(2000, 8), new Date(2002, 5)],
+					['P', 'low', new Date(1999, 5), new Date(2002, 5)],
+					['Q', 'low', new Date(1999, 0), new Date(2001, 5)],
+					['R', 'low', new Date(1999, 0), new Date(2001, 3)],
+					['S', 'low', new Date(2000, 1), new Date(2000, 5)],
+					['T', 'low', new Date(1999, 10), new Date(2000, 5)],
+					['U', 'low', new Date(1999, 9), new Date(2000, 5)],
+					['V', 'low', new Date(1999, 2), new Date(2000, 2)],
+				]);
+
+				new google.visualization.Timeline(document.getElementById('timeline')).draw(timelineData, {
+					height: 1000,
+					width: 900,
+					timeline: {
+						showRowLabels: false,
+					},
+				});
+			}
+		</script>
+	</head>
+	<body>
+		<div id="timeline"></div>
+	</body>
+</html>
