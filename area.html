@@ -1,151 +1,151 @@
 <html>
-	<head>
-		<script type="text/javascript" src="https://www.google.com/jsapi"></script>
-		<script type="text/javascript">
-			function incrementDate(dateString, delta) {
-				var parts = dateString.split("-"),
-					year = 1 * parts[0],
-					month = 1 * parts[1];
-				month += delta;
-				if (month === 0) {
-					month = 12;
-					year--;
-				} else if (month === 13) {
-					month = 1;
-					year++;
-				}
-				return year + "-" + month;
-			}
+    <head>
+        <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+        <script type="text/javascript">
+            function incrementDate(dateString, delta) {
+                var parts = dateString.split("-"),
+                    year = 1 * parts[0],
+                    month = 1 * parts[1];
+                month += delta;
+                if (month === 0) {
+                    month = 12;
+                    year--;
+                } else if (month === 13) {
+                    month = 1;
+                    year++;
+                }
+                return year + "-" + month;
+            }
 
-			// Setup
-			google.load('visualization', '1.1', {
-				'packages': ['corechart'],
-			});
-			google.setOnLoadCallback(drawStuff);
+            // Setup
+            google.load('visualization', '1.1', {
+                'packages': ['corechart'],
+            });
+            google.setOnLoadCallback(drawStuff);
 
-			var minimalData = [
-				[["1999-03", "2000-03", 1]],
-				[["1999-10", "2000-06", 1]],
-				[["1999-10", "2000-06", 1]],
-				[["2000-02", "2000-06", 1]],
-				[["1999-03", "2001-03", 1]],
-				[["1999-03", "2001-06", 1]],
-				[["1999-06", "2002-06", 1]],
-				[["2000-09", "2002-06", 1]],
-				[["2001-03", "2001-04", 1], ["2001-04", "2002-08", 3]],
-				[["2001-03", "2002-12", 1]],
-				[["2002-10", "2002-11", 2]],
-				[["2002-08", "2003-08", 1]],
-				[["2002-10", "2002-11", 2], ["2002-11", "2004-04", 1]],
-				[["2002-11", "2002-11", 1], ["2002-11", "2006-11", 3], ["2006-11", "2022-05", 4]],
-				[["2005-04", "2005-05", 1]],
-				[["2006-06", "2006-08", 1]],
-				[["2006-07", "2006-08", 2], ["2006-08", "2006-11", 1]],
-				[["2007-01", "2007-09", 1]],
-				[["2004-01", "2004-06", 3], ["2004-06", "2006-06", 2], ["2006-06", "2012-03", 1]],
-				[["2008-07", "2009-06", 1], ["2009-06", "2012-12", 1]],
-				[["2010-10", "2013-03", 1]],
-				[["2012-04", "2013-02", 1], ["2013-02", "2015-02", 3], ["2015-02", "2021-03", 1]],
-				[["2015-05", "2019-10", 1]],
-				[["2015-10", "2016-03", 1]],
-				[["2016-10", "2017-02", 1], ["2017-02", "2017-10", 2], ["2017-10", "2021-04", 1]],
-				[["2021-12", "2022-05", 1]],
-			];
+            var minimalData = [
+                [["1999-03", "2000-03", 1]],
+                [["1999-10", "2000-06", 1]],
+                [["1999-10", "2000-06", 1]],
+                [["2000-02", "2000-06", 1]],
+                [["1999-03", "2001-03", 1]],
+                [["1999-03", "2001-06", 1]],
+                [["1999-06", "2002-06", 1]],
+                [["2000-09", "2002-06", 1]],
+                [["2001-03", "2001-04", 1], ["2001-04", "2002-08", 3]],
+                [["2001-03", "2002-12", 1]],
+                [["2002-10", "2002-11", 2]],
+                [["2002-08", "2003-08", 1]],
+                [["2002-10", "2002-11", 2], ["2002-11", "2004-04", 1]],
+                [["2002-11", "2002-11", 1], ["2002-11", "2006-11", 3], ["2006-11", "2022-05", 4]],
+                [["2005-04", "2005-05", 1]],
+                [["2006-06", "2006-08", 1]],
+                [["2006-07", "2006-08", 2], ["2006-08", "2006-11", 1]],
+                [["2007-01", "2007-09", 1]],
+                [["2004-01", "2004-06", 3], ["2004-06", "2006-06", 2], ["2006-06", "2012-03", 1]],
+                [["2008-07", "2009-06", 1], ["2009-06", "2012-12", 1]],
+                [["2010-10", "2013-03", 1]],
+                [["2012-04", "2013-02", 1], ["2013-02", "2015-02", 3], ["2015-02", "2021-03", 1]],
+                [["2015-05", "2019-10", 1]],
+                [["2015-10", "2016-03", 1]],
+                [["2016-10", "2017-02", 1], ["2017-02", "2017-10", 2], ["2017-10", "2021-04", 1]],
+                [["2021-12", "2022-05", 1]],
+            ];
 
-			var data = [];
-			for (var r = 0; r < minimalData.length; r++) {
-				var firstDate = minimalData[r][0][0],
-					lastDate = minimalData[r][minimalData[r].length - 1][1];
-				var row = [[incrementDate(firstDate, -1), firstDate, 0]].concat(minimalData[r]);
-				if (lastDate < "2022-04") {
-					row = row.concat([[lastDate, incrementDate(lastDate, 1), 0]]);
-				}
+            var data = [];
+            for (var r = 0; r < minimalData.length; r++) {
+                var firstDate = minimalData[r][0][0],
+                    lastDate = minimalData[r][minimalData[r].length - 1][1];
+                var row = [[incrementDate(firstDate, -1), firstDate, 0]].concat(minimalData[r]);
+                if (lastDate < "2022-04") {
+                    row = row.concat([[lastDate, incrementDate(lastDate, 1), 0]]);
+                }
 
-				data.push(row);
-			}
+                data.push(row);
+            }
 
-			function drawStuff() {
-				var areaData = new google.visualization.DataTable();
-				areaData.addColumn('date', 'Date');
-				for (var i = 0; i < data.length; i++) {
-					areaData.addColumn('number', 'series' + i);
-				}
+            function drawStuff() {
+                var areaData = new google.visualization.DataTable();
+                areaData.addColumn('date', 'Date');
+                for (var i = 0; i < data.length; i++) {
+                    areaData.addColumn('number', 'series' + i);
+                }
 
-				var areaRows = [];
-				for (var year = 1999; year <= 2022; year++) {
-					for (var month = 1; month <= 12; month++) {
-						if (year === 1999 && month < 3 || year === 2022 && month > 5) {
-							continue;
-						}
-						var row = [new Date(year, month - 1)];
-						for (var p = 0; p < data.length; p++) {
-							var strength = null;
-							for (var s = 0; s < data[p].length; s++) {
-								var startYear = 1 * data[p][s][0].split("-")[0],
-									startMonth = 1 * data[p][s][0].split("-")[1],
-									endYear = 1 * data[p][s][1].split("-")[0],
-									endMonth = 1 * data[p][s][1].split("-")[1];
-								if (
-									year > startYear && year < endYear
-									|| year === startYear && month >= startMonth && (year < endYear || month < endMonth)
-									|| year === endYear && month <= endMonth && (year > startYear || month > startMonth)
-								) {
-									strength = strength || data[p][s][2];
-								}
-							}
-							row.push(strength);
-						}
-						areaRows.push(row);
-					}
-				}
-				areaData.addRows(areaRows);
+                var areaRows = [];
+                for (var year = 1999; year <= 2022; year++) {
+                    for (var month = 1; month <= 12; month++) {
+                        if (year === 1999 && month < 3 || year === 2022 && month > 5) {
+                            continue;
+                        }
+                        var row = [new Date(year, month - 1)];
+                        for (var p = 0; p < data.length; p++) {
+                            var strength = null;
+                            for (var s = 0; s < data[p].length; s++) {
+                                var startYear = 1 * data[p][s][0].split("-")[0],
+                                    startMonth = 1 * data[p][s][0].split("-")[1],
+                                    endYear = 1 * data[p][s][1].split("-")[0],
+                                    endMonth = 1 * data[p][s][1].split("-")[1];
+                                if (
+                                    year > startYear && year < endYear
+                                    || year === startYear && month >= startMonth && (year < endYear || month < endMonth)
+                                    || year === endYear && month <= endMonth && (year > startYear || month > startMonth)
+                                ) {
+                                    strength = strength || data[p][s][2];
+                                }
+                            }
+                            row.push(strength);
+                        }
+                        areaRows.push(row);
+                    }
+                }
+                areaData.addRows(areaRows);
 
-				var areaChart = new google.visualization.AreaChart(document.getElementById('area'));
-				google.visualization.events.addListener(areaChart, 'ready', function () {
-					console.log(areaChart.getImageURI());
-				});
-				areaChart.draw(areaData, {
-					focusTarget: 'category',
-					isStacked: true,
-					height: 300,
-					width: 1200,
-					hAxis: {
-						minValue: new Date(1999, 2),
-						maxValue: new Date(2014, 2),
-						ticks: [
-//							new Date(1999, 0),
-							new Date(2000, 0),
-							new Date(2001, 0),
-							new Date(2002, 0),
-							new Date(2003, 0),
-							new Date(2004, 0),
-							new Date(2005, 0),
-							new Date(2006, 0),
-							new Date(2007, 0),
-							new Date(2008, 0),
-							new Date(2009, 0),
-							new Date(2010, 0),
-							new Date(2011, 0),
-							new Date(2012, 0),
-							new Date(2013, 0),
-							new Date(2014, 0),
-						],
-					},
-					legend: {
-						position: 'none',
-					},
-					vAxis: {
-						minValue: 0,
-						maxValue: 10,
-						ticks: [],
-					},
-				});
+                var areaChart = new google.visualization.AreaChart(document.getElementById('area'));
+                google.visualization.events.addListener(areaChart, 'ready', function () {
+                    console.log(areaChart.getImageURI());
+                });
+                areaChart.draw(areaData, {
+                    focusTarget: 'category',
+                    isStacked: true,
+                    height: 300,
+                    width: 1200,
+                    hAxis: {
+                        minValue: new Date(1999, 2),
+                        maxValue: new Date(2014, 2),
+                        ticks: [
+//                            new Date(1999, 0),
+                            new Date(2000, 0),
+                            new Date(2001, 0),
+                            new Date(2002, 0),
+                            new Date(2003, 0),
+                            new Date(2004, 0),
+                            new Date(2005, 0),
+                            new Date(2006, 0),
+                            new Date(2007, 0),
+                            new Date(2008, 0),
+                            new Date(2009, 0),
+                            new Date(2010, 0),
+                            new Date(2011, 0),
+                            new Date(2012, 0),
+                            new Date(2013, 0),
+                            new Date(2014, 0),
+                        ],
+                    },
+                    legend: {
+                        position: 'none',
+                    },
+                    vAxis: {
+                        minValue: 0,
+                        maxValue: 10,
+                        ticks: [],
+                    },
+                });
 
-			}
-		</script>
-	</head>
-	<body>
-		<div id="area"></div>
-		<img />
-	</body>
+            }
+        </script>
+    </head>
+    <body>
+        <div id="area"></div>
+        <img />
+    </body>
 </html>
