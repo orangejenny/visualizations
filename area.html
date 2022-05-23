@@ -23,7 +23,7 @@
             });
             google.setOnLoadCallback(drawStuff);
 
-            var minimalData = [
+            var rawData = [
                 [["1999-03", "2000-03", 1]],
                 [["1999-10", "2000-06", 1]],
                 [["1999-10", "2000-06", 1]],
@@ -53,10 +53,10 @@
             ];
 
             var data = [];
-            for (var r = 0; r < minimalData.length; r++) {
-                var firstDate = minimalData[r][0][0],
-                    lastDate = minimalData[r][minimalData[r].length - 1][1];
-                var row = [[incrementDate(firstDate, -1), firstDate, 0]].concat(minimalData[r]);
+            for (var r = 0; r < rawData.length; r++) {
+                var firstDate = rawData[r][0][0],
+                    lastDate = rawData[r][rawData[r].length - 1][1];
+                var row = [[incrementDate(firstDate, -1), firstDate, 0]].concat(rawData[r]);
                 if (lastDate < "2022-04") {
                     row = row.concat([[lastDate, incrementDate(lastDate, 1), 0]]);
                 }
