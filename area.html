@@ -30,7 +30,8 @@
             }
 
             let GLOBAL_START = "1999-03",
-                GLOBAL_END = "2022-04";
+                GLOBAL_END = "2022-04",
+                strengths = [0, 1, Math.E, Math.pow(Math.E, 2), Math.pow(Math.E, 3)];   // should have length 5 and start with zero
 
             // Setup
             google.load('visualization', '1.1', {
@@ -110,7 +111,7 @@
                                     || year === startYear && month >= startMonth && (year < endYear || month < endMonth)
                                     || year === endYear && month <= endMonth && (year > startYear || month > startMonth)
                                 ) {
-                                    strength = strength || data[p][s][2];
+                                    strength = strength || strengths[data[p][s][2]];
                                 }
                             }
                             row.push(strength);
@@ -143,7 +144,6 @@
                     },
                     vAxis: {
                         minValue: 0,
-                        maxValue: 10,   // one would hope
                         ticks: [],
                     },
                 });
