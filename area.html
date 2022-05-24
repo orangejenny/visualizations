@@ -125,7 +125,7 @@
                     console.log(areaChart.getImageURI());
                 });
                 var ticks = [];
-                for (var i = getYear(GLOBAL_START); i <= getYear(GLOBAL_END); i += 2) {
+                for (var i = Math.round(getYear(GLOBAL_START) / 2) * 2; i <= getYear(GLOBAL_END); i += 2) {
                     ticks.push(new Date(i, 0));
                 }
                 areaChart.draw(areaData, {
