@@ -17,12 +17,28 @@
                 return year + "-" + month;
             }
 
+            function getYear(dateString) {
+                return 1 * dateString.split("-")[0];
+            }
+
+            function getMonth(dateString) {
+                return 1 * dateString.split("-")[1];
+            }
+
+            function makeDate(year, month) {
+                return year + "-" + (month < 10 ? "0" : "") + month;
+            }
+
+            let GLOBAL_START = "1999-03",
+                GLOBAL_END = "2022-04";
+
             // Setup
             google.load('visualization', '1.1', {
                 'packages': ['corechart'],
             });
             google.setOnLoadCallback(drawStuff);
 
+            // Spans are expected to be contiguous
             var rawData = [
                 [["1999-03", "2000-03", 1]],
                 [["1999-10", "2000-06", 1]],
@@ -53,11 +69,12 @@
             ];
 
             var data = [];
+            // Add start and end spans with strength of zero so lines don't get cut off abruptly
             for (var r = 0; r < rawData.length; r++) {
                 var firstDate = rawData[r][0][0],
                     lastDate = rawData[r][rawData[r].length - 1][1];
                 var row = [[incrementDate(firstDate, -1), firstDate, 0]].concat(rawData[r]);
-                if (lastDate < "2022-04") {
+                if (lastDate < GLOBAL_END) {
                     row = row.concat([[lastDate, incrementDate(lastDate, 1), 0]]);
                 }
 
@@ -72,19 +89,22 @@
                 }
 
                 var areaRows = [];
-                for (var year = 1999; year <= 2022; year++) {
+                for (var year = getYear(GLOBAL_START); year <= getYear(GLOBAL_END); year++) {
                     for (var month = 1; month <= 12; month++) {
-                        if (year === 1999 && month < 3 || year === 2022 && month > 5) {
+                        if (
+                            year === getYear(GLOBAL_START) && month < getMonth(GLOBAL_START)
+                            || year === getYear(GLOBAL_END) && month > getMonth(GLOBAL_END)
+                        ) {
                             continue;
                         }
                         var row = [new Date(year, month - 1)];
                         for (var p = 0; p < data.length; p++) {
                             var strength = null;
                             for (var s = 0; s < data[p].length; s++) {
-                                var startYear = 1 * data[p][s][0].split("-")[0],
-                                    startMonth = 1 * data[p][s][0].split("-")[1],
-                                    endYear = 1 * data[p][s][1].split("-")[0],
-                                    endMonth = 1 * data[p][s][1].split("-")[1];
+                                var startYear = 1 * getYear(data[p][s][0]),
+                                    startMonth = 1 * getMonth(data[p][s][0]),
+                                    endYear = 1 * getYear(data[p][s][1]),
+                                    endMonth = 1 * getMonth(data[p][s][1]);
                                 if (
                                     year > startYear && year < endYear
                                     || year === startYear && month >= startMonth && (year < endYear || month < endMonth)
@@ -104,39 +124,26 @@
                 google.visualization.events.addListener(areaChart, 'ready', function () {
                     console.log(areaChart.getImageURI());
                 });
+                var ticks = [];
+                for (var i = getYear(GLOBAL_START); i <= getYear(GLOBAL_END); i += 2) {
+                    ticks.push(new Date(i, 0));
+                }
                 areaChart.draw(areaData, {
                     focusTarget: 'category',
                     isStacked: true,
                     height: 300,
                     width: 1200,
                     hAxis: {
-                        minValue: new Date(1999, 2),
-                        maxValue: new Date(2014, 2),
-                        ticks: [
-//                            new Date(1999, 0),
-                            new Date(2000, 0),
-                            new Date(2001, 0),
-                            new Date(2002, 0),
-                            new Date(2003, 0),
-                            new Date(2004, 0),
-                            new Date(2005, 0),
-                            new Date(2006, 0),
-                            new Date(2007, 0),
-                            new Date(2008, 0),
-                            new Date(2009, 0),
-                            new Date(2010, 0),
-                            new Date(2011, 0),
-                            new Date(2012, 0),
-                            new Date(2013, 0),
-                            new Date(2014, 0),
-                        ],
+                        minValue: new Date(getYear(GLOBAL_START), getMonth(GLOBAL_END) - 1),
+                        maxValue: new Date(getYear(GLOBAL_END), getMonth(GLOBAL_END) - 1),
+                        ticks: ticks,
                     },
                     legend: {
                         position: 'none',
                     },
                     vAxis: {
                         minValue: 0,
-                        maxValue: 10,
+                        maxValue: 10,   // one would hope
                         ticks: [],
                     },
                 });
