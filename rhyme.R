@@ -1,6 +1,7 @@
 library(tidyverse)
 library(skimr)
 library(moderndive)  # get_correlation
+library(ggrepel)     # geom_text_repel
 
 # TODO: rhyme API
 songs <- read_csv("songs.csv")
@@ -67,15 +68,40 @@ cat_summary <- function(cat_name) {
   return(
     tags %>% 
       filter(tag_category == cat_name) %>% 
-      filter(!is.na(rating), !is.na(mood), !is.na(energy)) %>% 
       group_by(tag) %>% 
-      summarise(count = n(), rating = mean(rating), mood = mean(mood), energy = mean(energy)) %>% 
-      filter(count >= 10)
+      summarise(count = n(),
+                rating_mean = mean(rating, na.rm = TRUE),
+                mood_mean = mean(mood, na.rm = TRUE),
+                energy_mean = mean(energy, na.rm = TRUE),
+                rating_sd = sd(rating, na.rm = TRUE),
+                mood_sd = sd(mood, na.rm = TRUE),
+                energy_sd = sd(energy, na.rm = TRUE))
   )
 }
 emotions_summary <- cat_summary("emotions")
 people_summary <- cat_summary("people")
 years_summary <- cat_summary("years")
+seasons_summary <- cat_summary("seasons")
 colors_summary <- cat_summary("colors")
 activities_summary <- cat_summary("activities")
  
+# Dot plots, with and without ranges
+ggplot(subset(people_summary, count > 9), aes(x = reorder(tag, mood_mean), y = mood_mean)) +
+  geom_point() +
+  coord_flip() +
+  scale_y_continuous(limits = c(1, 5), breaks = c(1, 2, 3, 4, 5), minor_breaks = NULL) +
+  labs(x = NULL, y = "mood") +
+  theme_minimal()
+
+ggplot(subset(years_summary, count > 9), aes(x = tag, y = mood_mean)) +
+  geom_pointrange(aes(ymin = mood_mean - mood_sd, ymax = mood_mean + mood_sd)) +
+  scale_x_discrete(breaks = seq(2000, 2020, by=4)) +
+  scale_y_continuous(minor_breaks = NULL) +
+  labs(x = NULL, y = "mood")
+
+# Scatterplot of people (mood x energy)
+ggplot(subset(people_summary, count > 9), aes(x = energy_mean, y = mood_mean)) +
+  geom_point() +
+  geom_text_repel(aes(label = tag)) +
+  labs(x = "energy", y = "mood") +
+  theme_minimal()
