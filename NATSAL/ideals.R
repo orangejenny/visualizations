@@ -62,8 +62,16 @@ ideals_labels_types = c(
 # Meant for use with is_mono, but indices are off by 2 because is_mono return -1, 0, or 1
 mono_labels = c(
   "unknown",
-  "poly",
-  "mono"
+  "non-monogamous",
+  "monogamous"
+)
+
+# Meant for use with commitment_level, indices off by 2 same as mono_labels
+commitment_labels = c(
+  "unknown",
+  "regular relationship(s)",
+  "cohabiting",
+  "married"
 )
 
 sankey_labels <- data.frame(
@@ -81,8 +89,11 @@ is_mono <- function(value) {
   return(if_else(value %in% c(4, 6, 8), 1, if_else(value %in% c(2, 3, 5, 7), 0, -1)))
 }
 
-is_cohab <- function(value) {
-  return(if_else(value %in% c(5, 6, 7, 8), 1, if_else(value %in% c(2, 3, 4), 0, -1)))
+commitment_level <- function(value) {
+  return(if_else(value %in% c(7, 8), 2, # married
+           if_else(value %in% c(5, 6), 1, # unmarried & cohabiting
+             if_else(value %in% c(3, 4), 0, # regularly partnered & not cohabiting
+               -1))))  # casual or no partners
 }
 
 direction <- function(old, new) {
@@ -174,9 +185,9 @@ add_calculations <- function(filtered_data) {
     mutate(reality_is_mono = is_mono(reality)) %>% 
     mutate(future_is_mono = is_mono(ideal5yr)) %>% 
     mutate(is_mono_direction = direction(reality_is_mono, future_is_mono)) %>% 
-    mutate(reality_is_cohab = is_cohab(reality)) %>% 
-    mutate(future_is_cohab = is_cohab(ideal5yr)) %>% 
-    mutate(cohab_direction = direction(reality_is_cohab, future_is_cohab)) %>%
+    mutate(reality_commitment_level = commitment_level(reality)) %>% 
+    mutate(future_commitment_level = commitment_level(ideal5yr)) %>% 
+    mutate(cohab_direction = direction(reality_commitment_level, future_commitment_level)) %>%
     mutate(combined_direction = if_else(is_mono_direction == cohab_direction, is_mono_direction, -2)) %>%
     mutate(idealnow_node = idealnow - 1,  # zero index for sankeyNetwork
            idealnow_right_node = idealnow + 8,
@@ -243,6 +254,19 @@ create_alluvia_mono <- function(survey) {
   )
 }
 
+create_alluvia_commitment <- function(survey) {
+  return (survey %>% 
+    group_by(reality_commitment_level, future_commitment_level) %>% 
+    summarise(
+      count = survey_total()
+    ) %>% 
+    mutate(reality_label = commitment_labels[reality_commitment_level + 2],
+           future_label = commitment_labels[future_commitment_level + 2],
+           future_full_label = future_label,
+           reality_abbreviation = reality_label)
+  )
+}
+
 draw_alluvia <- function(data) {
   return(ggplot(as.data.frame(data),
        aes(y = count, axis1 = reality_label, axis2 = future_label)) +
@@ -270,26 +294,27 @@ ideal_vs_reality_nodes <- create_nodes(ideals_svy %>% group_by(reality_node, ide
 
 ## Visualizations
 
-# Sankey diagrams
-# What are people doing vs where do they want to be in 5 years?
+# Sankey diagram: what are people doing vs where do they want to be in 5 years?
 draw_sankey(reality_nodes, "reality_node", "ideal5yr_node")
-# What are people doing right now vs what they want to be doing right now?
+
+# Sankey diagram: what are people doing right now vs what they want to be doing right now?
 draw_sankey(ideal_vs_reality_nodes, "reality_node", "idealnow_right_node")
+
+# Alluvial diagram: mono/non-mono status
+alluvia_mono <- create_alluvia_mono(ideals_svy)
+#alluvia_mono <- alluvia_mono %>% filter(reality_is_mono != -1 & future_is_mono != -1)
+draw_alluvia(alluvia_mono)
+
+# Alluvial diagram: commitment levels
+alluvia_commitment <- create_alluvia_commitment(ideals_svy)
+draw_alluvia(alluvia_commitment)
 
 # Alluvial diagram: reality vs ideal in 5 years
 alluvia <- create_alluvia(ideals_svy)
 is_alluvia_form(as.data.frame(alluvia), axes = 1:3, silent = TRUE)
 draw_alluvia(alluvia)
 
-# TODO: Look at partnered people only (there's a filter in create_alluvia for this)
-# TODO: collapse non-partnered outcomes into a single "other" category
-
-# Look at mono/poly categories only, not all lifestyles
-alluvia_mono <- create_alluvia_mono(ideals_svy)
-is_alluvia_form(as.data.frame(alluvia_mono), axes = 1:3, silent = TRUE)
-draw_alluvia(alluvia_mono)
-
-# Tiled plot showing percentage of each pair of current+future lifestyle
+ # Tiled plot showing percentage of each pair of current+future lifestyle
 totals_by_reality <- alluvia %>% 
   group_by(reality) %>% 
   summarise(total = sum(count))
