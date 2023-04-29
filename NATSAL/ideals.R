@@ -15,7 +15,7 @@ plain_labels = c(
   "No partners",
   "Only casual partners",
   "2+ regular partners",
-  "Monogamous,\nliving apart",
+  "Monogamous,\nnot cohabiting",
   "Cohabiting, NM",
   "Cohabiting,\nmonogamous",
   "Married, NM",
@@ -27,7 +27,7 @@ full_labels = c(
   "NP - No partners",
   "OCP - Only casual partners",
   "2+RP - 2+ regular partners",
-  "MLA - Monogamous, living apart",
+  "MNC - Monogamous, not cohabiting",
   "CNM - Cohabiting, non-monogamous",
   "CM - Cohabiting, monogamous",
   "MNM - Married, non-monogamous",
@@ -69,8 +69,8 @@ mono_labels = c(
 # Meant for use with commitment_level, indices off by 2 same as mono_labels
 commitment_labels = c(
   "Unknown",
-  "No relationship",
-  "Casual",
+  "No partners",
+  "Only casual\npartners",
   "Not cohabiting",
   "Cohabiting",
   "Married"
@@ -277,12 +277,9 @@ draw_alluvia <- function(data) {
   geom_alluvium(aes(fill = future_label), show.legend = FALSE) +
   geom_stratum(width = 1/4, show.legend = FALSE) +
   geom_text(stat = "stratum",
-            aes(label = after_stat(stratum))) +
-  #annotate("text", x = 2, y = 1200, size = 4, label = "monogamous, not living together") +
-  #annotate("text", x = 1.4, y = 900, size = 4, label = "222") +
-  #annotate("text", x = 1.6, y = 800, size = 4, label = "333") +
-  #annotate("text", x = 1.8, y = 700, size = 4, label = "444") +
-  #annotate("text", x = 2, y = 600, size = 4, label = "555") +
+            min.y = 200,
+            size = 3,
+            mapping = aes(label = after_stat(stratum))) +
   scale_x_discrete(limits = c("Current Lifestyle", "Ideal Lifestyle In Five Years"),
                    expand = c(0.15, 0.05)) +
   theme_void())
