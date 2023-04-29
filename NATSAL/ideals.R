@@ -12,27 +12,27 @@ setwd("~/Dropbox/SOCIOL 651/Final - NATSAL")
 
 ## Constants
 plain_labels = c(
-  "prefer no sex",
-  "only casual partners",
-  "multiple regular partners",
-  "monogamous, not living together",
-  "living together, non-monogamous",
-  "living together, monogamous",
-  "married, non-monogamous",
-  "married, monogamous",
-  "unknown"
+  "No partners",
+  "Only casual partners",
+  "2+ regular partners",
+  "Monogamous,\nliving apart",
+  "Cohabiting, NM",
+  "Cohabiting,\nmonogamous",
+  "Married, NM",
+  "Married,\nmonogamous",
+  "Unknown"
 )
 
 full_labels = c(
-  "PNS - prefer no sex",
-  "OCP - only casual partners",
-  "MRP - multiple regular partners",
-  "MNLT - monogamous, not living together",
-  "LTNM - living together, non-monogamous",
-  "LTM - living together, monogamous",
-  "MNM - married, non-monogamous",
-  "MM - married, monogamous",
-  "U - unknown"
+  "NP - No partners",
+  "OCP - Only casual partners",
+  "2+RP - 2+ regular partners",
+  "MLA - Monogamous, living apart",
+  "CNM - Cohabiting, non-monogamous",
+  "CM - Cohabiting, monogamous",
+  "MNM - Married, non-monogamous",
+  "MM - Married, monogamous",
+  "U - Unknown"
 )
 
 abbreviated_labels = c(
@@ -61,17 +61,19 @@ ideals_labels_types = c(
 
 # Meant for use with is_mono, but indices are off by 2 because is_mono return -1, 0, or 1
 mono_labels = c(
-  "unknown",
-  "non-monogamous",
-  "monogamous"
+  "Unknown",
+  "Non-monogamous",
+  "Monogamous"
 )
 
 # Meant for use with commitment_level, indices off by 2 same as mono_labels
 commitment_labels = c(
-  "unknown",
-  "regular relationship(s)",
-  "cohabiting",
-  "married"
+  "Unknown",
+  "No relationship",
+  "Casual",
+  "Not cohabiting",
+  "Cohabiting",
+  "Married"
 )
 
 sankey_labels <- data.frame(
@@ -90,10 +92,12 @@ is_mono <- function(value) {
 }
 
 commitment_level <- function(value) {
-  return(if_else(value %in% c(7, 8), 2, # married
-           if_else(value %in% c(5, 6), 1, # unmarried & cohabiting
-             if_else(value %in% c(3, 4), 0, # regularly partnered & not cohabiting
-               -1))))  # casual or no partners
+  return(if_else(value %in% c(7, 8), 4, # married
+           if_else(value %in% c(5, 6), 3, # unmarried & cohabiting
+             if_else(value %in% c(3, 4), 2, # regularly partnered & not cohabiting
+               if_else(value == 2, 1, # casual partners
+                 if_else(value == 1, 0, # no partners
+                   -1))))))  # unknown
 }
 
 direction <- function(old, new) {
@@ -302,7 +306,6 @@ draw_sankey(ideal_vs_reality_nodes, "reality_node", "idealnow_right_node")
 
 # Alluvial diagram: mono/non-mono status
 alluvia_mono <- create_alluvia_mono(ideals_svy)
-#alluvia_mono <- alluvia_mono %>% filter(reality_is_mono != -1 & future_is_mono != -1)
 draw_alluvia(alluvia_mono)
 
 # Alluvial diagram: commitment levels
@@ -314,7 +317,7 @@ alluvia <- create_alluvia(ideals_svy)
 is_alluvia_form(as.data.frame(alluvia), axes = 1:3, silent = TRUE)
 draw_alluvia(alluvia)
 
- # Tiled plot showing percentage of each pair of current+future lifestyle
+# Tiled plot showing percentage of each pair of current+future lifestyle
 totals_by_reality <- alluvia %>% 
   group_by(reality) %>% 
   summarise(total = sum(count))
