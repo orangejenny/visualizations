@@ -9,7 +9,6 @@ library(survey)
 library(srvyr)
 library(tidyverse)
 library(networkD3)
-library(ggalluvial)
 
 ## Setup
 options(survey.lonely.psu = "adjust")
@@ -21,7 +20,7 @@ plain_labels = c(
   "No partners",
   "Only casual partners",
   "2+ regular partners",
-  "Monogamous,\nnot cohabiting",
+  "Monogamous,\nliving apart",
   "Cohabiting, NM",
   "Cohabiting,\nmonogamous",
   "Married, NM",
@@ -33,7 +32,7 @@ full_labels = c(
   "NP - No partners",
   "OCP - Only casual partners",
   "2+RP - 2+ regular partners",
-  "MNC - Monogamous, not cohabiting",
+  "MLA - Monogamous, living apart",
   "CNM - Cohabiting, non-monogamous",
   "CM - Cohabiting, monogamous",
   "MNM - Married, non-monogamous",
@@ -77,10 +76,20 @@ mono_labels = c(
 commitment_labels = c(
   "Unknown",
   "No partners",
-  "Only casual\npartners",
+  "Casual",
   "Not cohabiting",
   "Cohabiting",
   "Married"
+)
+
+sankey_labels <- data.frame(
+  "name" = c(plain_labels, plain_labels),
+  "node_type" = c(ideals_labels_types, ideals_labels_types),
+  "time" = c("now", "now", "now", "now", "now", "now", "now", "now", "now",
+             "in 5 years", "in 5 years", "in 5 years", "in 5 years", "in 5 years",
+             "in 5 years", "in 5 years", "in 5 years", "in 5 years"),
+  "node_value" = c(seq(0, 8, by = 1), seq(0, 8, by = 1)),
+  "response_value" = c(seq(1, 9, by = 1), seq(1, 9, by = 1))
 )
 
 ## Calculation Functions
@@ -193,7 +202,11 @@ add_calculations <- function(filtered_data) {
     mutate(reality_commitment_level = commitment_level(reality)) %>% 
     mutate(future_commitment_level = commitment_level(ideal5yr)) %>% 
     mutate(cohab_direction = direction(reality_commitment_level, future_commitment_level)) %>%
-    mutate(combined_direction = if_else(is_mono_direction == cohab_direction, is_mono_direction, -2)))
+    mutate(combined_direction = if_else(is_mono_direction == cohab_direction, is_mono_direction, -2)) %>%
+    mutate(idealnow_node = idealnow - 1,  # zero index for sankeyNetwork
+           idealnow_right_node = idealnow + 8,
+           ideal5yr_node = ideal5yr + 8,  # differentiate current & future state values
+           reality_node = reality - 1))
 }
 
 create_survey <- function(raw_data) {
@@ -209,138 +222,38 @@ create_survey <- function(raw_data) {
 
 
 ## Visualization Functions
-create_alluvia <- function(survey) {
-  return (survey %>% 
-    group_by(reality, ideal5yr) %>% 
-    summarise(
-      count = survey_total()
-    ) %>% 
-    mutate(reality_label = plain_labels[reality],
-           future_label = plain_labels[ideal5yr],
-           future_full_label = full_labels[ideal5yr],
-           reality_abbreviation = abbreviated_labels[reality])
+create_nodes <- function (grouped_survey) {
+  return(
+    grouped_survey %>% 
+      summarise(
+        count = survey_total()
+      )    
   )
 }
 
-create_alluvia_mono <- function(survey) {
-  return (survey %>% 
-    group_by(reality_is_mono, future_is_mono) %>% 
-    summarise(
-      count = survey_total()
-    ) %>% 
-    mutate(reality_label = mono_labels[reality_is_mono + 2],
-           future_label = mono_labels[future_is_mono + 2],
-           future_full_label = future_label,
-           reality_abbreviation = reality_label)
-  )
-}
-
-create_alluvia_commitment <- function(survey) {
-  return (survey %>% 
-    group_by(reality_commitment_level, future_commitment_level) %>% 
-    summarise(
-      count = survey_total()
-    ) %>% 
-    mutate(reality_label = commitment_labels[reality_commitment_level + 2],
-           future_label = commitment_labels[future_commitment_level + 2],
-           future_full_label = future_label,
-           reality_abbreviation = reality_label)
-  )
-}
-
-draw_alluvia <- function(data) {
-  return(ggplot(as.data.frame(data),
-       aes(y = count, axis1 = reality_label, axis2 = future_label)) +
-  geom_alluvium(aes(fill = future_label), show.legend = FALSE) +
-  geom_stratum(width = 1/4, show.legend = FALSE) +
-  geom_text(stat = "stratum",
-            min.y = 200,
-            size = 3,
-            mapping = aes(label = after_stat(stratum))) +
-  scale_x_discrete(limits = c("Current Lifestyle", "Ideal Lifestyle In Five Years"),
-                   expand = c(0.15, 0.05)) +
-  theme_void())
+draw_sankey <- function(nodes, source, target) {
+  sankeyNetwork(Links = as.data.frame(nodes),
+              #LinkGroup = "reality_is_mono",
+              Nodes = sankey_labels, Source = source,
+              Target = target, Value = "count",
+              NodeID = "name",
+              NodeGroup = "node_type",
+              sinksRight = FALSE,
+              fontSize = 15, fontFamily = "Helvetica", nodeWidth = 20)
 }
 
 # Analysis
 raw_2000 <- read_and_filter()
 ideals_raw <- add_calculations(raw_2000)
 ideals_svy <- create_survey(ideals_raw)
+ideal_nodes <- create_nodes(ideals_svy %>% group_by(idealnow_node, ideal5yr_node))
+reality_nodes <- create_nodes(ideals_svy %>% group_by(reality_node, ideal5yr_node))
+ideal_vs_reality_nodes <- create_nodes(ideals_svy %>% group_by(reality_node, idealnow_right_node))
 
 ## Visualizations
 
-# Alluvial diagram: mono/non-mono status
-alluvia_mono <- create_alluvia_mono(ideals_svy)
-draw_alluvia(alluvia_mono)
+# Sankey diagram: what are people doing vs where do they want to be in 5 years?
+draw_sankey(reality_nodes, "reality_node", "ideal5yr_node")
 
-# Alluvial diagram: commitment levels
-alluvia_commitment <- create_alluvia_commitment(ideals_svy)
-draw_alluvia(alluvia_commitment)
-
-# Alluvial diagram: reality vs ideal in 5 years
-alluvia <- create_alluvia(ideals_svy)
-is_alluvia_form(as.data.frame(alluvia), axes = 1:3, silent = TRUE)
-draw_alluvia(alluvia)
-
-# Tiled plot showing percentage of each pair of current+future lifestyle
-totals_by_reality <- alluvia %>% 
-  group_by(reality) %>% 
-  summarise(total = sum(count))
-totals_by_future <- alluvia %>% 
-  group_by(ideal5yr) %>% 
-  summarise(total = sum(count))
-tiles <- merge(alluvia, totals_by_reality, by = "reality") %>% 
-  mutate(percent = round(count * 100 / total)) %>% 
-  select(-count) %>% 
-  select(-count_se) %>%
-  select(-total)
-
-ggplot(tiles, aes(x = reality_abbreviation, y = future_full_label, fill = percent)) + 
-  scale_fill_gradient(low = "white", high = "steelblue",
-                       #guide = "legend",
-                       trans = "log10",
-                       na.value = "white") +
-  geom_tile() +
-  geom_text(aes(label = if_else(percent > 0, as.character(percent), "")), size = 4) +
-  theme(panel.background = element_rect(fill = "white")) +
-  labs(x = "Current Lifestyle", y = "Ideal Lifestyle In Five Years")
-
-# Faceted age group plots for current lifestyle
-ideal5yrage_groups <- ideals_svy %>% 
-  mutate(reality_label = plain_labels[reality]) %>% 
-  group_by(reality_label, agrp2) %>% 
-  summarise(count = survey_total())
-ggplot(age_groups, aes(x = agrp2, y = count)) + 
-  geom_col() + 
-  facet_wrap(~ reality_label) +
-  scale_x_discrete(limits=c()) +
-  labs(title = "Current Lifestyle by Age Group",
-       x = "Age Group (16-19, 20-24, 25-29, 30-34, 35-39, 40-44)",
-       y = "Participant Count")
-
-# Faceted age group plots for ideal future lifestyle
-age_groups_future <- ideals_svy %>% 
-  mutate(future_label = plain_labels[ideal5yr]) %>% 
-  group_by(future_label, agrp2) %>% 
-  summarise(count = survey_total())
-ggplot(age_groups_future, aes(x = agrp2, y = count)) + 
-  geom_col() + 
-  facet_wrap(~ future_label) +
-  scale_x_discrete(limits=c()) +
-  labs(title = "Ideal Lifestyle by Age Group",
-       x = "Age Group (16-19, 20-24, 25-29, 30-34, 35-39, 40-44)",
-       y = "Participant Count")
-
-# Faceted gender plots for ideal future lifestyle, not very interesting
-# More women want to be married vs cohabiting, more men want to be non-monogamous
-rsex_future <- ideals_svy %>% 
-  mutate(future_label = plain_labels[ideal5yr]) %>% 
-  group_by(future_label, rsex) %>% 
-  summarise(count = survey_total())
-ggplot(rsex_future, aes(x = rsex, y = count)) + 
-  geom_col() + 
-  facet_wrap(~ future_label) +
-  scale_x_discrete(limits=c()) +
-  labs(title = "Ideal Lifestyle by Gender",
-       x = "Sex (1=male, 2=female)",
-       y = "Participant Count")
+# Sankey diagram: what are people doing right now vs what they want to be doing right now?
+draw_sankey(ideal_vs_reality_nodes, "reality_node", "idealnow_right_node")
