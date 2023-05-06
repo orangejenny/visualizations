@@ -201,9 +201,7 @@ create_survey <- function(raw_data) {
 create_alluvia <- function(survey) {
   return (survey %>% 
     group_by(reality, ideal5yr) %>% 
-    summarise(
-      count = survey_total()
-    ) %>% 
+    summarise(count = survey_total()) %>%
     mutate(reality_label = plain_labels[reality],
            future_label = plain_labels[ideal5yr],
            future_full_label = full_labels[ideal5yr],
@@ -214,9 +212,7 @@ create_alluvia <- function(survey) {
 create_alluvia_mono <- function(survey) {
   return (survey %>% 
     group_by(reality_is_mono, future_is_mono) %>% 
-    summarise(
-      count = survey_total()
-    ) %>% 
+    summarise(count = survey_total()) %>%
     mutate(reality_label = mono_labels[reality_is_mono + 2],
            future_label = mono_labels[future_is_mono + 2],
            future_full_label = future_label,
@@ -227,9 +223,7 @@ create_alluvia_mono <- function(survey) {
 create_alluvia_commitment <- function(survey) {
   return (survey %>% 
     group_by(reality_commitment_level, future_commitment_level) %>% 
-    summarise(
-      count = survey_total()
-    ) %>% 
+    summarise(count = survey_total()) %>%
     mutate(reality_label = commitment_labels[reality_commitment_level + 2],
            future_label = commitment_labels[future_commitment_level + 2],
            future_full_label = future_label,
@@ -271,6 +265,44 @@ draw_alluvia <- function(data, title, annotations = c()) {
 raw_2000 <- read_and_filter()
 ideals_raw <- add_calculations(raw_2000)
 ideals_svy <- create_survey(ideals_raw)
+
+## Tables
+
+# Proportions of current lifestyle, by monogamy
+ideals_svy %>%
+  group_by(reality_is_mono) %>%
+  summarise(proportion = survey_prop()) %>%
+  mutate(reality_label = mono_labels[reality_is_mono + 2])
+
+# Proportions of future lifestyle, by monogamy
+ideals_svy %>%
+  group_by(future_is_mono) %>% 
+  summarise(proportion = survey_prop()) %>% 
+  mutate(future_label = mono_labels[future_is_mono + 2])
+
+# Proportions of current lifestyle, by commitment
+ideals_svy %>%
+  group_by(reality_commitment_level) %>% 
+  summarise(proportion = survey_prop()) %>% 
+  mutate(reality_label = commitment_labels[reality_commitment_level + 2])
+
+# Proportions of future lifestyle, by commitment
+ideals_svy %>%
+  group_by(future_commitment_level) %>% 
+  summarise(proportion = survey_prop()) %>% 
+  mutate(future_label = commitment_labels[future_commitment_level + 2])
+
+# Proportions of current lifestyle
+ideals_svy %>%
+  group_by(reality) %>% 
+  summarise(proportion = survey_prop()) %>% 
+  mutate(reality_label = plain_labels[reality])
+
+# Proportions of future lifestyle
+ideals_svy %>%
+  group_by(ideal5yr) %>% 
+  summarise(proportion = survey_prop()) %>% 
+  mutate(future_label = plain_labels[ideal5yr])
 
 ## Visualizations
 
