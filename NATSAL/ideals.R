@@ -101,14 +101,6 @@ commitment_level <- function(value) {
                    -1))))))  # unknown
 }
 
-direction <- function(old, new) {
-  if_else(old == -1 | new == -1, -2, if_else(
-    old == new, 0, if_else(
-      old < new, 1, -1
-    )
-  ))
-}
-
 reality_value <- function (columns) {
   marstat = columns[1]
   lypartn2 = columns[2]
@@ -189,11 +181,8 @@ add_calculations <- function(filtered_data) {
     mutate(reality = apply(subset(raw_2000, select=marstat:r1relat), 1, reality_value)) %>% 
     mutate(reality_is_mono = is_mono(reality)) %>% 
     mutate(future_is_mono = is_mono(ideal5yr)) %>% 
-    mutate(is_mono_direction = direction(reality_is_mono, future_is_mono)) %>% 
     mutate(reality_commitment_level = commitment_level(reality)) %>% 
-    mutate(future_commitment_level = commitment_level(ideal5yr)) %>% 
-    mutate(cohab_direction = direction(reality_commitment_level, future_commitment_level)) %>%
-    mutate(combined_direction = if_else(is_mono_direction == cohab_direction, is_mono_direction, -2)))
+    mutate(future_commitment_level = commitment_level(ideal5yr)))
 }
 
 create_survey <- function(raw_data) {
