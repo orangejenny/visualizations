@@ -48,7 +48,7 @@ abbreviated_labels = c(
 )
  
 ideals_labels_types = c(
-  "other",
+  "none",
   "poly",
   "poly",
   "mono",
@@ -59,11 +59,12 @@ ideals_labels_types = c(
   "other"
 )
 
-# Meant for use with is_mono, but indices are off by 2 because is_mono return -1, 0, or 1
+# Meant for use with is_mono, but indices are off by 2 because is_mono return values start at -1
 mono_labels = c(
   "Unknown",
-  "Non-monogamous",
-  "Monogamous"
+  "No partners",
+  "Monogamous",
+  "Non-monogamous"
 )
 
 # Meant for use with commitment_level, indices off by 2 same as mono_labels
@@ -88,7 +89,11 @@ sankey_labels <- data.frame(
 
 ## Calculation Functions
 is_mono <- function(value) {
-  return(if_else(value %in% c(4, 6, 8), 1, if_else(value %in% c(2, 3, 5, 7), 0, -1)))
+  return(if_else(
+           value %in% c(2, 3, 5, 7), 2,
+           if_else(value %in% c(4, 6, 8), 1,
+           if_else(value == 1, 0,
+           -1))))
 }
 
 commitment_level <- function(value) {
