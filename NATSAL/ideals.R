@@ -185,7 +185,7 @@ read_and_filter <- function () {
   return(read_dta("UKDA-5223-stata11/stata11/natsal_2000_for_archive.dta") %>% 
     select(
       totalpsu, strata, total_wt,
-      rsex, ethnic11,                      # gender and ethnic group
+      rsex,                                # respondent gender
       dage, agrp, agrp2,                   # age variables
       rwpremar, rwadult, rwcohab, rwregp,  # opinions on premarital sex, adultery and infidelity
       idealnow, ideal5yr,                  # ideal columns
@@ -386,18 +386,4 @@ ggplot(rsex_future, aes(x = rsex, y = count)) +
   scale_x_discrete(limits=c()) +
   labs(title = "Ideal Lifestyle by Gender",
        x = "Sex (1=male, 2=female)",
-       y = "Participant Count")
-
-# Faceted ethnicity plots for ideal future lifestyle
-# Useless because of the white dominance of sample, would need to look at rates, not counts
-ethnic_future <- ideals_svy %>% 
-  mutate(future_label = plain_labels[ideal5yr]) %>% 
-  group_by(future_label, ethnic11) %>% 
-  summarise(count = survey_total())
-ggplot(ethnic_future, aes(x = ethnic11, y = count)) + 
-  geom_col() + 
-  facet_wrap(~ future_label) +
-  scale_x_discrete(limits=c()) +
-  labs(title = "Ideal Lifestyle by Ethnic Group",
-       x = "Ethnic group (black, white, Indian, Pakistani, Bangladeshi, Chinese, other Asian, other, unanswered)",
        y = "Participant Count")
