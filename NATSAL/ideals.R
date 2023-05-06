@@ -1,3 +1,9 @@
+# Macdowall, W., Nanchahal, K., Fenton, K., Copas, A., Carder, C., Senior, M.,
+#     Wellings, K., Ridgway, G., Russell, M., National Centre for Social Research,
+#     McCadden, A. 2005. National Survey of Sexual Attitudes and Lifestyles,
+#     2000-2001. [data collection]. UK Data Service. SN: 5223,
+#     DOI: 10.5255/UKDA-SN-5223-1
+
 library(haven)
 library(survey)
 library(srvyr)
