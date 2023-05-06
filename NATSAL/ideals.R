@@ -77,8 +77,8 @@ mono_labels = c(
 commitment_labels = c(
   "Unknown",
   "No partners",
-  "Only casual\npartners",
-  "Not cohabiting",
+  "Only casual partners",
+  "Not cohabiting\n",
   "Cohabiting",
   "Married"
 )
@@ -237,7 +237,7 @@ create_alluvia_commitment <- function(survey) {
   )
 }
 
-draw_alluvia <- function(data, annotations = c()) {
+draw_alluvia <- function(data, title, annotations = c()) {
   ret = ggplot(as.data.frame(data),
        aes(y = count, axis1 = reality_label, axis2 = future_label)) +
   geom_alluvium(aes(fill = future_label), show.legend = FALSE) +
@@ -246,9 +246,19 @@ draw_alluvia <- function(data, annotations = c()) {
             min.y = 200,
             size = 3,
             mapping = aes(label = after_stat(stratum))) +
-  scale_x_discrete(limits = c("Current Lifestyle", "Ideal Lifestyle In Five Years"),
+  theme_minimal() +
+  theme(
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.y = element_blank(),
+  ) +
+  scale_x_discrete(limits = c("Current lifestyle", "Ideal lifestyle in 5 years"),
                    expand = c(0.15, 0.05)) +
-  theme_void()
+  scale_y_continuous(breaks = c()) +
+  labs(title = title,
+       x = "",
+       y = "")
 
   for (i in 1:length(annotations)) {
     ret <- ret + annotations[i]
@@ -266,24 +276,24 @@ ideals_svy <- create_survey(ideals_raw)
 
 # Alluvial diagram: mono/non-mono status
 alluvia_mono <- create_alluvia_mono(ideals_svy)
-draw_alluvia(alluvia_mono, c(
+draw_alluvia(alluvia_mono, "Desired Lifestyle in 5 Years: Monogamy", c(
     annotate("text", x = 2, y = 1500, size = 3, label = "No partners"),
     annotate("segment", x = 1.98, y = 1300, xend = 2, yend = 1140)
 ))
 
 # Alluvial diagram: commitment levels
 alluvia_commitment <- create_alluvia_commitment(ideals_svy)
-draw_alluvia(alluvia_commitment, c(
-    annotate("text", x = 2, y = 11300, size = 3, label = "Only casual\npartners"),
-    annotate("segment", x = 1.99, y = 11550, xend = 2, yend = 11800),
-    annotate("text", x = 2, y = 1600, size = 3, label = "No partners"),
-    annotate("segment", x = 1.98, y = 1400, xend = 2, yend = 1240)
+draw_alluvia(alluvia_commitment, "Desired Lifestyle in 5 Years: Commitment", c(
+    annotate("text", x = 2, y = 550, size = 3, label = "Only casual partners"),
+    annotate("segment", x = 1.99, y = 450, xend = 2, yend = 300),
+    annotate("text", x = 2, y = 1700, size = 3, label = "No partners"),
+    annotate("segment", x = 1.98, y = 1550, xend = 2, yend = 1320)
 ))
 
 # Alluvial diagram: reality vs ideal in 5 years
 alluvia <- create_alluvia(ideals_svy)
 is_alluvia_form(as.data.frame(alluvia), axes = 1:3, silent = TRUE)
-draw_alluvia(alluvia)
+draw_alluvia(alluvia, "Desired Livestyle in 5 Years")
 
 # Tiled plot showing percentage of each pair of current+future lifestyle
 totals_by_reality <- alluvia %>% 
@@ -306,7 +316,7 @@ ggplot(tiles, aes(x = reality_abbreviation, y = future_full_label, fill = percen
   geom_tile() +
   geom_text(aes(label = if_else(percent > 0, as.character(percent), "")), size = 4) +
   theme(panel.background = element_rect(fill = "white")) +
-  labs(x = "Current Lifestyle", y = "Ideal Lifestyle In Five Years")
+  labs(x = "Current lifestyle", y = "Ideal lifestyle in 5 years")
 
 # Faceted age group plots for current lifestyle
 age_groups <- ideals_svy %>% 
