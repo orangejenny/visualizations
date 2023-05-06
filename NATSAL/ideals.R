@@ -248,8 +248,8 @@ create_alluvia_commitment <- function(survey) {
   )
 }
 
-draw_alluvia <- function(data) {
-  return(ggplot(as.data.frame(data),
+draw_alluvia <- function(data, annotations = c()) {
+  ret = ggplot(as.data.frame(data),
        aes(y = count, axis1 = reality_label, axis2 = future_label)) +
   geom_alluvium(aes(fill = future_label), show.legend = FALSE) +
   geom_stratum(width = 1/4, show.legend = FALSE) +
@@ -259,7 +259,13 @@ draw_alluvia <- function(data) {
             mapping = aes(label = after_stat(stratum))) +
   scale_x_discrete(limits = c("Current Lifestyle", "Ideal Lifestyle In Five Years"),
                    expand = c(0.15, 0.05)) +
-  theme_void())
+  theme_void()
+
+  for (i in 1:length(annotations)) {
+    ret <- ret + annotations[i]
+  }
+
+  return(ret)
 }
 
 # Analysis
@@ -271,11 +277,19 @@ ideals_svy <- create_survey(ideals_raw)
 
 # Alluvial diagram: mono/non-mono status
 alluvia_mono <- create_alluvia_mono(ideals_svy)
-draw_alluvia(alluvia_mono)
+draw_alluvia(alluvia_mono, c(
+    annotate("text", x = 2, y = 1500, size = 3, label = "No partners"),
+    annotate("segment", x = 1.98, y = 1300, xend = 2, yend = 1140)
+))
 
 # Alluvial diagram: commitment levels
 alluvia_commitment <- create_alluvia_commitment(ideals_svy)
-draw_alluvia(alluvia_commitment)
+draw_alluvia(alluvia_commitment, c(
+    annotate("text", x = 2, y = 11300, size = 3, label = "Only casual\npartners"),
+    annotate("segment", x = 1.99, y = 11550, xend = 2, yend = 11800),
+    annotate("text", x = 2, y = 1600, size = 3, label = "No partners"),
+    annotate("segment", x = 1.98, y = 1400, xend = 2, yend = 1240)
+))
 
 # Alluvial diagram: reality vs ideal in 5 years
 alluvia <- create_alluvia(ideals_svy)
