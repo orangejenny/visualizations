@@ -309,7 +309,7 @@ ggplot(tiles, aes(x = reality_abbreviation, y = future_full_label, fill = percen
   labs(x = "Current Lifestyle", y = "Ideal Lifestyle In Five Years")
 
 # Faceted age group plots for current lifestyle
-ideal5yrage_groups <- ideals_svy %>% 
+age_groups <- ideals_svy %>% 
   mutate(reality_label = plain_labels[reality]) %>% 
   group_by(reality_label, agrp2) %>% 
   summarise(count = survey_total())
