@@ -30,24 +30,24 @@ plain_labels = c(
 )
 
 full_labels = c(
-  "NP - No partners",
-  "OCP - Only casual partners",
-  "2+RP - 2+ regular partners",
-  "MNC - Monogamous, not cohabiting",
-  "CNM - Cohabiting, non-monogamous",
-  "CM - Cohabiting, monogamous",
-  "MNM - Married, non-monogamous",
-  "MM - Married, monogamous",
-  "U - Unknown"
+  "No partners (NP)",
+  "Only casual\npartners (OCP)",
+  "Multiple regular\npartners (MRP)",
+  "Monogamous,\nnot cohabiting (MNC)",
+  "Cohabiting,\nnon-monogamous (CNM)",
+  "Cohabiting,\nmonogamous (CM)",
+  "Married,\nnon-monogamous (MNM)",
+  "Married,\nmonogamous (MM)",
+  "Unknown (U)"
 )
 
 abbreviated_labels = c(
-  "PNS",
+  "NP",
   "OCP",
   "MRP",
-  "MNLT",
-  "LTNM",
-  "LTM",
+  "MNC",
+  "CNM",
+  "CM",
   "MNM",
   "MM",
   "U"
@@ -72,6 +72,8 @@ mono_labels = c(
   "Monogamous",
   "Non-monogamous"
 )
+mono_full_labels = mono_labels
+mono_abbreviations = mono_labels
 
 # Meant for use with commitment_level, indices off by 2 same as mono_labels
 commitment_labels = c(
@@ -79,6 +81,24 @@ commitment_labels = c(
   "No partners",
   "Only casual partners",
   "Not cohabiting\n",
+  "Cohabiting",
+  "Married"
+)
+
+commitment_full_labels = c(
+  "Unknown",
+  "No partners",
+  "Only casual partners",
+  "Not cohabiting\n",
+  "Cohabiting",
+  "Married"
+)
+
+commitment_abbreviations = c(
+  "Unknown",
+  "No partners",
+  "Only casual\npartners",
+  "Not\ncohabiting",
   "Cohabiting",
   "Married"
 )
@@ -213,10 +233,12 @@ create_alluvia_mono <- function(survey) {
   return (survey %>% 
     group_by(reality_is_mono, future_is_mono) %>% 
     summarise(count = survey_total()) %>%
-    mutate(reality_label = mono_labels[reality_is_mono + 2],
+    mutate(reality = reality_is_mono,
+           future = future_is_mono,
+           reality_label = mono_labels[reality_is_mono + 2],
            future_label = mono_labels[future_is_mono + 2],
-           future_full_label = future_label,
-           reality_abbreviation = reality_label)
+           future_full_label = mono_full_labels[future_is_mono + 2],
+           reality_abbreviation = mono_abbreviations[reality_is_mono + 2])
   )
 }
 
@@ -224,10 +246,12 @@ create_alluvia_commitment <- function(survey) {
   return (survey %>% 
     group_by(reality_commitment_level, future_commitment_level) %>% 
     summarise(count = survey_total()) %>%
-    mutate(reality_label = commitment_labels[reality_commitment_level + 2],
+    mutate(reality = reality_commitment_level,
+           future = future_commitment_level,
+           reality_label = commitment_labels[reality_commitment_level + 2],
            future_label = commitment_labels[future_commitment_level + 2],
-           future_full_label = future_label,
-           reality_abbreviation = reality_label)
+           future_full_label = commitment_full_labels[future_commitment_level + 2],
+           reality_abbreviation = commitment_abbreviations[reality_commitment_level + 2])
   )
 }
 
@@ -259,6 +283,26 @@ draw_alluvia <- function(data, title, annotations = c()) {
   }
 
   return(ret)
+}
+
+draw_tiles <- function(alluvia_data, title) {
+  totals_by_reality <- alluvia_data %>% 
+    group_by(reality) %>% 
+    summarise(total = sum(count))
+  tiles <- merge(alluvia_data, totals_by_reality, by = "reality") %>% 
+    mutate(percent = round(count * 100 / total)) %>% 
+    select(-count) %>% 
+    select(-count_se) %>%
+    select(-total)
+  
+  ggplot(tiles, aes(x = reality_abbreviation, y = future_full_label, fill = percent)) + 
+    scale_fill_gradient(low = "white", high = "steelblue",
+                         trans = "log10",
+                         na.value = "white") +
+    geom_tile() +
+    geom_text(aes(label = if_else(percent > 0, paste(as.character(percent), "%", sep=""), "")), size = 4) +
+    theme(panel.background = element_rect(fill = "white")) +
+    labs(title = title, x = "Current lifestyle", y = "Ideal lifestyle in 5 years")
 }
 
 # Analysis
@@ -306,46 +350,26 @@ ideals_svy %>%
 
 ## Visualizations
 
-# Alluvial diagram: mono/non-mono status
+# Mono/non-mono status
 alluvia_mono <- create_alluvia_mono(ideals_svy)
-draw_alluvia(alluvia_mono, "Desired Lifestyle in 5 Years: Monogamy", c(
+draw_alluvia(alluvia_mono, "Desired Future Lifestyle: Monogamy", c(
     annotate("text", x = 2, y = 1500, size = 3, label = "No partners"),
     annotate("segment", x = 1.98, y = 1300, xend = 2, yend = 1140)
 ))
+draw_tiles(alluvia_mono, "Desired future monogamy, by percentage of participants\nin current lifestyle")
 
-# Alluvial diagram: commitment levels
+# Commitment levels
 alluvia_commitment <- create_alluvia_commitment(ideals_svy)
-draw_alluvia(alluvia_commitment, "Desired Lifestyle in 5 Years: Commitment", c(
+draw_alluvia(alluvia_commitment, "Desired Future Lifestyle: Commitment", c(
     annotate("text", x = 2, y = 550, size = 3, label = "Only casual partners"),
     annotate("segment", x = 1.99, y = 450, xend = 2, yend = 300),
     annotate("text", x = 2, y = 1700, size = 3, label = "No partners"),
     annotate("segment", x = 1.98, y = 1550, xend = 2, yend = 1320)
 ))
+draw_tiles(alluvia_commitment, "Desired future commitment, by percentage of participants\nin current lifestyle")
 
-# Alluvial diagram: reality vs ideal in 5 years
+# All lifestyles
 alluvia <- create_alluvia(ideals_svy)
 is_alluvia_form(as.data.frame(alluvia), axes = 1:3, silent = TRUE)
-draw_alluvia(alluvia, "Desired Livestyle in 5 Years")
-
-# Tiled plot showing percentage of each pair of current+future lifestyle
-totals_by_reality <- alluvia %>% 
-  group_by(reality) %>% 
-  summarise(total = sum(count))
-totals_by_future <- alluvia %>% 
-  group_by(ideal5yr) %>% 
-  summarise(total = sum(count))
-tiles <- merge(alluvia, totals_by_reality, by = "reality") %>% 
-  mutate(percent = round(count * 100 / total)) %>% 
-  select(-count) %>% 
-  select(-count_se) %>%
-  select(-total)
-
-ggplot(tiles, aes(x = reality_abbreviation, y = future_full_label, fill = percent)) + 
-  scale_fill_gradient(low = "white", high = "steelblue",
-                       #guide = "legend",
-                       trans = "log10",
-                       na.value = "white") +
-  geom_tile() +
-  geom_text(aes(label = if_else(percent > 0, as.character(percent), "")), size = 4) +
-  theme(panel.background = element_rect(fill = "white")) +
-  labs(x = "Current lifestyle", y = "Ideal lifestyle in 5 years")
+draw_alluvia(alluvia, "Desired Future Lifestyle")
+draw_tiles(alluvia, "Desired future lifestyle, by percentage of participants\nin current lifestyle")
