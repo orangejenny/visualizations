@@ -75,8 +75,8 @@ mono_labels = c(
 mono_full_labels = mono_labels
 mono_abbreviations = mono_labels
 
-# Meant for use with commitment_level, indices off by 2 same as mono_labels
-commitment_labels = c(
+# Meant for use with category_level, indices off by 2 same as mono_labels
+category_labels = c(
   "Unknown",
   "No partners",
   "Only casual partners",
@@ -85,7 +85,7 @@ commitment_labels = c(
   "Married"
 )
 
-commitment_full_labels = c(
+category_full_labels = c(
   "Unknown",
   "No partners",
   "Only casual partners",
@@ -94,7 +94,7 @@ commitment_full_labels = c(
   "Married"
 )
 
-commitment_abbreviations = c(
+category_abbreviations = c(
   "Unknown",
   "No partners",
   "Only casual\npartners",
@@ -112,7 +112,7 @@ is_mono <- function(value) {
            -1))))
 }
 
-commitment_level <- function(value) {
+category <- function(value) {
   return(if_else(value %in% c(7, 8), 4, # married
            if_else(value %in% c(5, 6), 3, # unmarried & cohabiting
              if_else(value %in% c(3, 4), 2, # regularly partnered & not cohabiting
@@ -201,8 +201,8 @@ add_calculations <- function(filtered_data) {
     mutate(reality = apply(subset(raw_2000, select=marstat:r1relat), 1, reality_value)) %>% 
     mutate(reality_is_mono = is_mono(reality)) %>% 
     mutate(future_is_mono = is_mono(ideal5yr)) %>% 
-    mutate(reality_commitment_level = commitment_level(reality)) %>% 
-    mutate(future_commitment_level = commitment_level(ideal5yr)))
+    mutate(reality_category = category(reality)) %>% 
+    mutate(future_category = category(ideal5yr)))
 }
 
 create_survey <- function(raw_data) {
@@ -242,16 +242,16 @@ create_alluvia_mono <- function(survey) {
   )
 }
 
-create_alluvia_commitment <- function(survey) {
+create_alluvia_category <- function(survey) {
   return (survey %>% 
-    group_by(reality_commitment_level, future_commitment_level) %>% 
+    group_by(reality_category, future_category) %>% 
     summarise(count = survey_total()) %>%
-    mutate(reality = reality_commitment_level,
-           future = future_commitment_level,
-           reality_label = commitment_labels[reality_commitment_level + 2],
-           future_label = commitment_labels[future_commitment_level + 2],
-           future_full_label = commitment_full_labels[future_commitment_level + 2],
-           reality_abbreviation = commitment_abbreviations[reality_commitment_level + 2])
+    mutate(reality = reality_category,
+           future = future_category,
+           reality_label = category_labels[reality_category + 2],
+           future_label = category_labels[future_category + 2],
+           future_full_label = category_full_labels[future_category + 2],
+           reality_abbreviation = category_abbreviations[reality_category + 2])
   )
 }
 
@@ -324,17 +324,17 @@ ideals_svy %>%
   summarise(proportion = survey_prop()) %>% 
   mutate(future_label = mono_labels[future_is_mono + 2])
 
-# Proportions of current lifestyle, by commitment
+# Proportions of current lifestyle, by category
 ideals_svy %>%
-  group_by(reality_commitment_level) %>% 
+  group_by(reality_category) %>% 
   summarise(proportion = survey_prop()) %>% 
-  mutate(reality_label = commitment_labels[reality_commitment_level + 2])
+  mutate(reality_label = category_labels[reality_category + 2])
 
-# Proportions of future lifestyle, by commitment
+# Proportions of future lifestyle, by category
 ideals_svy %>%
-  group_by(future_commitment_level) %>% 
+  group_by(future_category) %>% 
   summarise(proportion = survey_prop()) %>% 
-  mutate(future_label = commitment_labels[future_commitment_level + 2])
+  mutate(future_label = category_labels[future_category + 2])
 
 # Proportions of current lifestyle
 ideals_svy %>%
@@ -358,15 +358,15 @@ draw_alluvia(alluvia_mono, "(a) Current monogamy/non-monogamy status and desired
 ))
 draw_tiles(alluvia_mono, "Desired future monogamy, by percentage of participants\nin current lifestyle")
 
-# Commitment levels
-alluvia_commitment <- create_alluvia_commitment(ideals_svy)
-draw_alluvia(alluvia_commitment, "(b) Current sexual lifestyle and desired lifestyle in 5 years' time", c(
+# Categories
+alluvia_category <- create_alluvia_category(ideals_svy)
+draw_alluvia(alluvia_category, "(b) Current sexual lifestyle and desired lifestyle in 5 years' time", c(
     annotate("text", x = 2, y = 550, size = 3, label = "Only casual partners"),
     annotate("segment", x = 1.99, y = 450, xend = 2, yend = 300),
     annotate("text", x = 2, y = 1700, size = 3, label = "No partners"),
     annotate("segment", x = 1.98, y = 1550, xend = 2, yend = 1320)
 ))
-draw_tiles(alluvia_commitment, "Desired future lifestyle, ignoring monogamy/non-monogamy,\nby percentage of participants in current lifestyle")
+draw_tiles(alluvia_category, "Desired future lifestyle, ignoring monogamy/non-monogamy,\nby percentage of participants in current lifestyle")
 
 # All lifestyles
 alluvia <- create_alluvia(ideals_svy)
