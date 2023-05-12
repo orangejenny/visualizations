@@ -360,13 +360,13 @@ draw_tiles(alluvia_mono, "Desired future monogamy, by percentage of participants
 
 # Commitment levels
 alluvia_commitment <- create_alluvia_commitment(ideals_svy)
-draw_alluvia(alluvia_commitment, "(b) Current level of commitment and desired level in 5 years' time", c(
+draw_alluvia(alluvia_commitment, "(b) Current sexual lifestyle and desired lifestyle in 5 years' time", c(
     annotate("text", x = 2, y = 550, size = 3, label = "Only casual partners"),
     annotate("segment", x = 1.99, y = 450, xend = 2, yend = 300),
     annotate("text", x = 2, y = 1700, size = 3, label = "No partners"),
     annotate("segment", x = 1.98, y = 1550, xend = 2, yend = 1320)
 ))
-draw_tiles(alluvia_commitment, "Desired future commitment, by percentage of participants\nin current lifestyle")
+draw_tiles(alluvia_commitment, "Desired future lifestyle, ignoring monogamy/non-monogamy,\nby percentage of participants in current lifestyle")
 
 # All lifestyles
 alluvia <- create_alluvia(ideals_svy)
