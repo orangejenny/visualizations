@@ -22,9 +22,9 @@ plain_labels = c(
   "Only casual partners",
   "2+ regular partners",
   "Monogamous,\nnot cohabiting",
-  "Cohabiting, NM",
+  "Cohabiting, non-monogamous",
   "Cohabiting,\nmonogamous",
-  "Married, NM",
+  "Married, non-monogamous",
   "Married,\nmonogamous",
   "Unknown"
 )
@@ -166,7 +166,7 @@ reality_type <- function (lypartn2, mono_value, poly_value) {
     # 1. Partnerships are considered concurrent if the month and year of 1st sex with the more recent partner is prior to the month and year of last sex with the former partner. These four variables are not available in the archived dataset for confidentiality reasons.
     # 2. Concurrency is assumed not to have taken place if the last sex with partner x occurred in the same month that the first sex with partner x+1 occurred.
     # "See notes in the Lancet paper by Johnson et al (2001) for details of the assumptions made" 
-    # regarding serial monogamy vs nonmonogamy
+    # regarding serial monogamy vs non-monogamy
     # Lancet paper: "For the remaining respondents 
     # who had at least two partners in the year prior to interview, then 
     # these partners are assumed to be distributed between the serial monogamous
@@ -352,7 +352,7 @@ ideals_svy %>%
 
 # Mono/non-mono status
 alluvia_mono <- create_alluvia_mono(ideals_svy)
-draw_alluvia(alluvia_mono, "Desired Future Lifestyle: Monogamy", c(
+draw_alluvia(alluvia_mono, "(a) Current monogamy/non-monogamy status and desired status in 5 years' time", c(
     annotate("text", x = 2, y = 1500, size = 3, label = "No partners"),
     annotate("segment", x = 1.98, y = 1300, xend = 2, yend = 1140)
 ))
@@ -360,7 +360,7 @@ draw_tiles(alluvia_mono, "Desired future monogamy, by percentage of participants
 
 # Commitment levels
 alluvia_commitment <- create_alluvia_commitment(ideals_svy)
-draw_alluvia(alluvia_commitment, "Desired Future Lifestyle: Commitment", c(
+draw_alluvia(alluvia_commitment, "(b) Current level of commitment and desired level in 5 years' time", c(
     annotate("text", x = 2, y = 550, size = 3, label = "Only casual partners"),
     annotate("segment", x = 1.99, y = 450, xend = 2, yend = 300),
     annotate("text", x = 2, y = 1700, size = 3, label = "No partners"),
@@ -371,5 +371,5 @@ draw_tiles(alluvia_commitment, "Desired future commitment, by percentage of part
 # All lifestyles
 alluvia <- create_alluvia(ideals_svy)
 is_alluvia_form(as.data.frame(alluvia), axes = 1:3, silent = TRUE)
-draw_alluvia(alluvia, "Desired Future Lifestyle")
+draw_alluvia(alluvia, "Current lifestyle and desired lifestyle in 5 years' time")
 draw_tiles(alluvia, "Desired future lifestyle, by percentage of participants\nin current lifestyle")
