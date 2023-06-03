@@ -371,5 +371,8 @@ draw_tiles(alluvia_commitment, "Desired future commitment, by percentage of part
 # All lifestyles
 alluvia <- create_alluvia(ideals_svy)
 is_alluvia_form(as.data.frame(alluvia), axes = 1:3, silent = TRUE)
-draw_alluvia(alluvia, "Current lifestyle and desired lifestyle in 5 years' time")
 draw_tiles(alluvia, "Desired future lifestyle, by percentage of participants\nin current lifestyle")
+
+png(file="alluvia.png",width=10,height=8,units="in",res=300)
+draw_alluvia(alluvia, "Current lifestyle and desired lifestyle in 5 years' time")
+dev.off()
