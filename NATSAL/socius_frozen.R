@@ -20,8 +20,8 @@ data_location <- "~/Dropbox/SOCIOL 651/Final - NATSAL/UKDA-5223-stata11/stata11/
 plain_labels = c(
   "No partners",
   "Only casual partners",
-  "2+ regular partners",
-  "Monogamous,\nnot cohabiting",
+  "Not cohabiting, non-monogamous",
+  "Not cohabiting,\nmonogamous",
   "Cohabiting, non-monogamous",
   "Cohabiting,\nmonogamous",
   "Married, non-monogamous",
@@ -32,8 +32,8 @@ plain_labels = c(
 full_labels = c(
   "No partners (NP)",
   "Only casual\npartners (OCP)",
-  "Multiple regular\npartners (MRP)",
-  "Monogamous,\nnot cohabiting (MNC)",
+  "Not cohabiting,\nnon-monogamous (NCNM)",
+  "Not cohabiting,\nmonogamous (NCM)",
   "Cohabiting,\nnon-monogamous (CNM)",
   "Cohabiting,\nmonogamous (CM)",
   "Married,\nnon-monogamous (MNM)",
@@ -44,8 +44,8 @@ full_labels = c(
 abbreviated_labels = c(
   "NP",
   "OCP",
-  "MRP",
-  "MNC",
+  "NCNM",
+  "NCM",
   "CNM",
   "CM",
   "MNM",
