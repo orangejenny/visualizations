@@ -14,18 +14,31 @@ library(ggalluvial)
 ## Setup
 options(survey.lonely.psu = "adjust")
 options(na.action = "na.pass")
-data_location <- "~/Dropbox/SOCIOL 651/Final - NATSAL/UKDA-5223-stata11/stata11/natsal_2000_for_archive.dta"
+setwd("~/Dropbox/SOCIOL 651/Final - NATSAL")
+data_location <- "UKDA-5223-stata11/stata11/natsal_2000_for_archive.dta"
 
 ## Constants
 plain_labels = c(
   "No partners",
   "Only casual partners",
   "Not cohabiting, non-monogamous",
-  "Not cohabiting,\nmonogamous",
+  "Not cohabiting, monogamous",
   "Cohabiting, non-monogamous",
-  "Cohabiting,\nmonogamous",
+  "Cohabiting, monogamous",
   "Married, non-monogamous",
-  "Married,\nmonogamous",
+  "Married, monogamous",
+  "Unknown"
+)
+
+alluvia_labels = c(
+  " No partners ",
+  "  Only casual partners ",
+  "   Not cohabiting, non-monogamous   ",
+  "    Not cohabiting,    \nmonogamous",
+  "     Cohabiting, non-monogamous     ",
+  "      Cohabiting,      \nmonogamous",
+  "       Married, non-monogamous       ",
+  "        Married,        \nmonogamous",
   "Unknown"
 )
 
@@ -53,18 +66,6 @@ abbreviated_labels = c(
   "U"
 )
  
-ideals_labels_types = c(
-  "none",
-  "poly",
-  "poly",
-  "mono",
-  "poly",
-  "mono",
-  "poly",
-  "mono",
-  "other"
-)
-
 # Meant for use with is_mono, but indices are off by 2 because is_mono return values start at -1
 mono_labels = c(
   "Unknown",
@@ -222,8 +223,8 @@ create_alluvia <- function(survey) {
   return (survey %>% 
     group_by(reality, ideal5yr) %>% 
     summarise(count = survey_total()) %>%
-    mutate(reality_label = plain_labels[reality],
-           future_label = plain_labels[ideal5yr],
+    mutate(reality_label = alluvia_labels[reality],
+           future_label = alluvia_labels[ideal5yr],
            future_full_label = full_labels[ideal5yr],
            reality_abbreviation = abbreviated_labels[reality])
   )
@@ -308,7 +309,8 @@ draw_tiles <- function(alluvia_data, title) {
 # Analysis
 raw_2000 <- read_and_filter()
 ideals_raw <- add_calculations(raw_2000)
-ideals_svy <- create_survey(ideals_raw)
+ideals_svy_with_unknown <- create_survey(ideals_raw)
+ideals_svy <- ideals_svy_with_unknown %>% filter(reality != 9, ideal5yr != 9)
 
 ## Tables
 
@@ -348,23 +350,43 @@ ideals_svy %>%
   summarise(proportion = survey_prop()) %>% 
   mutate(future_label = plain_labels[ideal5yr])
 
+# Number of future "Have no ideal / None of these / Don't know": 271 (out of 11851)
+ideals_svy_with_unknown %>% filter(ideal5yr == 9) %>% summarise(total = survey_total())
+
+# Proportions of current lifestyles, for future "Have no ideal / None of these / Don't know"
+ideals_svy_with_unknown %>%
+  group_by(reality) %>%
+  filter(ideal5yr == 9) %>%
+  summarise(proportion = survey_prop()) %>%
+  mutate(reality_label = plain_labels[reality])
+
+# Number of currently uncategorizable respondents: 1564
+ideals_svy_with_unknown %>% filter(reality == 9) %>% summarise(total = survey_total())
+
+# Proportions of future ideals, for currently uncategorizable
+ideals_svy_with_unknown %>%
+  group_by(ideal5yr) %>%
+  filter(reality == 9) %>%
+  summarise(proportion = survey_prop()) %>%
+  mutate(future_label = plain_labels[ideal5yr])
+
 ## Visualizations
 
 # Mono/non-mono status
 alluvia_mono <- create_alluvia_mono(ideals_svy)
-draw_alluvia(alluvia_mono, "(a) Current monogamy/non-monogamy status and desired status in 5 years' time", c(
-    annotate("text", x = 2, y = 1500, size = 3, label = "No partners"),
-    annotate("segment", x = 1.98, y = 1300, xend = 2, yend = 1140)
+draw_alluvia(alluvia_mono, "Current monogamy/non-monogamy status and desired status in 5 years' time", c(
+    annotate("text", x = 2, y = 1000, size = 3, label = "No partners"),
+    annotate("segment", x = 1.98, y = 850, xend = 2, yend = 720)
 ))
 draw_tiles(alluvia_mono, "Desired future monogamy, by percentage of participants\nin current lifestyle")
 
 # Categories
 alluvia_category <- create_alluvia_category(ideals_svy)
-draw_alluvia(alluvia_category, "(b) Current sexual lifestyle and desired lifestyle in 5 years' time", c(
-    annotate("text", x = 2, y = 550, size = 3, label = "Only casual partners"),
-    annotate("segment", x = 1.99, y = 450, xend = 2, yend = 300),
-    annotate("text", x = 2, y = 1700, size = 3, label = "No partners"),
-    annotate("segment", x = 1.98, y = 1550, xend = 2, yend = 1320)
+draw_alluvia(alluvia_category, "Current sexual lifestyle and desired lifestyle in 5 years' time", c(
+    annotate("text", x = 2, y = 200, size = 3, label = "Only casual partners"),
+    annotate("segment", x = 1.99, y = 120, xend = 2, yend = 20),
+    annotate("text", x = 2, y = 1120, size = 3, label = "No partners"),
+    annotate("segment", x = 1.98, y = 980, xend = 2, yend = 750)
 ))
 draw_tiles(alluvia_category, "Desired future lifestyle, ignoring monogamy/non-monogamy,\nby percentage of participants in current lifestyle")
 
@@ -374,5 +396,5 @@ is_alluvia_form(as.data.frame(alluvia), axes = 1:3, silent = TRUE)
 draw_tiles(alluvia, "Desired future lifestyle, by percentage of participants\nin current lifestyle")
 
 png(file="alluvia.png",width=11,height=8,units="in",res=300)
-draw_alluvia(alluvia, "Current lifestyle and desired lifestyle in 5 years' time")
+draw_alluvia(alluvia, "")
 dev.off()
