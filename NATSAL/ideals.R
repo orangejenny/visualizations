@@ -363,12 +363,30 @@ ideals_svy_with_unknown %>%
 # Number of currently uncategorizable respondents: 1564
 ideals_svy_with_unknown %>% filter(reality == 9) %>% summarise(total = survey_total())
 
-# Proportions of future ideals, for currently uncategorizable
+# Proportions of future ideals, for currently categorizable and uncategorizable
 ideals_svy_with_unknown %>%
   group_by(ideal5yr) %>%
   filter(reality == 9) %>%
   summarise(proportion = survey_prop()) %>%
   mutate(future_label = plain_labels[ideal5yr])
+
+ideals_svy_with_unknown %>%
+  group_by(ideal5yr) %>%
+  filter(reality != 9) %>%
+  summarise(proportion = survey_prop()) %>%
+  mutate(future_label = plain_labels[ideal5yr])
+
+# Marital status of uncategorizable participants versus categorized participants
+ideals_svy_with_unknown %>%
+  filter(reality == 9) %>%
+  group_by(marstat) %>%
+  summarise(proportion = survey_prop())
+
+ideals_svy_with_unknown %>%
+  filter(reality != 9) %>%
+  group_by(marstat) %>%
+  summarise(proportion = survey_prop())
+
 
 ## Visualizations
 
