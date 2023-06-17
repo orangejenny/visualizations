@@ -18,6 +18,18 @@ data_location <- "~/Dropbox/SOCIOL 651/Final - NATSAL/UKDA-5223-stata11/stata11/
 
 ## Constants
 plain_labels = c(
+  "No partners",
+  "Only casual partners",
+  "Not cohabiting, non-monogamous",
+  "Not cohabiting, monogamous",
+  "Cohabiting, non-monogamous",
+  "Cohabiting, monogamous",
+  "Married, non-monogamous",
+  "Married, monogamous",
+  "Unknown"
+)
+
+alluvia_labels = c(
   " No partners ",
   "  Only casual partners ",
   "   Not cohabiting, non-monogamous   ",
@@ -210,8 +222,8 @@ create_alluvia <- function(survey) {
   return (survey %>% 
     group_by(reality, ideal5yr) %>% 
     summarise(count = survey_total()) %>%
-    mutate(reality_label = plain_labels[reality],
-           future_label = plain_labels[ideal5yr],
+    mutate(reality_label = alluvia_labels[reality],
+           future_label = alluvia_labels[ideal5yr],
            future_full_label = full_labels[ideal5yr],
            reality_abbreviation = abbreviated_labels[reality])
   )
