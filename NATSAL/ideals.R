@@ -340,7 +340,7 @@ ideals_svy %>%
 
 # Mono/non-mono status
 alluvia_mono <- create_alluvia_mono(ideals_svy)
-draw_alluvia(alluvia_mono, "(a) Current monogamy/non-monogamy status and desired status in 5 years' time", c(
+draw_alluvia(alluvia_mono, "Current monogamy/non-monogamy status and desired status in 5 years' time", c(
     annotate("text", x = 2, y = 1500, size = 3, label = "No partners"),
     annotate("segment", x = 1.98, y = 1300, xend = 2, yend = 1140)
 ))
@@ -348,7 +348,7 @@ draw_tiles(alluvia_mono, "Desired future monogamy, by percentage of participants
 
 # Categories
 alluvia_category <- create_alluvia_category(ideals_svy)
-draw_alluvia(alluvia_category, "(b) Current sexual lifestyle and desired lifestyle in 5 years' time", c(
+draw_alluvia(alluvia_category, "Current sexual lifestyle and desired lifestyle in 5 years' time", c(
     annotate("text", x = 2, y = 550, size = 3, label = "Only casual partners"),
     annotate("segment", x = 1.99, y = 450, xend = 2, yend = 300),
     annotate("text", x = 2, y = 1700, size = 3, label = "No partners"),
@@ -362,5 +362,5 @@ is_alluvia_form(as.data.frame(alluvia), axes = 1:3, silent = TRUE)
 draw_tiles(alluvia, "Desired future lifestyle, by percentage of participants\nin current lifestyle")
 
 png(file="alluvia.png",width=11,height=8,units="in",res=300)
-draw_alluvia(alluvia, "Current lifestyle and desired lifestyle in 5 years' time")
+draw_alluvia(alluvia, "")
 dev.off()
