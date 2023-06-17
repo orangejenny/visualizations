@@ -14,7 +14,8 @@ library(ggalluvial)
 ## Setup
 options(survey.lonely.psu = "adjust")
 options(na.action = "na.pass")
-data_location <- "~/Dropbox/SOCIOL 651/Final - NATSAL/UKDA-5223-stata11/stata11/natsal_2000_for_archive.dta"
+setwd("~/Dropbox/SOCIOL 651/Final - NATSAL")
+data_location <- "UKDA-5223-stata11/stata11/natsal_2000_for_archive.dta"
 
 ## Constants
 plain_labels = c(
