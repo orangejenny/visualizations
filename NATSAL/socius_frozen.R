@@ -327,7 +327,7 @@ ideals_svy_with_unknown %>%
 
 # Mono/non-mono status
 alluvia_mono <- create_alluvia_mono(ideals_svy)
-draw_alluvia(alluvia_mono, "Current monogamy/non-monogamy status and desired status in 5 years' time", c(
+draw_alluvia(alluvia_mono, "Current monogamy/non-monogamy status and desired status\nin 5 years' time", c(
     annotate("text", x = 2, y = 1000, size = 3, label = "No partners"),
     annotate("segment", x = 1.98, y = 850, xend = 2, yend = 720)
 ))
