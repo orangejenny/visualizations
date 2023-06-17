@@ -308,7 +308,8 @@ draw_tiles <- function(alluvia_data, title) {
 # Analysis
 raw_2000 <- read_and_filter()
 ideals_raw <- add_calculations(raw_2000)
-ideals_svy <- create_survey(ideals_raw)
+ideals_svy_with_unknown <- create_survey(ideals_raw)
+ideals_svy <- ideals_svy_with_unknown %>% filter(reality != 9, ideal5yr != 9)
 
 ## Tables
 
@@ -347,6 +348,27 @@ ideals_svy %>%
   group_by(ideal5yr) %>% 
   summarise(proportion = survey_prop()) %>% 
   mutate(future_label = plain_labels[ideal5yr])
+
+# Number of future "Have no ideal / None of these / Don't know": 271 (out of 11851)
+ideals_svy_with_unknown %>% filter(ideal5yr == 9) %>% summarise(total = survey_total())
+
+# Proportions of current lifestyles, for future "Have no ideal / None of these / Don't know"
+ideals_svy_with_unknown %>%
+  group_by(reality) %>%
+  filter(ideal5yr == 9) %>%
+  summarise(proportion = survey_prop()) %>%
+  mutate(reality_label = plain_labels[reality])
+
+# Number of currently uncategorizable respondents: 1564
+ideals_svy_with_unknown %>% filter(reality == 9) %>% summarise(total = survey_total())
+
+# Proportions of future ideals, for currently uncategorizable
+ideals_svy_with_unknown %>%
+  group_by(ideal5yr) %>%
+  filter(reality == 9) %>%
+  summarise(proportion = survey_prop()) %>%
+  mutate(future_label = plain_labels[ideal5yr])
+
 
 ## Visualizations
 
