@@ -294,7 +294,7 @@ draw_tiles <- function(alluvia_data, title) {
     select(-count) %>% 
     select(-count_se) %>%
     select(-total)
-  
+
   ggplot(tiles, aes(x = reality_abbreviation, y = future_full_label, fill = percent)) + 
     scale_fill_gradient(low = "white", high = "steelblue",
                          trans = "log10",
@@ -352,9 +352,9 @@ ideals_svy %>%
 
 # Mono/non-mono status
 alluvia_mono <- create_alluvia_mono(ideals_svy)
-draw_alluvia(alluvia_mono, "(a) Current monogamy/non-monogamy status and desired status in 5 years' time", c(
-    annotate("text", x = 2, y = 1500, size = 3, label = "No partners"),
-    annotate("segment", x = 1.98, y = 1300, xend = 2, yend = 1140)
+draw_alluvia(alluvia_mono, "Current monogamy/non-monogamy status and desired status in 5 years' time", c(
+    annotate("text", x = 2, y = 1000, size = 3, label = "No partners"),
+    annotate("segment", x = 1.98, y = 850, xend = 2, yend = 720)
 ))
 draw_tiles(alluvia_mono, "Desired future monogamy, by percentage of participants\nin current lifestyle")
 

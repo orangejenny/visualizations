@@ -353,18 +353,18 @@ ideals_svy %>%
 # Mono/non-mono status
 alluvia_mono <- create_alluvia_mono(ideals_svy)
 draw_alluvia(alluvia_mono, "Current monogamy/non-monogamy status and desired status in 5 years' time", c(
-    annotate("text", x = 2, y = 1500, size = 3, label = "No partners"),
-    annotate("segment", x = 1.98, y = 1300, xend = 2, yend = 1140)
+    annotate("text", x = 2, y = 1000, size = 3, label = "No partners"),
+    annotate("segment", x = 1.98, y = 850, xend = 2, yend = 720)
 ))
 draw_tiles(alluvia_mono, "Desired future monogamy, by percentage of participants\nin current lifestyle")
 
 # Categories
 alluvia_category <- create_alluvia_category(ideals_svy)
 draw_alluvia(alluvia_category, "Current sexual lifestyle and desired lifestyle in 5 years' time", c(
-    annotate("text", x = 2, y = 550, size = 3, label = "Only casual partners"),
-    annotate("segment", x = 1.99, y = 450, xend = 2, yend = 300),
-    annotate("text", x = 2, y = 1700, size = 3, label = "No partners"),
-    annotate("segment", x = 1.98, y = 1550, xend = 2, yend = 1320)
+    annotate("text", x = 2, y = 200, size = 3, label = "Only casual partners"),
+    annotate("segment", x = 1.99, y = 120, xend = 2, yend = 20),
+    annotate("text", x = 2, y = 1120, size = 3, label = "No partners"),
+    annotate("segment", x = 1.98, y = 980, xend = 2, yend = 750)
 ))
 draw_tiles(alluvia_category, "Desired future lifestyle, ignoring monogamy/non-monogamy,\nby percentage of participants in current lifestyle")
 
