@@ -18,14 +18,14 @@ data_location <- "~/Dropbox/SOCIOL 651/Final - NATSAL/UKDA-5223-stata11/stata11/
 
 ## Constants
 plain_labels = c(
-  "No partners",
-  "Only casual partners",
-  "Not cohabiting, non-monogamous",
-  "Not cohabiting,\nmonogamous",
-  "Cohabiting, non-monogamous",
-  "Cohabiting,\nmonogamous",
-  "Married, non-monogamous",
-  "Married,\nmonogamous",
+  " No partners ",
+  "  Only casual partners ",
+  "   Not cohabiting, non-monogamous   ",
+  "    Not cohabiting,    \nmonogamous",
+  "     Cohabiting, non-monogamous     ",
+  "      Cohabiting,      \nmonogamous",
+  "       Married, non-monogamous       ",
+  "        Married,        \nmonogamous",
   "Unknown"
 )
 
