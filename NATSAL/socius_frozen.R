@@ -75,34 +75,6 @@ mono_labels = c(
 mono_full_labels = mono_labels
 mono_abbreviations = mono_labels
 
-# Meant for use with category_level, indices off by 2 same as mono_labels
-category_labels = c(
-  "Unknown",
-  "No partners",
-  "Only casual partners",
-  "Not cohabiting\n",
-  "Cohabiting",
-  "Married"
-)
-
-category_full_labels = c(
-  "Unknown",
-  "No partners",
-  "Only casual partners",
-  "Not cohabiting\n",
-  "Cohabiting",
-  "Married"
-)
-
-category_abbreviations = c(
-  "Unknown",
-  "No partners",
-  "Only casual\npartners",
-  "Not\ncohabiting",
-  "Cohabiting",
-  "Married"
-)
-
 ## Calculation Functions
 is_mono <- function(value) {
   return(if_else(
@@ -110,15 +82,6 @@ is_mono <- function(value) {
            if_else(value %in% c(4, 6, 8), 1,
            if_else(value == 1, 0,
            -1))))
-}
-
-category <- function(value) {
-  return(if_else(value %in% c(7, 8), 4, # married
-           if_else(value %in% c(5, 6), 3, # unmarried & cohabiting
-             if_else(value %in% c(3, 4), 2, # regularly partnered & not cohabiting
-               if_else(value == 2, 1, # casual partners
-                 if_else(value == 1, 0, # no partners
-                   -1))))))  # unknown
 }
 
 reality_value <- function (columns) {
@@ -200,9 +163,7 @@ add_calculations <- function(filtered_data) {
   return(filtered_data %>% 
     mutate(reality = apply(subset(raw_2000, select=marstat:r1relat), 1, reality_value)) %>% 
     mutate(reality_is_mono = is_mono(reality)) %>% 
-    mutate(future_is_mono = is_mono(ideal5yr)) %>% 
-    mutate(reality_category = category(reality)) %>% 
-    mutate(future_category = category(ideal5yr)))
+    mutate(future_is_mono = is_mono(ideal5yr)))
 }
 
 create_survey <- function(raw_data) {
@@ -239,19 +200,6 @@ create_alluvia_mono <- function(survey) {
            future_label = mono_labels[future_is_mono + 2],
            future_full_label = mono_full_labels[future_is_mono + 2],
            reality_abbreviation = mono_abbreviations[reality_is_mono + 2])
-  )
-}
-
-create_alluvia_category <- function(survey) {
-  return (survey %>% 
-    group_by(reality_category, future_category) %>% 
-    summarise(count = survey_total()) %>%
-    mutate(reality = reality_category,
-           future = future_category,
-           reality_label = category_labels[reality_category + 2],
-           future_label = category_labels[future_category + 2],
-           future_full_label = category_full_labels[future_category + 2],
-           reality_abbreviation = category_abbreviations[reality_category + 2])
   )
 }
 
@@ -325,18 +273,6 @@ ideals_svy %>%
   summarise(proportion = survey_prop()) %>% 
   mutate(future_label = mono_labels[future_is_mono + 2])
 
-# Proportions of current lifestyle, by category
-ideals_svy %>%
-  group_by(reality_category) %>% 
-  summarise(proportion = survey_prop()) %>% 
-  mutate(reality_label = category_labels[reality_category + 2])
-
-# Proportions of future lifestyle, by category
-ideals_svy %>%
-  group_by(future_category) %>% 
-  summarise(proportion = survey_prop()) %>% 
-  mutate(future_label = category_labels[future_category + 2])
-
 # Proportions of current lifestyle
 ideals_svy %>%
   group_by(reality) %>% 
@@ -379,16 +315,6 @@ draw_alluvia(alluvia_mono, "Current monogamy/non-monogamy status and desired sta
     annotate("segment", x = 1.98, y = 850, xend = 2, yend = 720)
 ))
 draw_tiles(alluvia_mono, "Desired future monogamy, by percentage of participants\nin current lifestyle")
-
-# Categories
-alluvia_category <- create_alluvia_category(ideals_svy)
-draw_alluvia(alluvia_category, "(b) Current sexual lifestyle and desired lifestyle in 5 years' time", c(
-    annotate("text", x = 2, y = 550, size = 3, label = "Only casual partners"),
-    annotate("segment", x = 1.99, y = 450, xend = 2, yend = 300),
-    annotate("text", x = 2, y = 1700, size = 3, label = "No partners"),
-    annotate("segment", x = 1.98, y = 1550, xend = 2, yend = 1320)
-))
-draw_tiles(alluvia_category, "Desired future lifestyle, ignoring monogamy/non-monogamy,\nby percentage of participants in current lifestyle")
 
 # All lifestyles
 alluvia <- create_alluvia(ideals_svy)
