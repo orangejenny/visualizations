@@ -52,18 +52,6 @@ abbreviated_labels = c(
   "MM",
   "U"
 )
- 
-ideals_labels_types = c(
-  "none",
-  "poly",
-  "poly",
-  "mono",
-  "poly",
-  "mono",
-  "poly",
-  "mono",
-  "other"
-)
 
 # Meant for use with is_mono, but indices are off by 2 because is_mono return values start at -1
 mono_labels = c(
