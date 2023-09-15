@@ -52,9 +52,17 @@ filtered_edges <- function(lower, upper, first_category, second_category) {
   return(edges)
 }
 
-get_vertices <- function(edges) {
+get_vertices <- function(edges, first_category, second_category) {
   ingredients_in_edges <- tibble(ingredient = unique(c(edges$ingredient.x, edges$ingredient.y)))
   vertices <- merge(ingredients_in_edges, ingredient_counts)
+  vertices <- merge(vertices, ingredient_categories)
+  if (!is.null(first_category) & is.null(second_category)) {
+    vertices <- vertices %>%
+      mutate(is_first_category = ifelse(!is.null(first_category) & category == first_category, 1, 0))
+    vertices <- vertices %>% arrange(-is_first_category, ingredient)
+  } else {
+    vertices <- vertices %>% mutate(is_first_category = 0)
+  }
   return(vertices)
 }
 
@@ -73,9 +81,9 @@ draw_arc_diagram <- function(net, vertices, title) {
     geom_node_point(color="steelblue",
                     aes(size=vertices$count, alpha=0.5),
                     show.legend = FALSE) +
-    geom_node_text(aes(label = vertices$ingredient),
+    geom_node_text(aes(label = vertices$ingredient, color = is_first_category),
+                   show.legend = FALSE,
                    size=3,
-                   color="black",
                    repel=FALSE,
                    hjust = 1,
                    vjust = 0,
@@ -90,7 +98,7 @@ draw_arc_diagram <- function(net, vertices, title) {
 
 run <- function(lower, upper, first_category, second_category, title) {
   edges <- filtered_edges(lower, upper, first_category, second_category)
-  vertices <- get_vertices(edges)
+  vertices <- get_vertices(edges, first_category, second_category)
   net <- graph_from_data_frame(d=edges,
                                vertices=vertices,
                                directed=FALSE)
