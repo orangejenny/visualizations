@@ -4,7 +4,7 @@ Exercise in R.
 
 Took some [data from Kaggle](https://www.kaggle.com/datasets/timotheeschlumberger/recipesingredients-count)
 that lists out recipes and their ingredients from [Veganomicon](https://www.hachettebookgroup.com/titles/isa-chandra-moskowitz/veganomicon-10th-anniversary-edition/9780738218991/),
-and turn it into some [arc diagrams](https://en.wikipedia.org/wiki/Arc_diagram) showing co-occurrences.
+and turned it into some [arc diagrams](https://en.wikipedia.org/wiki/Arc_diagram) showing co-occurrences.
 
 Augmented with food category data added by hand.
 
