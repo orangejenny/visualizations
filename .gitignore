@@ -1,1 +1,2 @@
-*.csv
+*.swp
+.DS_Store
