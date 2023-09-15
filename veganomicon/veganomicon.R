@@ -64,7 +64,7 @@ draw_network <- function(net) {
 }
 
 # Visualization: arc diagram
-draw_arc_diagram <- function(net, vertices) {
+draw_arc_diagram <- function(net, vertices, title) {
   ggraph(net, layout="linear") +
     geom_edge_arc(color="#999999",
                   aes(edge_width = weight),
@@ -83,31 +83,33 @@ draw_arc_diagram <- function(net, vertices) {
                    nudge_y = -0.3,
                    angle = 90) +
     coord_cartesian(clip = 'off') +
+    labs(title = title) +
     theme_void() +
     theme(plot.margin=unit(c(0,0,4,0), 'cm'))
 }
 
-run <- function(lower, upper, first_category, second_category) {
+run <- function(lower, upper, first_category, second_category, title) {
   edges <- filtered_edges(lower, upper, first_category, second_category)
   vertices <- get_vertices(edges)
   net <- graph_from_data_frame(d=edges,
                                vertices=vertices,
                                directed=FALSE)
-  draw_arc_diagram(net, vertices)
+  draw_arc_diagram(net, vertices, title)
 }
 
+
 # Most frequent combinations: it all comes back to salt, garlic, and olive oil
-run(25, NULL, NULL, NULL)
+run(25, NULL, NULL, NULL, "Most frequent ingredient combinations")
 
 # Spice combinations: highly common, fairly common
-run(5, 10, "spices", "spices")
+run(5, NULL, "spices", "spices", "Spices with 5+ co-occurrences")
 
 # Condiment combinations
-run(NULL, NULL, "condiments", "condiments")
+run(NULL, NULL, "condiments", "condiments", "Condiment combinations")
 
 # Repeating vegetable combinations
-run(2, NULL, "vegetables", "vegetables")
+run(2, NULL, "vegetables", "vegetables", "Vegetable combinations")
 
 # Categories: what goes with...?
-run(NULL, NULL, "fungi", NULL)
-run(NULL, NULL, "tofu", NULL)
+run(NULL, NULL, "fungi", NULL, "What goes with mushrooms?")
+run(NULL, NULL, "tofu", NULL, "What goes with tofu?")
