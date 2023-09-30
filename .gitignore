@@ -1,2 +1,7 @@
+*.csv
+*.dta
+*.gz
+*.pdf
 *.swp
+*.sqlite3
 .DS_Store
