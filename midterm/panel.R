@@ -1,18 +1,40 @@
 library(haven)
+library(tidyverse)
 
 setwd("~/Documents/visualizations/midterm")
 panel <- read_dta("CCES_Panel_Full3waves_VV_V4.dta") # n=9500
 
 # Drop most columns
 # TODO: add legislation
-slimmed <- panel %>% zap_labels() %>% 
+slimmed <- panel %>% #zap_labels() %>% 
   select(
-    starts_with("birthyr_"),
+    # Ideology and partisanship
     starts_with("ideo5_"),
+    matches("pid3_1[024]"), # TODO: add to analysis
+    starts_with("pid7_"), # TODO: add to analysis
+    
+    # TODO: Possibilities
+    matches("CC1[024]_320"), # gun control (1-3 more to less strict)
+    matches("CC1[024]_321"), # climate change (1-5 real to not real)
+    #matches("CC1[024]_322_[1-6]"), # immigration (multiple yes/no questions): ignore because of specificity of policies
+    #matches("CC1[024]_324"), # abortion (1-4 conservative to liberal): ignore because of previous lit suggesting gender of child matters here
+    matches("CC1[024]_325"), # job vs environment (1-5 favor environment to favor jobs)
+    matches("CC1[024]_326"), # gay marriage (1/2 no/yes): note 
+    matches("CC1[024]_327"), # affirmative action (1-4 support to oppose)
+    matches("CC1[024]_328"), # budget (1 cut defense, 2 cut domestic, 3 raise taxes)
+    matches("CC1[024]_329"), # budget move to avoid (1 cut defense, 2 cut domestic, 3 raise taxes)
+    #matches("CC1[024]_332"), # roll call votes (multiple, 1/2 support/oppose, discard other values): ignore because of specificity (and inconsistency between years)
+    
+    # Parenthood
     starts_with("gender_"),
     starts_with("child18_"),
     starts_with("child18num_"),
+    
+    # Demographics for controls/filters
+    starts_with("birthyr_"),
     starts_with("faminc_"),
+    starts_with("investor_"), # TODO: add to analysis (money in stocks)
+    starts_with("newsint_"), # TODO: add to analysis (interest in news/politics (1 high - 4 little, discard other values))
     starts_with("race_"), # Limit to 1-8, categorical
     starts_with("educ_"), # Limit to 1-6, categorical
     starts_with("marstat_"), # Limit to 1-6, categorical
@@ -21,6 +43,8 @@ slimmed <- panel %>% zap_labels() %>%
 
 data_1012 <- slimmed %>% mutate(cycle = 1012)  # This will be the 2010/2012 data
 data_1214 <- slimmed %>% mutate(cycle = 1214)  # This will be the 2012/2014 data
+
+# TODO: three years' data, to check for consistent change
 
 all_data <- merge(data_1012, data_1214, all = TRUE) %>% 
   mutate(gender = gender_10, # Verified gender doesn't change for anyone: all_data %>% filter(gender_10 != gender_12 | gender_12 != gender_14 | gender_10 != gender_14)
