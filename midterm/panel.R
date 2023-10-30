@@ -5,7 +5,6 @@ setwd("~/Documents/visualizations/midterm")
 panel <- read_dta("CCES_Panel_Full3waves_VV_V4.dta") # n=9500
 
 # Drop most columns
-# TODO: add legislation
 slimmed <- panel %>% #zap_labels() %>% 
   select(
     # Ideology and partisanship
