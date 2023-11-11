@@ -63,25 +63,28 @@ three_years <- panel %>% zap_labels() %>%
     
     # Consolidate demographics, arbitrarily using later data if there are differences
     gender = gender_10, # Verified gender doesn't change for anyone: all_data %>% filter(gender_10 != gender_12 | gender_12 != gender_14 | gender_10 != gender_14)
-    age = 2023 - birthyr_10, # Does this change?
-    race = if_else(race_10 < 10, race_10, if_else(race_12 < 10, race_12, race_14)),
-    income = if_else(faminc_14 < 20, faminc_14, if_else(faminc_12 < 20, faminc_12, faminc_10)),
-         # Demographics: arbitrarily preferring the later responses
-         # TODO: add these columns for other controls
-         # TODO: also remove the originals in the select(-c()) right below
-         #starts_with("investor_"), # TODO: add to analysis (money in stocks)
-         #starts_with("newsint_"), # TODO: add to analysis (interest in news/politics (1 high - 4 little, discard other values))
-         #starts_with("race_"), # Limit to 1-8, categorical
-         #starts_with("educ_"), # Limit to 1-6, categorical
-         #starts_with("marstat_"), # Limit to 1-6, categorical
-         #starts_with("pew_religimp_"), # Limit to 1-4, 1 is "very important"
+    age = 2010 - birthyr_10,
+    race = if_else(race_10 < 10, race_10, if_else(race_12 < 10, race_12, race_14)), # Limit to 1-8, categorical
+    income = if_else(faminc_14 < 20, faminc_14, if_else(faminc_12 < 20, faminc_12, faminc_10)), # Bucket this (below)
+    investor = if_else(investor_14 < 3, investor_14, if_else(investor_12 < 3, investor_12, investor_10)), # yes/no has money in stocks
+    newsint = if_else(newsint_14 < 5, newsint_14, if_else(newsint_12 < 5, newsint_12, newsint_10)), # interest in news/politics (1 high - 4 little)
+    educ = if_else(educ_10 < 7, educ_10, if_else(educ_12 < 7, educ_12, educ_14)), # Limit to 1-6, categorical
+    marstat = if_else(marstat_10 < 7, marstat_10, if_else(marstat_12 < 7, marstat_12, marstat_14)), # Limit to 1-6, categorical
+    pew_religimp = if_else(pew_religimp_14 < 5, pew_religimp_14, if_else(pew_religimp_12 < 5, pew_religimp_12, pew_religimp_10)), # importance of religion (1 high - 4 little)
   ) %>% 
   # Remove year-specific demographics
   select(-starts_with("gender_")) %>% 
   select(-starts_with("birthyr_")) %>% 
   select(-starts_with("race_")) %>% 
   select(-starts_with("faminc_")) %>% 
-  # Add income bucket
+  select(-starts_with("investor_")) %>% 
+  select(-starts_with("newsint_")) %>% 
+  select(-starts_with("educ_")) %>% 
+  select(-starts_with("marstat_")) %>% 
+  select(-starts_with("pew_religimp_"))
+
+# Add income bucket
+three_years <- three_years %>% 
   mutate(
     income_bracket = if_else(income %in% seq(1,9),
                              "low",
