@@ -56,7 +56,7 @@ three_years <- panel %>% zap_labels() %>%
   ) %>% mutate(
     cycle = 101214,
     
-    # Replace NA with 0 for child18num columns, because NAs don't workplay nicely with comparators
+    # Replace NA with 0 for child18num columns, because NAs don't play nicely with comparators
     child18num_10 = coalesce(child18num_10, 0),
     child18num_12 = coalesce(child18num_12, 0),
     child18num_14 = coalesce(child18num_14, 0),
@@ -125,19 +125,14 @@ add_parenting <- function(df) {
 three_years <- add_parenting(three_years)
 two_years <- add_parenting(two_years)
 
+# TODO: ADD_IDEOLOGY FUNCTION
+
 
 all_data <- three_years %>% 
   mutate(# TODO: do this in a separate statement, so I can make the rest of this statement a function and try out different ideology variables
          ideo_before = if_else(cycle == 1012, ideo5_10, ideo5_12),
          ideo_after = if_else(cycle == 1012, ideo5_12, ideo5_14),
-         ideo_delta = ideo_after - ideo_before) %>% 
-         
-  # TODO: pull column names into lists like `original_demographic_colums`
-  # for the sake of DRYing this up?
-  select(-c(ideo5_10, ideo5_12, ideo5_14,
-            child18_10, child18_12, child18_14,
-            child18num_10, child18num_12, child18num_14)) %>% 
-  filter(!is.na(new_child)) # only 2 rows, based on all_data %>% group_by(new_child) %>% summarise(count = n())
+         ideo_delta = ideo_after - ideo_before)
 
 trends <- all_data %>% 
   filter(ideo_before < 6, ideo_after < 6) %>% # TODO: note this will be different by ideology
