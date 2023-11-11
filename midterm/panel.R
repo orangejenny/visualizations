@@ -15,8 +15,8 @@ library(tidyverse)
 setwd("~/Documents/visualizations/midterm")
 panel <- read_dta("CCES_Panel_Full3waves_VV_V4.dta") # n=9500
 
-# Drop most columns
-data_101214 <- panel %>% #zap_labels() %>% 
+### Build three base data frames (10-12, 12-14, 10-14) ###
+three_years <- panel %>% zap_labels() %>% 
   select(
     # Ideology and partisanship
     starts_with("ideo5_"),
@@ -53,30 +53,20 @@ data_101214 <- panel %>% #zap_labels() %>%
     starts_with("educ_"), # Limit to 1-6, categorical
     starts_with("marstat_"), # Limit to 1-6, categorical
     starts_with("pew_religimp_"), # Limit to 1-4, 1 is "very important"
-  )
-
-data_1012 <- data_101214 %>% mutate(cycle = 1012)  # This will be the 2010/2012 data
-data_1214 <- data_101214 %>% mutate(cycle = 1214)  # This will be the 2012/2014 data
-
-all_data <- merge(data_1012, data_1214, all = TRUE) %>% 
-  mutate(gender = gender_10, # Verified gender doesn't change for anyone: all_data %>% filter(gender_10 != gender_12 | gender_12 != gender_14 | gender_10 != gender_14)
-         age = 2023 - birthyr_10, # Does this change?
-         new_child = if_else(cycle == 1012, child18_10 < child18_12, child18_12 < child18_14),
-         new_father = if_else(!new_child, NA, gender == 1),
-         new_mother = if_else(!new_child, NA, gender == 2),
-         
-         # TODO: do this in a separate statement, so I can make the rest of this statement a function and try out different ideology variables
-         ideo_before = if_else(cycle == 1012, ideo5_10, ideo5_12),
-         ideo_after = if_else(cycle == 1012, ideo5_12, ideo5_14),
-         ideo_delta = ideo_after - ideo_before,
-         
+  ) %>% mutate(
+    cycle = 101214,
+    
+    # Replace NA with 0 for child18num columns, because NAs don't workplay nicely with comparators
+    child18num_10 = coalesce(child18num_10, 0),
+    child18num_12 = coalesce(child18num_12, 0),
+    child18num_14 = coalesce(child18num_14, 0),
+    
+    # Consolidate demographics, arbitrarily using later data if there are differences
+    gender = gender_10, # Verified gender doesn't change for anyone: all_data %>% filter(gender_10 != gender_12 | gender_12 != gender_14 | gender_10 != gender_14)
+    age = 2023 - birthyr_10, # Does this change?
+    race = if_else(race_10 < 10, race_10, if_else(race_12 < 10, race_12, race_14)),
+    income = if_else(faminc_14 < 20, faminc_14, if_else(faminc_12 < 20, faminc_12, faminc_10)),
          # Demographics: arbitrarily preferring the later responses
-         income = coalesce(faminc_14, faminc_12, faminc_10),
-         income_bracket = if_else(income %in% seq(1,9),
-                                  "low",
-                                  if_else(income %in% seq(10, 18),
-                                          "high",
-                                          "unknown"))) %>% 
          # TODO: add these columns for other controls
          # TODO: also remove the originals in the select(-c()) right below
          #starts_with("investor_"), # TODO: add to analysis (money in stocks)
@@ -85,13 +75,65 @@ all_data <- merge(data_1012, data_1214, all = TRUE) %>%
          #starts_with("educ_"), # Limit to 1-6, categorical
          #starts_with("marstat_"), # Limit to 1-6, categorical
          #starts_with("pew_religimp_"), # Limit to 1-4, 1 is "very important"
+  ) %>% 
+  # Remove year-specific demographics
+  select(-starts_with("gender_")) %>% 
+  select(-starts_with("birthyr_")) %>% 
+  select(-starts_with("race_")) %>% 
+  select(-starts_with("faminc_")) %>% 
+  # Add income bucket
+  mutate(
+    income_bracket = if_else(income %in% seq(1,9),
+                             "low",
+                             if_else(income %in% seq(10, 18),
+                                     "high",
+                                     "unknown"))
+  )
+   
+two_years <- merge(
+  three_years %>% mutate(cycle = 1012),  # contains all data, but only look at 2010/2012
+  three_years %>% mutate(cycle = 1214),  # contains all data, but only look at 2012/2014
+  all = TRUE
+)
+
+# Prep column to eval
+ecol <- function (prefix, year="") {
+  return(parse(text=as.name(paste(prefix, year, sep=""))))
+}
+
+# Add columns for new child, new mother, new father
+add_parenting <- function(df) {
+  return(
+    df %>% mutate(
+      new_child = if_else(cycle == 1012, (
+        eval(ecol("child18num_10")) < eval(ecol("child18num_12"))
+      ), if_else(cycle == 1214, (
+         eval(ecol("child18num_12")) < eval(ecol("child18num_14"))
+      ), (
+         eval(ecol("child18num_10")) < eval(ecol("child18num_12")) |
+         eval(ecol("child18num_12")) < eval(ecol("child18num_14"))
+      ))),
+      new_father = if_else(!new_child, NA, gender == 1),
+      new_mother = if_else(!new_child, NA, gender == 2),
+    ) %>% select(-starts_with("child18num_"))
+  )
+}
+
+three_years <- add_parenting(three_years)
+two_years <- add_parenting(two_years)
+
+
+all_data <- three_years %>% 
+  mutate(# TODO: do this in a separate statement, so I can make the rest of this statement a function and try out different ideology variables
+         ideo_before = if_else(cycle == 1012, ideo5_10, ideo5_12),
+         ideo_after = if_else(cycle == 1012, ideo5_12, ideo5_14),
+         ideo_delta = ideo_after - ideo_before) %>% 
+         
   # TODO: pull column names into lists like `original_demographic_colums`
   # for the sake of DRYing this up?
-  select(-c(gender_10, gender_12, gender_14,
-            ideo5_10, ideo5_12, ideo5_14,
+  select(-c(ideo5_10, ideo5_12, ideo5_14,
             child18_10, child18_12, child18_14,
-            child18num_10, child18num_12, child18num_14,
-            faminc_10, faminc_12, faminc_14)) %>% 
+            child18num_10, child18num_12, child18num_14)) %>% 
   filter(!is.na(new_child)) # only 2 rows, based on all_data %>% group_by(new_child) %>% summarise(count = n())
 
 trends <- all_data %>% 
