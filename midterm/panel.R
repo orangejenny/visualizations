@@ -16,7 +16,7 @@ setwd("~/Documents/visualizations/midterm")
 panel <- read_dta("CCES_Panel_Full3waves_VV_V4.dta") # n=9500
 
 # Drop most columns
-slimmed <- panel %>% #zap_labels() %>% 
+data_101214 <- panel %>% #zap_labels() %>% 
   select(
     # Ideology and partisanship
     starts_with("ideo5_"),
@@ -55,8 +55,8 @@ slimmed <- panel %>% #zap_labels() %>%
     starts_with("pew_religimp_"), # Limit to 1-4, 1 is "very important"
   )
 
-data_1012 <- slimmed %>% mutate(cycle = 1012)  # This will be the 2010/2012 data
-data_1214 <- slimmed %>% mutate(cycle = 1214)  # This will be the 2012/2014 data
+data_1012 <- data_101214 %>% mutate(cycle = 1012)  # This will be the 2010/2012 data
+data_1214 <- data_101214 %>% mutate(cycle = 1214)  # This will be the 2012/2014 data
 
 all_data <- merge(data_1012, data_1214, all = TRUE) %>% 
   mutate(gender = gender_10, # Verified gender doesn't change for anyone: all_data %>% filter(gender_10 != gender_12 | gender_12 != gender_14 | gender_10 != gender_14)
@@ -101,8 +101,8 @@ trends <- all_data %>%
          no_change = ideo_before == ideo_after,
          direction = if_else(leftward, -1, if_else(rightward, 1, 0)))
 
-# TODO: look at three years' data in slimmed, to check for consistent change
-#   mutate slimmed to add
+# TODO: look at three years' data in data_101214, to check for consistent change
+#   mutate data_101214 to add
 #      no_change: 10 == 12 == 14
 #      leftward: !no_change & 10 <= 12 & 12 <= 14
 #      rightward: !no_change & 10 >= 12 & 12 >= 14
@@ -128,7 +128,7 @@ get_regression_table(lm(ideo_delta ~ as_factor(new_child) + gender, data=trends)
 get_regression_table(lm(ideo_delta ~ as_factor(new_child) + as_factor(income_bracket), data=trends))
 get_regression_table(lm(ideo_delta ~ as_factor(new_child) + age + gender, data=trends))
 get_regression_table(lm(ideo_delta ~ as_factor(new_child) + income, data=trends))
-# TODO: try out controls for religiosity, education, race, marital status, which are now in slimmed
+# TODO: try out controls for religiosity, education, race, marital status
 
 # I think this is relevant, although it is not quite significant
 chisq.test(table(trends$new_child, trends$direction)) # p = 0.05793
