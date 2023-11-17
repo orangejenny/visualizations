@@ -21,16 +21,21 @@ three_years <- panel %>% zap_labels() %>%
     matches("pid3_1[024]"),
     starts_with("pid7_"),
     
-    matches("CC1[024]_320"), # gun control (1-3 more to less strict)
-    matches("CC1[024]_321"), # climate change (1-5 real to not real)
-    #matches("CC1[024]_322_[1-6]"), # immigration (multiple yes/no questions): ignore because of specificity of policies
-    #matches("CC1[024]_324"), # abortion (1-4 conservative to liberal): ignore because of previous lit suggesting gender of child matters here
-    matches("CC1[024]_325"), # job vs environment (1-5 favor environment to favor jobs)
-    matches("CC1[024]_326"), # gay marriage (1/2 no/yes): note 
-    matches("CC1[024]_327"), # affirmative action (1-4 support to oppose)
+    # Policy issues: categorical
+    matches("CC1[024]_320"), # gun control (1-3 more strict, less strict, same)
+    matches("CC1[024]_326"), # gay marriage (1/2 no/yes): note issue was very active during this time, with Obergefell in 2015
     matches("CC1[024]_328"), # budget (1 cut defense, 2 cut domestic, 3 raise taxes)
     matches("CC1[024]_329"), # budget move to avoid (1 cut defense, 2 cut domestic, 3 raise taxes)
-    #matches("CC1[024]_332"), # roll call votes (multiple, 1/2 support/oppose, discard other values): ignore because of specificity (and inconsistency between years)
+
+    # Policy issues: continuous
+    matches("CC1[024]_321"), # climate change (1-5 real to not real)
+    matches("CC1[024]_325"), # job vs environment (1-5 favor environment to favor jobs)
+    matches("CC1[024]_327"), # affirmative action (1-4 support to oppose)
+
+    # Policy issues: excluding
+    #matches("CC1[024]_322_[1-6]"), # immigration (multiple yes/no questions): ignore because of specificity of policies
+    #matches("CC1[024]_324"), # abortion (1-4 conservative to liberal): ignore because of previous lit suggesting gender of child matters here
+    #matches("CC1[024]_332"), # roll call votes (multiple, 1/2 support/oppose, discard other values): ignore because of specificity (and inconsistency of data between years)
     
     # Parenthood
     starts_with("gender_"),
@@ -65,7 +70,7 @@ three_years <- panel %>% zap_labels() %>%
     marstat = if_else(marstat_10 < 7, marstat_10, if_else(marstat_12 < 7, marstat_12, marstat_14)), # Limit to 1-6, categorical
     pew_religimp = if_else(pew_religimp_14 < 5, pew_religimp_14, if_else(pew_religimp_12 < 5, pew_religimp_12, pew_religimp_10)), # importance of religion (1 high - 4 little)
   ) %>% 
-  # Remove year-specific demographics
+  # Now that demographics are consolidated, remove the year-specific columns
   select(-starts_with("gender_")) %>% 
   select(-starts_with("birthyr_")) %>% 
   select(-starts_with("race_")) %>% 
