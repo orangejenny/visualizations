@@ -21,11 +21,6 @@ three_years <- panel %>% zap_labels() %>%
     matches("pid3_1[024]"),
     starts_with("pid7_"),
     
-    # TODO: Check if any of these change
-    #   Add before/after columns, then check lm and chisq.test for each
-    #   (make a function that takes a data frame, adds the before/after values,
-    #   filters to valid values, and does the lm and chisq.test, and maybe
-    #   also does the lms with controls)
     matches("CC1[024]_320"), # gun control (1-3 more to less strict)
     matches("CC1[024]_321"), # climate change (1-5 real to not real)
     #matches("CC1[024]_322_[1-6]"), # immigration (multiple yes/no questions): ignore because of specificity of policies
