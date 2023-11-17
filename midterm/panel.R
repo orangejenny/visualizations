@@ -2,11 +2,9 @@
 #   0) See if any existing code could/should be extracted into functions
 #      (just read top to bottom, considering I'll want to vary ideology,
 #      policy, and a two-wave versus three-wave data set)
-#   1) Make function to check lm and chisq for a given variable
-#   2) Parameterize ideology, use that function
-#   3) Add controls to that function
-#   4) Use that function for all the policy variables
-#   5) Add additional controls
+#   2) Parameterize ideology, use run_lm/run_regression_table
+#   4) Use run_lm/run_regression_table function for all the policy variables
+#   5) Use run_lm/run_regression_table with various controls
 #   6) Look at  consistency in ideology change over 3 cycles (for all ideology variables)
 
 library(haven)
@@ -170,6 +168,23 @@ get_regression_table(lm(ideo_delta ~ as_factor(new_child) + age + gender, data=t
 get_regression_table(lm(ideo_delta ~ as_factor(new_child) + income, data=trends))
 # TODO: try out controls for religiosity, education, race, marital status
 
+# dependent_var and independent var are strings, controls is a list of strings
+run_lm <- function (data_frame, dependent_var, independent_var, controls=NULL) {
+  if (length(controls) == 0) {
+    return(lm(eval(parse(text=dependent_var)) ~ eval(parse(text=independent_var)),
+              data=data_frame))
+  } else {
+    return(lm(eval(parse(text=dependent_var)) ~ eval(parse(text=independent_var))
+              + eval(parse(text=paste(controls, collapse=" + "))),
+              data=data_frame))
+  }
+}
+run_lm(trends, "ideo_delta", "as_factor(new_child)", c("age"))
+
+run_regression_table <- function (data_frame, dependent_var, independent_var, controls=NULL) {
+  return(get_regression_table(run_lm(data_frame, dependent_var, independent_var, controls)))
+}
+run_regression_table(trends, "ideo_delta", "as_factor(new_child)", c("age"))
 
 run_chisq <- function(var1, var2) {
   return(chisq.test(table(var1, var2)))
