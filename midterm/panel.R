@@ -170,8 +170,13 @@ get_regression_table(lm(ideo_delta ~ as_factor(new_child) + age + gender, data=t
 get_regression_table(lm(ideo_delta ~ as_factor(new_child) + income, data=trends))
 # TODO: try out controls for religiosity, education, race, marital status
 
+
+run_chisq <- function(var1, var2) {
+  return(chisq.test(table(var1, var2)))
+}
+
 # I think this is relevant, although it is not quite significant
-chisq.test(table(trends$new_child, trends$direction)) # p = 0.05793
+run_chisq(trends$new_child, trends$direction)
 
 # Non-parents 0.02 more liberal, new parents 0.07 more liberal
 # Similar when adding grouping by cycle
