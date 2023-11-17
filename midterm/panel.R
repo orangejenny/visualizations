@@ -1,7 +1,5 @@
 # Overall TODO (there are specific TODOs for all of these):
-#   0) See if any existing code could/should be extracted into functions
-#      (just read top to bottom, considering I'll want to vary ideology,
-#      policy, and a two-wave versus three-wave data set)
+#   0) Readability!
 #   1) Look at  consistency in ideology change over 3 cycles (for all ideology variables) - use/extend count_flippers!
 #   2) Use run_lm/run_regression_table function for all the policy variables...some are categorical, some are continuous
 #   3) Parameterize ideology, use run_lm/run_regression_table
@@ -98,8 +96,8 @@ two_years <- merge(
 )
 
 # Prep column to eval
-ecol <- function (prefix, year="") {
-  return(parse(text=as.name(paste(prefix, year, sep=""))))
+ecol <- function (col_name) {
+  return(parse(text=as.name(col_name)))
 }
 
 # Add columns for new child, new mother, new father
@@ -169,10 +167,10 @@ two_years <- add_pid(two_years)
 # (limited to people who identified with one of the two major parties, ignoring those who flipped twice)
 count_flippers <- function (data_frame, before, after, valid_values) {
   valid_rows <- data_frame %>% filter(
-    eval(parse(text=before)) %in% valid_values &
-    eval(parse(text=after)) %in% valid_values
+    eval(ecol(before)) %in% valid_values &
+    eval(ecol(after)) %in% valid_values
   )
-  flippers <- valid_rows %>% filter(eval(parse(text=before)) != eval(parse(text=after)))
+  flippers <- valid_rows %>% filter(eval(ecol(before)) != eval(ecol(after)))
   return(
     round(nrow(flippers) * 100 / nrow(valid_rows), 1)
   )
@@ -218,11 +216,11 @@ get_regression_table(lm(ideo_delta ~ as_factor(new_child) + income, data=trends)
 # dependent_var and independent var are strings, controls is a list of strings
 run_lm <- function (data_frame, dependent_var, independent_var, controls=NULL) {
   if (length(controls) == 0) {
-    return(lm(eval(parse(text=dependent_var)) ~ eval(parse(text=independent_var)),
+    return(lm(eval(ecol(dependent_var)) ~ eval(ecol(independent_var)),
               data=data_frame))
   } else {
-    return(lm(eval(parse(text=dependent_var)) ~ eval(parse(text=independent_var))
-              + eval(parse(text=paste(controls, collapse=" + "))),
+    return(lm(eval(ecol(dependent_var)) ~ eval(ecol(independent_var))
+              + eval(ecol(paste(controls, collapse=" + "))),
               data=data_frame))
   }
 }
