@@ -2,10 +2,10 @@
 #   0) See if any existing code could/should be extracted into functions
 #      (just read top to bottom, considering I'll want to vary ideology,
 #      policy, and a two-wave versus three-wave data set)
-#   2) Parameterize ideology, use run_lm/run_regression_table
-#   4) Use run_lm/run_regression_table function for all the policy variables
-#   5) Use run_lm/run_regression_table with various controls
-#   6) Look at  consistency in ideology change over 3 cycles (for all ideology variables)
+#   1) Look at  consistency in ideology change over 3 cycles (for all ideology variables) - use/extend count_flippers!
+#   2) Use run_lm/run_regression_table function for all the policy variables...some are categorical, some are continuous
+#   3) Parameterize ideology, use run_lm/run_regression_table
+#   4) Use run_lm/run_regression_table with various controls
 
 library(haven)
 library(tidyverse)
@@ -18,8 +18,8 @@ three_years <- panel %>% zap_labels() %>%
   select(
     # Ideology and partisanship
     starts_with("ideo5_"),
-    matches("pid3_1[024]"), # TODO: add to analysis (related TODO below)
-    starts_with("pid7_"), # TODO: add to analysis (related TODO below)
+    matches("pid3_1[024]"),
+    starts_with("pid7_"),
     
     # TODO: Check if any of these change
     #   Add before/after columns, then check lm and chisq.test for each
@@ -123,17 +123,64 @@ add_parenting <- function(df) {
 three_years <- add_parenting(three_years)
 two_years <- add_parenting(two_years)
 
-# TODO: ADD_IDEOLOGY FUNCTION
 
+add_ideo <- function(df) {
+  return(
+    df %>% mutate(
+      ideo_before = if_else(cycle == 1012,
+                            eval(ecol("ideo5_10")),
+                            if_else(cycle == 1214,
+                                    eval(ecol("ideo5_12")),
+                                    eval(ecol("ideo5_10")))),
+      ideo_after = if_else(cycle == 1012, 
+                           eval(ecol("ideo5_12")),
+                           if_else(cycle == 1214,
+                                   eval(ecol("ideo5_14")),
+                                   eval(ecol("ideo5_14")))),
+      ideo_delta = ideo_after - ideo_before,
+    ) %>% select(-starts_with("ideo5_"))
+  )
+}
+three_years <- add_ideo(three_years)
+two_years <- add_ideo(two_years)
 
-all_data <- three_years %>% 
-  mutate(# TODO: do this in a separate statement, so I can make the rest of this statement a function and try out different ideology variables
-         ideo_before = if_else(cycle == 1012, ideo5_10, ideo5_12),
-         ideo_after = if_else(cycle == 1012, ideo5_12, ideo5_14),
-         ideo_delta = ideo_after - ideo_before)
+add_pid <- function(df) {
+  return(
+    df %>% mutate(
+      pid_before = if_else(cycle == 1012,
+                           eval(ecol("pid7_10")),
+                           if_else(cycle == 1214,
+                                   eval(ecol("pid7_12")),
+                                   eval(ecol("pid7_10")))),
+      pid_after = if_else(cycle == 1012, 
+                           eval(ecol("pid7_12")),
+                           if_else(cycle == 1214,
+                                   eval(ecol("pid7_14")),
+                                   eval(ecol("pid7_14")))),
+      pid_delta = pid_after - pid_before,
+    ) %>% select(-starts_with("pid7_"))
+  )
+}
+three_years <- add_pid(three_years)
+two_years <- add_pid(two_years)
+
+# pid3: Too coarse-grained to use as ideology, though note people do flip
+# 1.1% people flipped between the major parties between 2010 and 2014
+# (limited to people who identified with one of the two major parties, ignoring those who flipped twice)
+count_flippers <- function (data_frame, before, after, valid_values) {
+  valid_rows <- data_frame %>% filter(
+    eval(parse(text=before)) %in% valid_values &
+    eval(parse(text=after)) %in% valid_values
+  )
+  flippers <- valid_rows %>% filter(eval(parse(text=before)) != eval(parse(text=after)))
+  return(
+    round(nrow(flippers) * 100 / nrow(valid_rows), 1)
+  )
+}
+count_flippers(three_years, "pid3_10", "pid3_12", c(1:2))
 
 trends <- all_data %>% 
-  filter(ideo_before < 6, ideo_after < 6) %>% # TODO: note this will be different by ideology
+  filter(ideo_before < 6, ideo_after < 6) %>% # TODO: note valid values are different for ideo vs pid
   mutate(leftward = ideo_before > ideo_after,
          rightward = ideo_before < ideo_after,
          no_change = ideo_before == ideo_after,
