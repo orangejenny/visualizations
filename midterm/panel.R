@@ -137,6 +137,11 @@ add_ideo <- function(df) {
       ideo_before = if_else(cycle == 1214, eval(ecol("ideo5_12")), eval(ecol("ideo5_10"))),
       ideo_after = if_else(cycle == 1012, eval(ecol("ideo5_12")), eval(ecol("ideo5_14"))),
       ideo_delta = if_else(ideo_before %in% valid & ideo_after %in% valid, ideo_after - ideo_before, NA),
+      ideo_direction = if_else(is.na(ideo_delta),
+                               NA,
+                               if_else(ideo_delta > 0, 
+                                       1, 
+                                       if_else(ideo_delta < 0, -1, 0)))
     ) %>% select(-starts_with("ideo5_"))
   )
 }
@@ -150,6 +155,11 @@ add_pid <- function(df) {
       pid_before = if_else(cycle == 1214, eval(ecol("pid7_12")), eval(ecol("pid7_10"))),
       pid_after = if_else(cycle == 1012,  eval(ecol("pid7_12")), eval(ecol("pid7_14"))),
       pid_delta = if_else(pid_before %in% valid & pid_after %in% valid, pid_after - pid_before, NA),
+      pid_direction = if_else(is.na(pid_delta),
+                              NA,
+                              if_else(pid_delta > 0,
+                                      1,
+                                      if_else(pid_delta < 0, -1, 0))),
     ) %>% select(-starts_with("pid7_"))
   )
 }
@@ -217,40 +227,40 @@ count_flippers <- function (data_frame, before, after, valid_values) {
 }
 count_flippers(three_years, "pid3_10", "pid3_12", c(1:2))
 
-trends <- all_data %>% 
-  filter(ideo_before < 6, ideo_after < 6) %>% # TODO: note valid values are different for ideo vs pid
-  mutate(leftward = ideo_before > ideo_after,
-         rightward = ideo_before < ideo_after,
-         no_change = ideo_before == ideo_after,
-         direction = if_else(leftward, -1, if_else(rightward, 1, 0)))
+# In two cycles: 420 with new child, 18580 without
+two_years %>% group_by(new_child) %>% summarise(count = n())
 
-# TODO: look at three years' data in data_101214, to check for consistent change
-#   mutate data_101214 to add
-#      no_change: 10 == 12 == 14
-#      leftward: !no_change & 10 <= 12 & 12 <= 14
-#      rightward: !no_change & 10 >= 12 & 12 >= 14
-#      inconsistent: others
-#   then repeat the lm and chisq.test below, filtering out inconsistent
+# In three cycles: 392 with new child in either 2012 or 2014, 9108 with neither
+# TODO: update after updating three_years' new_child column
+three_years %>% group_by(new_child) %>% summarise(count = n())
 
-# 17609, 602
-trends %>% group_by(new_child) %>% summarise(count = n())
-
-# New parents: 9.5% more conservative, 15.6% more liberal
-# Non-new-parents: 10.1% more conservative, 12.3% more liberal
-trends %>%
-  group_by(new_child, income_bracket, direction) %>%
+# Look at direction, but not magnitude, of ideological change
+# Non-new-parents: 2230 + 13853 + 1795 = 17878: 12.5% more liberal, 10.0% more conservative
+# New parents: 49 + 304 + 43 = 396: 12.4% more liberal, 10.9% more conservative
+two_years %>%
+  filter(!is.na(ideo_delta)) %>% 
+  group_by(new_child, ideo_direction) %>%
   summarise(count = n())
+# TODO: add three_years (after changing three_years to be 2010-2014 only)
+# TODO: in three_years, exclude flippers, look for consistent change
+
+filter_na <- function (data_frame, column) {
+  return(
+    data_frame %>% filter(!is.na(eval(ecol(column))))
+  )
+}
+
  
 # Which of these is correct to use? I *think* it's the lm,
 # which, conveniently, is barely significant
 t.test(ideo_delta~new_child, data=trends) # p = 0.0715
 get_regression_table(lm(ideo_delta ~ as_factor(new_child), data=trends)) # p = 0.045
 
-get_regression_table(lm(ideo_delta ~ as_factor(new_child) + age, data=trends))
-get_regression_table(lm(ideo_delta ~ as_factor(new_child) + as_factor(gender), data=trends))
-get_regression_table(lm(ideo_delta ~ as_factor(new_child) + as_factor(income_bracket), data=trends))
-get_regression_table(lm(ideo_delta ~ as_factor(new_child) + age + as_factor(gender), data=trends))
-get_regression_table(lm(ideo_delta ~ as_factor(new_child) + income, data=trends))
+get_regression_table(lm(ideo_delta ~ as_factor(new_child) + age, data=filter_na(two_years, "ideo_delta")))
+get_regression_table(lm(ideo_delta ~ as_factor(new_child) + as_factor(gender), data=filter_na(two_years, "ideo_delta")))
+get_regression_table(lm(ideo_delta ~ as_factor(new_child) + as_factor(income_bracket), data=filter_na(two_years, "ideo_delta")))
+get_regression_table(lm(ideo_delta ~ as_factor(new_child) + age + as_factor(gender), data=filter_na(two_years, "ideo_delta")))
+get_regression_table(lm(ideo_delta ~ as_factor(new_child) + income, data=filter_na(two_years, "ideo_delta")))
 # TODO: try out controls for religiosity, education, race, marital status, investor, newsint
 # TODO: try filtering for newsint first
 
@@ -265,7 +275,7 @@ run_lm <- function (data_frame, dependent_var, independent_var, controls=NULL) {
               data=data_frame))
   }
 }
-run_lm(trends, "ideo_delta", "as_factor(new_child)", c("age"))
+run_lm(filter_na(two_years, "ideo_delta"), "ideo_delta", "as_factor(new_child)", c("age"))
 
 run_regression_table <- function (data_frame, dependent_var, independent_var, controls=NULL) {
   return(get_regression_table(run_lm(data_frame, dependent_var, independent_var, controls)))
@@ -279,19 +289,13 @@ run_chisq <- function(var1, var2) {
 # I think this is relevant, although it is not quite significant
 run_chisq(trends$new_child, trends$direction)
 
-# Non-parents 0.02 more liberal, new parents 0.07 more liberal
-# Similar when adding grouping by cycle
-trends %>%
+# Non-parents 0.03 more liberal, new parents identical before and after
+filter_na(two_years, "ideo_delta") %>%
   group_by(new_child) %>%
   summarise(mean_before = mean(ideo_before), mean_after = mean(ideo_after))
 
-# Similar to previous, with both new mothers & fathers getting 0.07 more liberal,
+# Similar to previous, with both new mothers & fathers identical before and after
 # non-parents getting 0.02 (women) or 0.03 (men) more liberal
-# Similar when adding grouping by cycle
-trends %>%
+filter_na(two_years, "ideo_delta") %>%
   group_by(new_child, gender) %>%
   summarise(mean_before = mean(ideo_before), mean_after = mean(ideo_after))
-
-trends %>%
-  group_by(new_child, direction, gender) %>%
-  summarise(count = n())
