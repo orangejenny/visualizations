@@ -52,6 +52,11 @@ three_years <- panel %>% zap_labels() %>%
   ) %>% mutate(
     cycle = 101214,
     
+    # Recode guns to be continuous (swap 2 and 3 so 1, 2, 3 is more strict, same, less strict)
+    CC10_320 = if_else(CC10_320 == 2, 3, if_else(CC10_320 == 3, 2, CC10_320)),
+    CC12_320 = if_else(CC12_320 == 2, 3, if_else(CC12_320 == 3, 2, CC12_320)),
+    CC14_320 = if_else(CC14_320 == 2, 3, if_else(CC14_320 == 3, 2, CC14_320)),
+    
     # Replace NA with 0 for child18num columns, because NAs don't play nicely with comparators
     child18num_10 = coalesce(child18num_10, 0),
     child18num_12 = coalesce(child18num_12, 0),
@@ -149,6 +154,52 @@ add_pid <- function(df) {
 }
 three_years <- add_pid(three_years)
 two_years <- add_pid(two_years)
+
+add_continuous_opinions <- function (df) {
+  return(
+    df %>% mutate(
+      climate_change_before = if_else(cycle == 1214, eval(ecol("CC12_321")), eval(ecol("CC10_321"))),
+      climate_change_after = if_else(cycle == 1012,  eval(ecol("CC12_321")), eval(ecol("CC14_321"))),
+      # TODO: filter/mark invalid values c(1:5)
+      climate_change_delta = climate_change_after - climate_change_before,
+      jobs_env_before = if_else(cycle == 1214, eval(ecol("CC12_325")), eval(ecol("CC10_325"))),
+      jobs_env_after = if_else(cycle == 1012,  eval(ecol("CC12_325")), eval(ecol("CC14_325"))),
+      # TODO: filter/mark invalid values c(1:5)
+      jobs_env_delta = jobs_env_after - jobs_env_before,
+      aff_action_before = if_else(cycle == 1214, eval(ecol("CC12_327")), eval(ecol("CC10_327"))),
+      aff_action_after = if_else(cycle == 1012,  eval(ecol("CC12_327")), eval(ecol("CC14_327"))),
+      # TODO: filter/mark invalid values c(1:4)
+      aff_action_delta = aff_action_after - aff_action_before,
+      guns_before = if_else(cycle == 1214, eval(ecol("CC12_320")), eval(ecol("CC10_320"))),
+      guns_after = if_else(cycle == 1012,  eval(ecol("CC12_320")), eval(ecol("CC14_320"))),
+      # TODO: filter/mark invalid values c(1:3)
+      guns_delta = guns_after - guns_before,
+    ) %>% select(-ends_with("_320"), -ends_with("_321"), -ends_with("_325"), -ends_with("_327"))
+  )
+}
+three_years <- add_continuous_opinions(three_years)
+two_years <- add_continuous_opinions(two_years)
+
+add_categorical_opinions <- function (df) {
+  return(
+    df %>% mutate(
+      gay_marriage_before = if_else(cycle == 1214, eval(ecol("CC12_326")), eval(ecol("CC10_326"))),
+      gay_marriage_after = if_else(cycle == 1012,  eval(ecol("CC12_326")), eval(ecol("CC14_326"))),
+      # TODO: filter/mark invalid values c(1:2)
+      gay_marriage_change = if_else(gay_marriage_before == gay_marriage_after, 0, 1),
+      budget_before = if_else(cycle == 1214, eval(ecol("CC12_328")), eval(ecol("CC10_328"))),
+      budget_after = if_else(cycle == 1012,  eval(ecol("CC12_328")), eval(ecol("CC14_328"))),
+      # TODO: filter/mark invalid values c(1:3)
+      budget_change = if_else(budget_before == budget_after, 0, 1),
+      budget_avoid_before = if_else(cycle == 1214, eval(ecol("CC12_329")), eval(ecol("CC10_329"))),
+      budget_avoid_after = if_else(cycle == 1012,  eval(ecol("CC12_329")), eval(ecol("CC14_329"))),
+      # TODO: filter/mark invalid values c(1:3)
+      budget_avoid_change = if_else(budget_avoid_before == budget_avoid_after, 0, 1),
+    ) %>% select(-ends_with("_326"), -ends_with("_328"), -ends_with("_329"))
+  )
+}
+three_years <- add_categorical_opinions(three_years)
+two_years <- add_categorical_opinions(two_years)
 
 # pid3: Too coarse-grained to use as ideology, though note people do flip
 # 1.1% people flipped between the major parties between 2010 and 2014
