@@ -109,6 +109,8 @@ add_parenting <- function(df) {
       ), if_else(cycle == 1214, (
          eval(ecol("child18num_12")) < eval(ecol("child18num_14"))
       ), (
+         # TODO: This tests if person had a child in either 2012 or 2014, maybe limit to 2012?
+         # Since the point o the analysis will be to look at change over 4 years?
          eval(ecol("child18num_10")) < eval(ecol("child18num_12")) |
          eval(ecol("child18num_12")) < eval(ecol("child18num_14"))
       ))),
@@ -125,16 +127,9 @@ two_years <- add_parenting(two_years)
 add_ideo <- function(df) {
   return(
     df %>% mutate(
-      ideo_before = if_else(cycle == 1012,
-                            eval(ecol("ideo5_10")),
-                            if_else(cycle == 1214,
-                                    eval(ecol("ideo5_12")),
-                                    eval(ecol("ideo5_10")))),
-      ideo_after = if_else(cycle == 1012, 
-                           eval(ecol("ideo5_12")),
-                           if_else(cycle == 1214,
-                                   eval(ecol("ideo5_14")),
-                                   eval(ecol("ideo5_14")))),
+      ideo_before = if_else(cycle == 1214, eval(ecol("ideo5_12")), eval(ecol("ideo5_10"))),
+      ideo_after = if_else(cycle == 1012, eval(ecol("ideo5_12")), eval(ecol("ideo5_14"))),
+      # TODO: filter/mark invalid values
       ideo_delta = ideo_after - ideo_before,
     ) %>% select(-starts_with("ideo5_"))
   )
@@ -145,16 +140,9 @@ two_years <- add_ideo(two_years)
 add_pid <- function(df) {
   return(
     df %>% mutate(
-      pid_before = if_else(cycle == 1012,
-                           eval(ecol("pid7_10")),
-                           if_else(cycle == 1214,
-                                   eval(ecol("pid7_12")),
-                                   eval(ecol("pid7_10")))),
-      pid_after = if_else(cycle == 1012, 
-                           eval(ecol("pid7_12")),
-                           if_else(cycle == 1214,
-                                   eval(ecol("pid7_14")),
-                                   eval(ecol("pid7_14")))),
+      pid_before = if_else(cycle == 1214, eval(ecol("pid7_12")), eval(ecol("pid7_10"))),
+      pid_after = if_else(cycle == 1012,  eval(ecol("pid7_12")), eval(ecol("pid7_14"))),
+      # TODO: filter/mark invalid values
       pid_delta = pid_after - pid_before,
     ) %>% select(-starts_with("pid7_"))
   )
