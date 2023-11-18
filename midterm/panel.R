@@ -4,6 +4,7 @@
 #   2) Use run_lm/run_regression_table function for all the policy variables...some are categorical, some are continuous
 #   3) Parameterize ideology, use run_lm/run_regression_table
 #   4) Use run_lm/run_regression_table with various controls
+#   5) Note how many people get filtered out due to answers I can't do math with
 
 library(haven)
 library(tidyverse)
@@ -43,8 +44,8 @@ three_years <- panel %>% zap_labels() %>%
     # Demographics for controls/filters
     starts_with("birthyr_"),
     starts_with("faminc_"),
-    starts_with("investor_"), # TODO: add to analysis (money in stocks)
-    starts_with("newsint_"), # TODO: add to analysis (interest in news/politics (1 high - 4 little, discard other values))
+    starts_with("investor_"), # 1/2 yes/no
+    starts_with("newsint_"), # Limit to 1-4, 1 is "high"
     starts_with("race_"), # Limit to 1-8, categorical
     starts_with("educ_"), # Limit to 1-6, categorical
     starts_with("marstat_"), # Limit to 1-6, categorical
@@ -130,12 +131,12 @@ two_years <- add_parenting(two_years)
 
 
 add_ideo <- function(df) {
+  valid = c(1:5)
   return(
     df %>% mutate(
       ideo_before = if_else(cycle == 1214, eval(ecol("ideo5_12")), eval(ecol("ideo5_10"))),
       ideo_after = if_else(cycle == 1012, eval(ecol("ideo5_12")), eval(ecol("ideo5_14"))),
-      # TODO: filter/mark invalid values
-      ideo_delta = ideo_after - ideo_before,
+      ideo_delta = if_else(ideo_before %in% valid & ideo_after %in% valid, ideo_after - ideo_before, NA),
     ) %>% select(-starts_with("ideo5_"))
   )
 }
@@ -143,12 +144,12 @@ three_years <- add_ideo(three_years)
 two_years <- add_ideo(two_years)
 
 add_pid <- function(df) {
+  valid = c(1:7)
   return(
     df %>% mutate(
       pid_before = if_else(cycle == 1214, eval(ecol("pid7_12")), eval(ecol("pid7_10"))),
       pid_after = if_else(cycle == 1012,  eval(ecol("pid7_12")), eval(ecol("pid7_14"))),
-      # TODO: filter/mark invalid values
-      pid_delta = pid_after - pid_before,
+      pid_delta = if_else(pid_before %in% valid & pid_after %in% valid, pid_after - pid_before, NA),
     ) %>% select(-starts_with("pid7_"))
   )
 }
@@ -160,20 +161,16 @@ add_continuous_opinions <- function (df) {
     df %>% mutate(
       climate_change_before = if_else(cycle == 1214, eval(ecol("CC12_321")), eval(ecol("CC10_321"))),
       climate_change_after = if_else(cycle == 1012,  eval(ecol("CC12_321")), eval(ecol("CC14_321"))),
-      # TODO: filter/mark invalid values c(1:5)
-      climate_change_delta = climate_change_after - climate_change_before,
+      climate_change_delta = if_else(climate_change_before %in% c(1:5) & climate_change_after %in% c(1:5), climate_change_after - climate_change_before, NA),
       jobs_env_before = if_else(cycle == 1214, eval(ecol("CC12_325")), eval(ecol("CC10_325"))),
       jobs_env_after = if_else(cycle == 1012,  eval(ecol("CC12_325")), eval(ecol("CC14_325"))),
-      # TODO: filter/mark invalid values c(1:5)
-      jobs_env_delta = jobs_env_after - jobs_env_before,
+      jobs_env_delta = if_else(jobs_env_before %in% c(1:5) & jobs_env_after %in% c(1:5), jobs_env_after - jobs_env_before, NA),
       aff_action_before = if_else(cycle == 1214, eval(ecol("CC12_327")), eval(ecol("CC10_327"))),
       aff_action_after = if_else(cycle == 1012,  eval(ecol("CC12_327")), eval(ecol("CC14_327"))),
-      # TODO: filter/mark invalid values c(1:4)
-      aff_action_delta = aff_action_after - aff_action_before,
+      aff_action_delta = if_else(aff_action_before %in% c(1:4) & aff_action_after %in% c(1:4), aff_action_after - aff_action_before, NA),
       guns_before = if_else(cycle == 1214, eval(ecol("CC12_320")), eval(ecol("CC10_320"))),
       guns_after = if_else(cycle == 1012,  eval(ecol("CC12_320")), eval(ecol("CC14_320"))),
-      # TODO: filter/mark invalid values c(1:3)
-      guns_delta = guns_after - guns_before,
+      guns_delta = if_else(guns_before %in% c(1:3) & guns_after %in% c(1:3), guns_after - guns_before, NA),
     ) %>% select(-ends_with("_320"), -ends_with("_321"), -ends_with("_325"), -ends_with("_327"))
   )
 }
@@ -185,16 +182,20 @@ add_categorical_opinions <- function (df) {
     df %>% mutate(
       gay_marriage_before = if_else(cycle == 1214, eval(ecol("CC12_326")), eval(ecol("CC10_326"))),
       gay_marriage_after = if_else(cycle == 1012,  eval(ecol("CC12_326")), eval(ecol("CC14_326"))),
-      # TODO: filter/mark invalid values c(1:2)
-      gay_marriage_change = if_else(gay_marriage_before == gay_marriage_after, 0, 1),
+      gay_marriage_change = if_else(
+        gay_marriage_before %nin% c(1, 2) | gay_marriage_after %nin% c(1, 2), NA,
+        if_else(gay_marriage_before == gay_marriage_after, 0, 1)),
       budget_before = if_else(cycle == 1214, eval(ecol("CC12_328")), eval(ecol("CC10_328"))),
       budget_after = if_else(cycle == 1012,  eval(ecol("CC12_328")), eval(ecol("CC14_328"))),
-      # TODO: filter/mark invalid values c(1:3)
-      budget_change = if_else(budget_before == budget_after, 0, 1),
+      budget_change = if_else(
+        budget_before %nin% c(1:3) | budget_after %nin% c(1:3), NA,
+        if_else(budget_before == budget_after, 0, 1)),
       budget_avoid_before = if_else(cycle == 1214, eval(ecol("CC12_329")), eval(ecol("CC10_329"))),
       budget_avoid_after = if_else(cycle == 1012,  eval(ecol("CC12_329")), eval(ecol("CC14_329"))),
-      # TODO: filter/mark invalid values c(1:3)
       budget_avoid_change = if_else(budget_avoid_before == budget_avoid_after, 0, 1),
+      budget_avoid_change = if_else(
+        budget_avoid_before %nin% c(1:3) | budget_avoid_after %nin% c(1:3), NA,
+        if_else(budget_avoid_before == budget_avoid_after, 0, 1)),
     ) %>% select(-ends_with("_326"), -ends_with("_328"), -ends_with("_329"))
   )
 }
@@ -246,11 +247,12 @@ t.test(ideo_delta~new_child, data=trends) # p = 0.0715
 get_regression_table(lm(ideo_delta ~ as_factor(new_child), data=trends)) # p = 0.045
 
 get_regression_table(lm(ideo_delta ~ as_factor(new_child) + age, data=trends))
-get_regression_table(lm(ideo_delta ~ as_factor(new_child) + gender, data=trends))
+get_regression_table(lm(ideo_delta ~ as_factor(new_child) + as_factor(gender), data=trends))
 get_regression_table(lm(ideo_delta ~ as_factor(new_child) + as_factor(income_bracket), data=trends))
-get_regression_table(lm(ideo_delta ~ as_factor(new_child) + age + gender, data=trends))
+get_regression_table(lm(ideo_delta ~ as_factor(new_child) + age + as_factor(gender), data=trends))
 get_regression_table(lm(ideo_delta ~ as_factor(new_child) + income, data=trends))
-# TODO: try out controls for religiosity, education, race, marital status
+# TODO: try out controls for religiosity, education, race, marital status, investor, newsint
+# TODO: try filtering for newsint first
 
 # dependent_var and independent var are strings, controls is a list of strings
 run_lm <- function (data_frame, dependent_var, independent_var, controls=NULL) {
