@@ -1,8 +1,6 @@
 # Overall TODO (there are specific TODOs for all of these):
 #   0) Readability!
 #   1) Look at  consistency in ideology change over 3 cycles (for all ideology variables) - use/extend count_flippers!
-#   2) Use run_lm/run_regression_table function for all the policy variables...some are categorical, some are continuous
-#   3) Parameterize ideology, use run_lm/run_regression_table
 #   4) Use run_lm/run_regression_table with various controls
 #   5) Note how many people get filtered out due to answers I can't do math with
 
@@ -110,16 +108,9 @@ ecol <- function (col_name) {
 add_parenting <- function(df) {
   return(
     df %>% mutate(
-      new_child = if_else(cycle == 1012, (
-        eval(ecol("child18num_10")) < eval(ecol("child18num_12"))
-      ), if_else(cycle == 1214, (
-         eval(ecol("child18num_12")) < eval(ecol("child18num_14"))
-      ), (
-         # TODO: This tests if person had a child in either 2012 or 2014, maybe limit to 2012?
-         # Since the point o the analysis will be to look at change over 4 years?
-         eval(ecol("child18num_10")) < eval(ecol("child18num_12")) |
-         eval(ecol("child18num_12")) < eval(ecol("child18num_14"))
-      ))),
+      new_child = if_else(cycle == 1214,
+                          eval(ecol("child18num_12")) < eval(ecol("child18num_14")),
+                          eval(ecol("child18num_10")) < eval(ecol("child18num_12"))),
       new_father = if_else(!new_child, NA, gender == 1),
       new_mother = if_else(!new_child, NA, gender == 2),
     ) %>% select(-starts_with("child18num_"))
@@ -142,7 +133,7 @@ add_ideo <- function(df) {
                                if_else(ideo_delta > 0, 
                                        1, 
                                        if_else(ideo_delta < 0, -1, 0)))
-    ) %>% select(-starts_with("ideo5_"))
+    )
   )
 }
 three_years <- add_ideo(three_years)
@@ -160,7 +151,7 @@ add_pid <- function(df) {
                               if_else(pid_delta > 0,
                                       1,
                                       if_else(pid_delta < 0, -1, 0))),
-    ) %>% select(-starts_with("pid7_"))
+    )
   )
 }
 three_years <- add_pid(three_years)
@@ -230,8 +221,7 @@ count_flippers(three_years, "pid3_10", "pid3_12", c(1:2))
 # In two cycles: 420 with new child, 18580 without
 two_years %>% group_by(new_child) %>% summarise(count = n())
 
-# In three cycles: 392 with new child in either 2012 or 2014, 9108 with neither
-# TODO: update after updating three_years' new_child column
+# In three cycles: 229 with new child in 2012, 9271 without
 three_years %>% group_by(new_child) %>% summarise(count = n())
 
 # Look at direction, but not magnitude, of ideological change
@@ -241,8 +231,15 @@ two_years %>%
   filter(!is.na(ideo_delta)) %>% 
   group_by(new_child, ideo_direction) %>%
   summarise(count = n())
-# TODO: add three_years (after changing three_years to be 2010-2014 only)
-# TODO: in three_years, exclude flippers, look for consistent change
+# Limit to people who were consistent over three cycles
+# Non-new-parents: 1403 + 5703 + 977 = 8083: 17.3% more liberal, 12.0% more conservative
+# New parents: 34 + 127 + 25 = 186: 18.3% more liberal, 13.4% more conservative
+valid <- c(1:5)
+three_years %>%
+  filter(ideo5_10 %in% valid & ideo5_12 %in% valid & ideo5_14 %in% valid) %>% 
+  filter(ideo5_10 <= ideo5_12 & ideo5_12 <= ideo5_14 | ideo5_10 >= ideo5_12 & ideo5_12 >= ideo5_14) %>% 
+  group_by(new_child, ideo_direction) %>%
+  summarise(count = n())
 
 filter_na <- function (data_frame, column) {
   return(
@@ -253,8 +250,9 @@ filter_na <- function (data_frame, column) {
  
 # Which of these is correct to use? I *think* it's the lm,
 # which, conveniently, is barely significant
-t.test(ideo_delta~new_child, data=trends) # p = 0.0715
-get_regression_table(lm(ideo_delta ~ as_factor(new_child), data=trends)) # p = 0.045
+# ...I think it's the t test, which is about comparing two groups
+t.test(ideo_delta~new_child, data=filter_na(two_years, "ideo_delta")) # p = 0.4108
+get_regression_table(lm(ideo_delta ~ as_factor(new_child), data=filter_na(two_years, "ideo_delta"))) # p = 0.388
 
 get_regression_table(lm(ideo_delta ~ as_factor(new_child) + age, data=filter_na(two_years, "ideo_delta")))
 get_regression_table(lm(ideo_delta ~ as_factor(new_child) + as_factor(gender), data=filter_na(two_years, "ideo_delta")))
@@ -280,14 +278,31 @@ run_lm(filter_na(two_years, "ideo_delta"), "ideo_delta", "as_factor(new_child)",
 run_regression_table <- function (data_frame, dependent_var, independent_var, controls=NULL) {
   return(get_regression_table(run_lm(data_frame, dependent_var, independent_var, controls)))
 }
-run_regression_table(trends, "ideo_delta", "as_factor(new_child)", c("age"))
+run_regression_table(filter_na(two_years, "ideo_delta"), "ideo_delta", "as_factor(new_child)", c("age"))
+
+# Policy issues: continuous: nothing significant
+t.test(climate_change_delta~new_child, data=filter_na(two_years, "climate_change_delta")) # p = 0.56
+t.test(jobs_env_delta~new_child, data=filter_na(two_years, "jobs_env_delta")) # p = 0.6602
+t.test(aff_action_delta~new_child, data=filter_na(two_years, "aff_action_delta")) # p = 0.9901
+t.test(guns_delta~new_child, data=filter_na(two_years, "guns_delta")) # p = 0.4005
+t.test(climate_change_delta~new_child, data=filter_na(three_years, "climate_change_delta")) # p = 0.2014
+t.test(jobs_env_delta~new_child, data=filter_na(three_years, "jobs_env_delta")) # p = 0.5924
+t.test(aff_action_delta~new_child, data=filter_na(three_years, "aff_action_delta")) # p = 0.2398
+t.test(guns_delta~new_child, data=filter_na(three_years, "guns_delta")) # p = 0.0979
 
 run_chisq <- function(var1, var2) {
   return(chisq.test(table(var1, var2)))
 }
 
-# I think this is relevant, although it is not quite significant
-run_chisq(trends$new_child, trends$direction)
+# Chi square tests for categorical variables
+temp <- filter_na(two_years, "ideo_direction")
+run_chisq(temp$new_child, temp$ideo_direction)  # p=0.8664
+temp <- filter_na(two_years, "gay_marriage_change")
+run_chisq(temp$new_child, temp$gay_marriage_change)  # p=1347
+temp <- filter_na(two_years, "budget_change")
+run_chisq(temp$new_child, temp$budget_change)  # p=0.00280
+temp <- filter_na(two_years, "budget_avoid_change")
+run_chisq(temp$new_child, temp$budget_avoid_change)  # p=0.0154
 
 # Non-parents 0.03 more liberal, new parents identical before and after
 filter_na(two_years, "ideo_delta") %>%
