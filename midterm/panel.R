@@ -1,8 +1,14 @@
 # Overall TODO (there are specific TODOs for all of these):
-#   0) Readability!
-#   1) Look at  consistency in ideology change over 3 cycles (for all ideology variables) - use/extend count_flippers!
-#   4) Use run_lm/run_regression_table with various controls
-#   5) Note how many people get filtered out due to answers I can't do math with
+#   - Where I'm using ideo, try pid
+#   - How else can I split things?
+#     - Are originally liberal/conservative people affected differently?
+#     - Mothers vs fathers
+#     - Limit to people interested in the news (newsint 1-4, with 1 high)
+#   - Pull stats on consistency in three_years
+#     - In ideology and pid
+#     - In continuous policy changes
+#     - In categorical policy changes
+#   - For each filter_na call, note how many people were filtered out
 
 library(haven)
 library(tidyverse)
