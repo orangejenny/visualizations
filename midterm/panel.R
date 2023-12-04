@@ -273,6 +273,16 @@ t.test(pid_delta~new_child, data=filter_na(two_years, "pid_delta")) # p = 0.4348
 get_regression_table(lm(ideo_delta ~ as_factor(new_child), data=filter_na(two_years, "ideo_delta"))) # p = 0.388
 get_regression_table(lm(pid_delta ~ as_factor(new_child), data=filter_na(two_years, "pid_delta"))) # p = 0.345
 
+# T tests for parent subsets
+# These groups are pretty small, once you filter to people who changed ideo/pid, only 30-60 people per group
+two_years_new_parents <- two_years %>% filter(new_child == 1)
+two_years_new_parents %>% filter(pid_delta != 0 & !is.na(pid_delta)) %>% group_by(gender) %>% summarise(count = n())
+two_years_new_parents %>% filter(pid_delta != 0 & !is.na(pid_delta)) %>% group_by(income_bracket) %>% summarise(count = n())
+t.test(ideo_delta~gender, data=filter_na(two_years_new_parents, "ideo_delta")) # p = 0.9288
+t.test(pid_delta~gender, data=filter_na(two_years_new_parents, "pid_delta")) # p = 0.09352 # weird that this is so different from ideo_delta, but groups are small
+t.test(ideo_delta~income_bracket, data=filter_na(two_years_new_parents, "ideo_delta")) # p = 0.6394
+t.test(pid_delta~income_bracket, data=filter_na(two_years_new_parents, "pid_delta")) # p = 0.56
+
 get_regression_table(lm(ideo_delta ~ as_factor(new_child) + age, data=filter_na(two_years, "ideo_delta")))
 get_regression_table(lm(ideo_delta ~ as_factor(new_child) + as_factor(gender), data=filter_na(two_years, "ideo_delta")))
 get_regression_table(lm(ideo_delta ~ as_factor(new_child) + as_factor(income_bracket), data=filter_na(two_years, "ideo_delta")))
@@ -312,6 +322,21 @@ t.test(aff_action_delta~new_child, data=filter_na(three_years, "aff_action_delta
 t.test(guns_delta~new_child, data=filter_na(three_years, "guns_delta")) # p = 0.0979
 t.test(tax_or_spend_delta~new_child, data=filter_na(three_years, "tax_or_spend_delta")) # p = 0.0007678
 t.test(sales_or_inc_delta~new_child, data=filter_na(three_years, "sales_or_inc_delta")) # p = 0.9061
+
+# T tests for parent subsets: a couple approach significance on gender (p < 0.1, at least)
+two_years_new_parents <- two_years %>% filter(new_child == 1)
+t.test(climate_change_delta~gender, data=filter_na(two_years_new_parents, "climate_change_delta")) # p=0.8752
+t.test(jobs_env_delta~gender, data=filter_na(two_years_new_parents, "jobs_env_delta")) # p=0.7913
+t.test(aff_action_delta~gender, data=filter_na(two_years_new_parents, "aff_action_delta")) # p=0.0800
+t.test(guns_delta~gender, data=filter_na(two_years_new_parents, "guns_delta")) # p=0.08586
+t.test(tax_or_spend_delta~gender, data=filter_na(two_years_new_parents, "tax_or_spend_delta")) # p=0.04358
+t.test(sales_or_inc_delta~gender, data=filter_na(two_years_new_parents, "sales_or_inc_delta")) # p=0.4426
+t.test(climate_change_delta~income_bracket, data=filter_na(two_years_new_parents, "climate_change_delta")) # p=0.7924
+t.test(jobs_env_delta~income_bracket, data=filter_na(two_years_new_parents, "jobs_env_delta")) # p=0.5589
+t.test(aff_action_delta~income_bracket, data=filter_na(two_years_new_parents, "aff_action_delta")) # p=0.8019
+t.test(guns_delta~income_bracket, data=filter_na(two_years_new_parents, "guns_delta")) # p=0.1472
+t.test(tax_or_spend_delta~income_bracket, data=filter_na(two_years_new_parents, "tax_or_spend_delta")) # p=0.4926
+t.test(sales_or_inc_delta~income_bracket, data=filter_na(two_years_new_parents, "sales_or_inc_delta")) # p=0.8732
 
 # Parents are less willing to raise taxes, more interested in spending cuts...but only in three_years
 ggplot(filter_na(three_years, "tax_or_spend_delta") %>% filter(new_child == 1), aes(x = tax_or_spend_delta)) +
@@ -358,6 +383,31 @@ ggplot(agg_combo, aes(x = as_factor(budget_avoid_combo), y = count)) +
 ggplot(agg_after, aes(x = as_factor(budget_avoid_after), y = count)) +
   geom_col(fill = "steelblue") +
   facet_wrap(~ as_factor(new_child))
+
+# Chi square tests within new parents: gender
+two_years_new_parents <- two_years %>% filter(new_child == 1)
+run_chisq(two_years_new_parents, "gender", "ideo_direction") # p=0.595
+run_chisq(two_years_new_parents, "gender", "pid_direction") # p=0.1408
+run_chisq(two_years_new_parents, "gender", "gay_marriage_change") # p=0.485
+run_chisq(two_years_new_parents, "gender", "budget_change") # p=0.00001167
+run_chisq(two_years_new_parents, "gender", "budget_avoid_change") # p=0.0005327
+
+# Look closer at budget_change and budget_avoid_change, by gender
+# For both, women are a lot more likely to change
+two_years_new_parents %>% group_by(gender, budget_change) %>% summarise(count = n())
+two_years_new_parents %>% group_by(gender, budget_avoid_change) %>% summarise(count = n())
+# Women changing are most likely flipping on whether to cut defense or domestic spending
+# Women changing are more open to raising taxes
+two_years_new_parents %>% filter(budget_change == 1) %>% group_by(gender, budget_combo) %>% summarise(count = n())
+two_years_new_parents %>% filter(budget_avoid_change == 1) %>% group_by(gender, budget_avoid_combo) %>% summarise(count = n())
+
+# Chi square tests within new parents: income_bracket
+two_years_new_parents <- two_years %>% filter(new_child == 1)
+run_chisq(two_years_new_parents, "income_bracket", "ideo_direction") # p=0.7384
+run_chisq(two_years_new_parents, "income_bracket", "pid_direction") # p=0.6932
+run_chisq(two_years_new_parents, "income_bracket", "gay_marriage_change") # p=0.8482
+run_chisq(two_years_new_parents, "income_bracket", "budget_change") # p=0.1845
+run_chisq(two_years_new_parents, "income_bracket", "budget_avoid_change") # p=0.5268
 
 # Non-parents 0.03 more liberal, new parents identical before and after
 filter_na(two_years, "ideo_delta") %>%
