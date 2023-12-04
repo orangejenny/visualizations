@@ -1,8 +1,8 @@
 # Overall TODO (there are specific TODOs for all of these):
-#   - Where I'm using ideo, try pid
-#   - How else can I split things?
+#   - Filter/bucket people before analysis
 #     - Are originally liberal/conservative people affected differently?
 #     - Mothers vs fathers
+#     - Low vs high income
 #     - Limit to people interested in the news (newsint 1-4, with 1 high)
 #   - Pull stats on consistency in three_years
 #     - In ideology and pid
@@ -254,11 +254,11 @@ filter_na <- function (data_frame, column) {
 }
 
  
-# Which of these is correct to use? I *think* it's the lm,
-# which, conveniently, is barely significant
-# ...I think it's the t test, which is about comparing two groups
+# Which of these is correct to use? I think it's the t test, which is about comparing two groups.
 t.test(ideo_delta~new_child, data=filter_na(two_years, "ideo_delta")) # p = 0.4108
+t.test(pid_delta~new_child, data=filter_na(two_years, "pid_delta")) # p = 0.4348
 get_regression_table(lm(ideo_delta ~ as_factor(new_child), data=filter_na(two_years, "ideo_delta"))) # p = 0.388
+get_regression_table(lm(pid_delta ~ as_factor(new_child), data=filter_na(two_years, "pid_delta"))) # p = 0.345
 
 get_regression_table(lm(ideo_delta ~ as_factor(new_child) + age, data=filter_na(two_years, "ideo_delta")))
 get_regression_table(lm(ideo_delta ~ as_factor(new_child) + as_factor(gender), data=filter_na(two_years, "ideo_delta")))
@@ -297,15 +297,17 @@ t.test(aff_action_delta~new_child, data=filter_na(three_years, "aff_action_delta
 t.test(guns_delta~new_child, data=filter_na(three_years, "guns_delta")) # p = 0.0979
 
 run_chisq <- function(var1, var2) {
-  return(chisq.test(table(var1, var2)))
+  return(chisq.test(table(as_factor(var1), as_factor(var2))))
 }
 
 # Chi square tests for categorical variables
 temp <- filter_na(two_years, "ideo_direction")
 run_chisq(temp$new_child, temp$ideo_direction)  # p=0.8664
+temp <- filter_na(two_years, "pid_direction")
+run_chisq(temp$new_child, temp$pid_direction)  # p=0.3215
 
 temp <- filter_na(two_years, "gay_marriage_change")
-run_chisq(temp$new_child, temp$gay_marriage_change)  # p=1347
+run_chisq(temp$new_child, temp$gay_marriage_change)  # p=0.1347
 
 temp <- filter_na(two_years, "budget_change") %>% mutate(budget_combo = budget_before * 10 + budget_after)
 run_chisq(temp$new_child, temp$budget_change)  # p=0.00280
@@ -339,9 +341,17 @@ ggplot(agg_after, aes(x = as_factor(budget_avoid_after), y = count)) +
 filter_na(two_years, "ideo_delta") %>%
   group_by(new_child) %>%
   summarise(mean_before = mean(ideo_before), mean_after = mean(ideo_after))
+# Non-parents 0.02 more consevative, new parents 0.02 more liberal
+filter_na(two_years, "pid_delta") %>%
+  group_by(new_child) %>%
+  summarise(mean_before = mean(pid_before), mean_after = mean(pid_after))
 
 # Similar to previous, with both new mothers & fathers identical before and after
 # non-parents getting 0.02 (women) or 0.03 (men) more liberal
 filter_na(two_years, "ideo_delta") %>%
   group_by(new_child, gender) %>%
   summarise(mean_before = mean(ideo_before), mean_after = mean(ideo_after))
+# With party identification, there's slightly larger change, but still < 0.1
+filter_na(two_years, "pid_delta") %>%
+  group_by(new_child, gender) %>%
+  summarise(mean_before = mean(pid_before), mean_after = mean(pid_after))
