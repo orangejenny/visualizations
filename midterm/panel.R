@@ -208,12 +208,14 @@ add_categorical_opinions <- function (df) {
       budget_change = if_else(
         budget_before %nin% c(1:3) | budget_after %nin% c(1:3), NA,
         if_else(budget_before == budget_after, 0, 1)),
+      budget_combo = budget_before * 10 + budget_after,
       budget_avoid_before = if_else(cycle == 1214, eval(ecol("CC12_329")), eval(ecol("CC10_329"))),
       budget_avoid_after = if_else(cycle == 1012,  eval(ecol("CC12_329")), eval(ecol("CC14_329"))),
       budget_avoid_change = if_else(budget_avoid_before == budget_avoid_after, 0, 1),
       budget_avoid_change = if_else(
         budget_avoid_before %nin% c(1:3) | budget_avoid_after %nin% c(1:3), NA,
         if_else(budget_avoid_before == budget_avoid_after, 0, 1)),
+      budget_avoid_combo = budget_avoid_before * 10 + budget_avoid_after,
     ) %>% select(-ends_with("_326"), -ends_with("_328"), -ends_with("_329"))
   )
 }
@@ -317,29 +319,24 @@ ggplot(filter_na(three_years, "tax_or_spend_delta") %>% filter(new_child == 1), 
 ggplot(three_years %>% filter(tax_or_spend_after < 101) %>% filter(new_child == 0), aes(x = tax_or_spend_after)) +
   geom_histogram(fill = "steelblue", binwidth = 10) #+ facet_wrap(~ as_factor(new_child))
 
-run_chisq <- function(var1, var2) {
-  return(chisq.test(table(as_factor(var1), as_factor(var2))))
+run_chisq <- function(data, independent_var, dependent_var) {
+  filtered <- filter_na(data, dependent_var)
+  return(chisq.test(table(
+    eval(parse(text=paste(c("filtered$", independent_var), collapse=""))),
+    eval(parse(text=paste(c("filtered", "$", dependent_var), collapse="")))
+  )))
 }
 
 # Chi square tests for categorical variables
-temp <- filter_na(two_years, "ideo_direction")
-run_chisq(temp$new_child, temp$ideo_direction)  # p=0.8664
-temp <- filter_na(two_years, "pid_direction")
-run_chisq(temp$new_child, temp$pid_direction)  # p=0.3215
-temp <- filter_na(two_years, "gay_marriage_change")
-run_chisq(temp$new_child, temp$gay_marriage_change)  # p=0.1347
-temp <- filter_na(two_years, "budget_change") %>% mutate(budget_combo = budget_before * 10 + budget_after)
-run_chisq(temp$new_child, temp$budget_change)  # p=0.00280
-temp <- filter_na(two_years, "tax_or_spend_change")
-run_chisq(temp$new_child, temp$tax_or_spend_change)
-temp <- filter_na(two_years, "sales_or_inc_change")
-run_chisq(temp$new_child, temp$sales_or_inc_change)
-temp <- filter_na(two_years, "budget_avoid_change") %>% mutate(budget_avoid_combo = budget_avoid_before * 10 + budget_avoid_after)
-run_chisq(temp$new_child, temp$budget_avoid_change)  # p=0.0154
+run_chisq(two_years, "new_child", "ideo_direction"). # p=0.8664
+run_chisq(two_years, "new_child", "pid_direction") # p=3215
+run_chisq(two_years, "new_child", "gay_marriage_change") # p=0.1347
+run_chisq(two_years, "new_child", "budget_change") # p=0.00280
+run_chisq(two_years, "new_child", "budget_avoid_change") # p=0.0154
 
 # Look closer at budget_change
-agg_combo <- temp %>% filter(budget_before != budget_after) %>% group_by(new_child, budget_combo) %>% summarise(count = n())
-agg_after <- temp %>% filter(budget_before != budget_after) %>% group_by(new_child, budget_after) %>% summarise(count = n())
+agg_combo <- two_years %>% filter(budget_before != budget_after) %>% group_by(new_child, budget_combo) %>% summarise(count = n())
+agg_after <- two_years %>% filter(budget_before != budget_after) %>% group_by(new_child, budget_after) %>% summarise(count = n())
 # Looking at the combos, the most non-parents flip from cutting defense to raising taxes, and the 2nd-most want the opposite
 # Among the parents, the most change from cutting domestic to cutting defense, and the lest want the opposite
 ggplot(agg_combo, aes(x = as_factor(budget_combo), y = count)) +
