@@ -40,6 +40,10 @@ three_years <- panel %>% zap_labels() %>%
     #matches("CC1[024]_324"), # abortion (1-4 conservative to liberal): ignore because of previous lit suggesting gender of child matters here
     #matches("CC1[024]_332"), # roll call votes (multiple, 1/2 support/oppose, discard other values): ignore because of specificity (and inconsistency of data between years)
     
+    # Policy issues: more on budgets
+    matches("CC1[024]_415r"), # taxes vs spending (examples given are of domestic spending) (0 to 100)
+    matches("CC1[024]_416r"), # raise sales vs income tax (0 to 100)
+
     # Parenthood
     starts_with("gender_"),
     starts_with("child18_"),
@@ -178,7 +182,14 @@ add_continuous_opinions <- function (df) {
       guns_before = if_else(cycle == 1214, eval(ecol("CC12_320")), eval(ecol("CC10_320"))),
       guns_after = if_else(cycle == 1012,  eval(ecol("CC12_320")), eval(ecol("CC14_320"))),
       guns_delta = if_else(guns_before %in% c(1:3) & guns_after %in% c(1:3), guns_after - guns_before, NA),
-    ) %>% select(-ends_with("_320"), -ends_with("_321"), -ends_with("_325"), -ends_with("_327"))
+      tax_or_spend_before = if_else(cycle == 1214, eval(ecol("CC12_415r")), eval(ecol("CC10_415r"))),
+      tax_or_spend_after = if_else(cycle == 1012,  eval(ecol("CC12_415r")), eval(ecol("CC14_415r"))),
+      tax_or_spend_delta = if_else(tax_or_spend_before %in% c(0:100) & tax_or_spend_after %in% c(0:100), tax_or_spend_after - tax_or_spend_before, NA),
+      sales_or_inc_before = if_else(cycle == 1214, eval(ecol("CC12_416r")), eval(ecol("CC10_416r"))),
+      sales_or_inc_after = if_else(cycle == 1012,  eval(ecol("CC12_416r")), eval(ecol("CC14_416r"))),
+      sales_or_inc_delta = if_else(sales_or_inc_before %in% c(0:100) & sales_or_inc_after %in% c(0:100), sales_or_inc_after - sales_or_inc_before, NA),
+    ) %>% select(-ends_with("_320"), -ends_with("_321"), -ends_with("_325"), -ends_with("_327"),
+                 -ends_with("_415r"), -ends_with("_416r"))
   )
 }
 three_years <- add_continuous_opinions(three_years)
@@ -286,15 +297,25 @@ run_regression_table <- function (data_frame, dependent_var, independent_var, co
 }
 run_regression_table(filter_na(two_years, "ideo_delta"), "ideo_delta", "as_factor(new_child)", c("age"))
 
-# Policy issues: continuous: nothing significant
+# Policy issues: continuous: only tax or spend is significant
 t.test(climate_change_delta~new_child, data=filter_na(two_years, "climate_change_delta")) # p = 0.56
 t.test(jobs_env_delta~new_child, data=filter_na(two_years, "jobs_env_delta")) # p = 0.6602
 t.test(aff_action_delta~new_child, data=filter_na(two_years, "aff_action_delta")) # p = 0.9901
 t.test(guns_delta~new_child, data=filter_na(two_years, "guns_delta")) # p = 0.4005
+t.test(tax_or_spend_delta~new_child, data=filter_na(two_years, "tax_or_spend_delta")) # p = 0.3224
+t.test(sales_or_inc_delta~new_child, data=filter_na(two_years, "sales_or_inc_delta")) # p = 0.345
 t.test(climate_change_delta~new_child, data=filter_na(three_years, "climate_change_delta")) # p = 0.2014
 t.test(jobs_env_delta~new_child, data=filter_na(three_years, "jobs_env_delta")) # p = 0.5924
 t.test(aff_action_delta~new_child, data=filter_na(three_years, "aff_action_delta")) # p = 0.2398
 t.test(guns_delta~new_child, data=filter_na(three_years, "guns_delta")) # p = 0.0979
+t.test(tax_or_spend_delta~new_child, data=filter_na(three_years, "tax_or_spend_delta")) # p = 0.0007678
+t.test(sales_or_inc_delta~new_child, data=filter_na(three_years, "sales_or_inc_delta")) # p = 0.9061
+
+# Parents are less willing to raise taxes, more interested in spending cuts...but only in three_years
+ggplot(filter_na(three_years, "tax_or_spend_delta") %>% filter(new_child == 1), aes(x = tax_or_spend_delta)) +
+  geom_histogram(fill = "steelblue", binwidth = 10) #+ facet_wrap(~ as_factor(new_child))
+ggplot(three_years %>% filter(tax_or_spend_after < 101) %>% filter(new_child == 0), aes(x = tax_or_spend_after)) +
+  geom_histogram(fill = "steelblue", binwidth = 10) #+ facet_wrap(~ as_factor(new_child))
 
 run_chisq <- function(var1, var2) {
   return(chisq.test(table(as_factor(var1), as_factor(var2))))
@@ -322,6 +343,11 @@ ggplot(agg_combo, aes(x = as_factor(budget_combo), y = count)) +
 ggplot(agg_after, aes(x = as_factor(budget_after), y = count)) +
   geom_col(fill = "steelblue") +
   facet_wrap(~ as_factor(new_child))
+
+temp <- filter_na(two_years, "tax_or_spend_change")
+run_chisq(temp$new_child, temp$tax_or_spend_change)
+temp <- filter_na(two_years, "sales_or_inc_change")
+run_chisq(temp$new_child, temp$sales_or_inc_change)
 
 temp <- filter_na(two_years, "budget_avoid_change") %>% mutate(budget_avoid_combo = budget_avoid_before * 10 + budget_avoid_after)
 run_chisq(temp$new_child, temp$budget_avoid_change)  # p=0.0154
