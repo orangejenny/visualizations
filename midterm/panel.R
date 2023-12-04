@@ -303,12 +303,37 @@ run_chisq <- function(var1, var2) {
 # Chi square tests for categorical variables
 temp <- filter_na(two_years, "ideo_direction")
 run_chisq(temp$new_child, temp$ideo_direction)  # p=0.8664
+
 temp <- filter_na(two_years, "gay_marriage_change")
 run_chisq(temp$new_child, temp$gay_marriage_change)  # p=1347
-temp <- filter_na(two_years, "budget_change")
+
+temp <- filter_na(two_years, "budget_change") %>% mutate(budget_combo = budget_before * 10 + budget_after)
 run_chisq(temp$new_child, temp$budget_change)  # p=0.00280
-temp <- filter_na(two_years, "budget_avoid_change")
+agg_combo <- temp %>% filter(budget_before != budget_after) %>% group_by(new_child, budget_combo) %>% summarise(count = n())
+agg_after <- temp %>% filter(budget_before != budget_after) %>% group_by(new_child, budget_after) %>% summarise(count = n())
+# Looking at the combos, the most non-parents flip from cutting defense to raising taxes, and the 2nd-most want the opposite
+# Among the parents, the most change from cutting domestic to cutting defense, and the lest want the opposite
+ggplot(agg_combo, aes(x = as_factor(budget_combo), y = count)) +
+  geom_col(fill = "steelblue") +
+  facet_wrap(~ as_factor(new_child))
+# Looking at the "after" answers, non-parents want to raise taxes, while parents want to cut defense spending, and parents are more evenly split
+ggplot(agg_after, aes(x = as_factor(budget_after), y = count)) +
+  geom_col(fill = "steelblue") +
+  facet_wrap(~ as_factor(new_child))
+
+temp <- filter_na(two_years, "budget_avoid_change") %>% mutate(budget_avoid_combo = budget_avoid_before * 10 + budget_avoid_after)
 run_chisq(temp$new_child, temp$budget_avoid_change)  # p=0.0154
+agg_combo <- temp %>% filter(budget_avoid_before != budget_avoid_after) %>% group_by(new_child, budget_avoid_combo) %>% summarise(count = n())
+agg_after <- temp %>% filter(budget_avoid_before != budget_avoid_after) %>% group_by(new_child, budget_avoid_after) %>% summarise(count = n())
+# Looking at the combos, the pattern of change is similar, with both parents and non-parents' getting more willing to raise taxes
+ggplot(agg_combo, aes(x = as_factor(budget_avoid_combo), y = count)) +
+  geom_col(fill = "steelblue") +
+  facet_wrap(~ as_factor(new_child))
+# Looking at the "after" answers, parents more want to avoid cutting domestic spending,
+# but both groups want to avoid cutting defense - whcih seems to contradict the previous question
+ggplot(agg_after, aes(x = as_factor(budget_avoid_after), y = count)) +
+  geom_col(fill = "steelblue") +
+  facet_wrap(~ as_factor(new_child))
 
 # Non-parents 0.03 more liberal, new parents identical before and after
 filter_na(two_years, "ideo_delta") %>%
