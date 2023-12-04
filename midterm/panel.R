@@ -326,12 +326,18 @@ temp <- filter_na(two_years, "ideo_direction")
 run_chisq(temp$new_child, temp$ideo_direction)  # p=0.8664
 temp <- filter_na(two_years, "pid_direction")
 run_chisq(temp$new_child, temp$pid_direction)  # p=0.3215
-
 temp <- filter_na(two_years, "gay_marriage_change")
 run_chisq(temp$new_child, temp$gay_marriage_change)  # p=0.1347
-
 temp <- filter_na(two_years, "budget_change") %>% mutate(budget_combo = budget_before * 10 + budget_after)
 run_chisq(temp$new_child, temp$budget_change)  # p=0.00280
+temp <- filter_na(two_years, "tax_or_spend_change")
+run_chisq(temp$new_child, temp$tax_or_spend_change)
+temp <- filter_na(two_years, "sales_or_inc_change")
+run_chisq(temp$new_child, temp$sales_or_inc_change)
+temp <- filter_na(two_years, "budget_avoid_change") %>% mutate(budget_avoid_combo = budget_avoid_before * 10 + budget_avoid_after)
+run_chisq(temp$new_child, temp$budget_avoid_change)  # p=0.0154
+
+# Look closer at budget_change
 agg_combo <- temp %>% filter(budget_before != budget_after) %>% group_by(new_child, budget_combo) %>% summarise(count = n())
 agg_after <- temp %>% filter(budget_before != budget_after) %>% group_by(new_child, budget_after) %>% summarise(count = n())
 # Looking at the combos, the most non-parents flip from cutting defense to raising taxes, and the 2nd-most want the opposite
@@ -343,14 +349,7 @@ ggplot(agg_combo, aes(x = as_factor(budget_combo), y = count)) +
 ggplot(agg_after, aes(x = as_factor(budget_after), y = count)) +
   geom_col(fill = "steelblue") +
   facet_wrap(~ as_factor(new_child))
-
-temp <- filter_na(two_years, "tax_or_spend_change")
-run_chisq(temp$new_child, temp$tax_or_spend_change)
-temp <- filter_na(two_years, "sales_or_inc_change")
-run_chisq(temp$new_child, temp$sales_or_inc_change)
-
-temp <- filter_na(two_years, "budget_avoid_change") %>% mutate(budget_avoid_combo = budget_avoid_before * 10 + budget_avoid_after)
-run_chisq(temp$new_child, temp$budget_avoid_change)  # p=0.0154
+# Look closer at budget_avoid_change
 agg_combo <- temp %>% filter(budget_avoid_before != budget_avoid_after) %>% group_by(new_child, budget_avoid_combo) %>% summarise(count = n())
 agg_after <- temp %>% filter(budget_avoid_before != budget_avoid_after) %>% group_by(new_child, budget_avoid_after) %>% summarise(count = n())
 # Looking at the combos, the pattern of change is similar, with both parents and non-parents' getting more willing to raise taxes
