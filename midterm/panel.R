@@ -354,10 +354,13 @@ run_chisq <- function(data, independent_var, dependent_var) {
 
 # Chi square tests for categorical variables
 run_chisq(two_years, "new_child", "ideo_direction"). # p=0.8664
-run_chisq(two_years, "new_child", "pid_direction") # p=3215
+run_chisq(two_years, "new_child", "pid_direction") # p=0.3215
 run_chisq(two_years, "new_child", "gay_marriage_change") # p=0.1347
 run_chisq(two_years, "new_child", "budget_change") # p=0.00280
 run_chisq(two_years, "new_child", "budget_avoid_change") # p=0.0154
+run_chisq(two_years, "new_child", "gay_marriage_after") # p=0.2971
+run_chisq(two_years, "new_child", "budget_after") # p=0.224
+run_chisq(two_years, "new_child", "budget_avoid_after") # p=0.0814
 
 # Look closer at budget_change
 agg_combo <- two_years %>% filter(budget_before != budget_after) %>% group_by(new_child, budget_combo) %>% summarise(count = n())
@@ -379,7 +382,7 @@ ggplot(agg_combo, aes(x = as_factor(budget_avoid_combo), y = count)) +
   geom_col(fill = "steelblue") +
   facet_wrap(~ as_factor(new_child))
 # Looking at the "after" answers, parents more want to avoid cutting domestic spending,
-# but both groups want to avoid cutting defense - whcih seems to contradict the previous question
+# but both groups want to avoid cutting defense - which seems to contradict the previous question
 ggplot(agg_after, aes(x = as_factor(budget_avoid_after), y = count)) +
   geom_col(fill = "steelblue") +
   facet_wrap(~ as_factor(new_child))
