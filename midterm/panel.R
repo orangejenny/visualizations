@@ -115,6 +115,9 @@ ecol <- function (col_name) {
 }
 
 # Add columns for new child, new mother, new father
+# Note that there are separate columns for child18 and child18num, but
+# `panel %>% filter(child18num_14 > 1 & child18_14 == 2) %>% summarise(count = n()) == 0`
+# for all three cycles - perhaps child18num was skipped if child18 was asked?
 add_parenting <- function(df) {
   return(
     df %>% mutate(
@@ -126,7 +129,6 @@ add_parenting <- function(df) {
     ) %>% select(-starts_with("child18num_"))
   )
 }
-
 three_years <- add_parenting(three_years)
 two_years <- add_parenting(two_years)
 
