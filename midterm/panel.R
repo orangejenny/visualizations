@@ -29,6 +29,7 @@ three_years <- panel %>% zap_labels() %>%
     matches("CC1[024]_326"), # gay marriage (1/2 no/yes): note issue was very active during this time, with Obergefell in 2015
     matches("CC1[024]_328"), # budget (1 cut defense, 2 cut domestic, 3 raise taxes)
     matches("CC1[024]_329"), # budget move to avoid (1 cut defense, 2 cut domestic, 3 raise taxes)
+    matches("CC1[024]_330B"), # SCHIP (1 renew, 2 expire)
 
     # Policy issues: continuous
     matches("CC1[024]_321"), # climate change (1-5 real to not real)
@@ -205,6 +206,11 @@ add_categorical_opinions <- function (df) {
       gay_marriage_change = if_else(
         gay_marriage_before %nin% c(1, 2) | gay_marriage_after %nin% c(1, 2), NA,
         if_else(gay_marriage_before == gay_marriage_after, 0, 1)),
+      schip_before = if_else(cycle == 1214, CC12_330B, CC10_330B),
+      schip_after = if_else(cycle == 1012,  CC12_330B, CC14_330B),
+      schip_change = if_else(
+        schip_before %nin% c(1, 2) | schip_after %nin% c(1, 2), NA,
+        if_else(schip_before == schip_after, 0, 1)),
       budget_before = if_else(cycle == 1214, CC12_328, CC10_328),
       budget_after = if_else(cycle == 1012,  CC12_328, CC14_328),
       budget_change = if_else(
@@ -218,7 +224,7 @@ add_categorical_opinions <- function (df) {
         budget_avoid_before %nin% c(1:3) | budget_avoid_after %nin% c(1:3), NA,
         if_else(budget_avoid_before == budget_avoid_after, 0, 1)),
       budget_avoid_combo = budget_avoid_before * 10 + budget_avoid_after,
-    ) %>% select(-ends_with("_326"), -ends_with("_328"), -ends_with("_329"))
+    ) %>% select(-ends_with("_326"), -ends_with("_328"), -ends_with("_329"), -ends_with("_330B"))
   )
 }
 three_years <- add_categorical_opinions(three_years)
@@ -358,9 +364,11 @@ run_chisq <- function(data, independent_var, dependent_var) {
 run_chisq(two_years, "new_child", "ideo_direction"). # p=0.8664
 run_chisq(two_years, "new_child", "pid_direction") # p=0.3215
 run_chisq(two_years, "new_child", "gay_marriage_change") # p=0.1347
+run_chisq(two_years, "new_child", "schip_change") # p=0.3306
 run_chisq(two_years, "new_child", "budget_change") # p=0.00280
 run_chisq(two_years, "new_child", "budget_avoid_change") # p=0.0154
 run_chisq(two_years, "new_child", "gay_marriage_after") # p=0.2971
+run_chisq(two_years, "new_child", "schip_after") # p=0.8188
 run_chisq(two_years, "new_child", "budget_after") # p=0.224
 run_chisq(two_years, "new_child", "budget_avoid_after") # p=0.0814
 
@@ -394,6 +402,7 @@ two_years_new_parents <- two_years %>% filter(new_child == 1)
 run_chisq(two_years_new_parents, "gender", "ideo_direction") # p=0.595
 run_chisq(two_years_new_parents, "gender", "pid_direction") # p=0.1408
 run_chisq(two_years_new_parents, "gender", "gay_marriage_change") # p=0.485
+run_chisq(two_years_new_parents, "gender", "schip_change") # p=0.6808
 run_chisq(two_years_new_parents, "gender", "budget_change") # p=0.00001167
 run_chisq(two_years_new_parents, "gender", "budget_avoid_change") # p=0.0005327
 
@@ -411,6 +420,7 @@ two_years_new_parents <- two_years %>% filter(new_child == 1)
 run_chisq(two_years_new_parents, "income_bracket", "ideo_direction") # p=0.7384
 run_chisq(two_years_new_parents, "income_bracket", "pid_direction") # p=0.6932
 run_chisq(two_years_new_parents, "income_bracket", "gay_marriage_change") # p=0.8482
+run_chisq(two_years_new_parents, "income_bracket", "schip_change") # p=0.7751
 run_chisq(two_years_new_parents, "income_bracket", "budget_change") # p=0.1845
 run_chisq(two_years_new_parents, "income_bracket", "budget_avoid_change") # p=0.5268
 
