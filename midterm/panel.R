@@ -125,8 +125,9 @@ add_parenting <- function(df) {
       new_child = if_else(cycle == 1214,
                           child18num_12 < child18num_14,
                           child18num_10 < child18num_12),
-      new_father = if_else(!new_child, NA, gender == 1),
-      new_mother = if_else(!new_child, NA, gender == 2),
+      firstborn = if_else(cycle == 1214,
+                          child18num_12 == 0 & child18num_14 > 0,
+                          child18num_10 == 0 & child18num_12 > 0),
     ) %>% select(-starts_with("child18num_"))
   )
 }
@@ -361,12 +362,12 @@ run_chisq <- function(data, independent_var, dependent_var) {
 }
 
 # Chi square tests for categorical variables
-run_chisq(two_years, "new_child", "ideo_direction"). # p=0.8664
-run_chisq(two_years, "new_child", "pid_direction") # p=0.3215
+run_chisq(two_years, "new_child", "ideo_direction") # p=0.8664
+run_chisq(two_years, "new_child", "pid_direction") # p=0.3215, but p=0.07 when looking at firstborn
 run_chisq(two_years, "new_child", "gay_marriage_change") # p=0.1347
 run_chisq(two_years, "new_child", "schip_change") # p=0.3306
-run_chisq(two_years, "new_child", "budget_change") # p=0.00280
-run_chisq(two_years, "new_child", "budget_avoid_change") # p=0.0154
+run_chisq(two_years, "new_child", "budget_change") # p=0.00280, but p=0.0647 when looking at firstborn
+run_chisq(two_years, "new_child", "budget_avoid_change") # p=0.0154, but 0.002389 when looking at firstborn
 run_chisq(two_years, "new_child", "gay_marriage_after") # p=0.2971
 run_chisq(two_years, "new_child", "schip_after") # p=0.8188
 run_chisq(two_years, "new_child", "budget_after") # p=0.224
@@ -404,7 +405,7 @@ run_chisq(two_years_new_parents, "gender", "pid_direction") # p=0.1408
 run_chisq(two_years_new_parents, "gender", "gay_marriage_change") # p=0.485
 run_chisq(two_years_new_parents, "gender", "schip_change") # p=0.6808
 run_chisq(two_years_new_parents, "gender", "budget_change") # p=0.00001167
-run_chisq(two_years_new_parents, "gender", "budget_avoid_change") # p=0.0005327
+run_chisq(two_years_new_parents, "gender", "budget_avoid_change") # p=0.0005327, or p=0.01786 when looking at firstborn
 
 # Look closer at budget_change and budget_avoid_change, by gender
 # For both, women are a lot more likely to change
