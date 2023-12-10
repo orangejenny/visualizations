@@ -119,8 +119,8 @@ add_parenting <- function(df) {
   return(
     df %>% mutate(
       new_child = if_else(cycle == 1214,
-                          eval(ecol("child18num_12")) < eval(ecol("child18num_14")),
-                          eval(ecol("child18num_10")) < eval(ecol("child18num_12"))),
+                          child18num_12 < child18num_14,
+                          child18num_10 < child18num_12),
       new_father = if_else(!new_child, NA, gender == 1),
       new_mother = if_else(!new_child, NA, gender == 2),
     ) %>% select(-starts_with("child18num_"))
@@ -135,8 +135,8 @@ add_ideo <- function(df) {
   valid = c(1:5)
   return(
     df %>% mutate(
-      ideo_before = if_else(cycle == 1214, eval(ecol("ideo5_12")), eval(ecol("ideo5_10"))),
-      ideo_after = if_else(cycle == 1012, eval(ecol("ideo5_12")), eval(ecol("ideo5_14"))),
+      ideo_before = if_else(cycle == 1214, ideo5_12, ideo5_10),
+      ideo_after = if_else(cycle == 1012, ideo5_12, ideo5_14),
       ideo_delta = if_else(ideo_before %in% valid & ideo_after %in% valid, ideo_after - ideo_before, NA),
       ideo_direction = if_else(is.na(ideo_delta),
                                NA,
@@ -153,8 +153,8 @@ add_pid <- function(df) {
   valid = c(1:7)
   return(
     df %>% mutate(
-      pid_before = if_else(cycle == 1214, eval(ecol("pid7_12")), eval(ecol("pid7_10"))),
-      pid_after = if_else(cycle == 1012,  eval(ecol("pid7_12")), eval(ecol("pid7_14"))),
+      pid_before = if_else(cycle == 1214, pid7_12, pid7_10),
+      pid_after = if_else(cycle == 1012,  pid7_12, pid7_14),
       pid_delta = if_else(pid_before %in% valid & pid_after %in% valid, pid_after - pid_before, NA),
       pid_direction = if_else(is.na(pid_delta),
                               NA,
@@ -170,23 +170,23 @@ two_years <- add_pid(two_years)
 add_continuous_opinions <- function (df) {
   return(
     df %>% mutate(
-      climate_change_before = if_else(cycle == 1214, eval(ecol("CC12_321")), eval(ecol("CC10_321"))),
-      climate_change_after = if_else(cycle == 1012,  eval(ecol("CC12_321")), eval(ecol("CC14_321"))),
+      climate_change_before = if_else(cycle == 1214, CC12_321, CC10_321),
+      climate_change_after = if_else(cycle == 1012,  CC12_321, CC14_321),
       climate_change_delta = if_else(climate_change_before %in% c(1:5) & climate_change_after %in% c(1:5), climate_change_after - climate_change_before, NA),
-      jobs_env_before = if_else(cycle == 1214, eval(ecol("CC12_325")), eval(ecol("CC10_325"))),
-      jobs_env_after = if_else(cycle == 1012,  eval(ecol("CC12_325")), eval(ecol("CC14_325"))),
+      jobs_env_before = if_else(cycle == 1214, CC12_325, CC10_325),
+      jobs_env_after = if_else(cycle == 1012,  CC12_325, CC14_325),
       jobs_env_delta = if_else(jobs_env_before %in% c(1:5) & jobs_env_after %in% c(1:5), jobs_env_after - jobs_env_before, NA),
-      aff_action_before = if_else(cycle == 1214, eval(ecol("CC12_327")), eval(ecol("CC10_327"))),
-      aff_action_after = if_else(cycle == 1012,  eval(ecol("CC12_327")), eval(ecol("CC14_327"))),
+      aff_action_before = if_else(cycle == 1214, CC12_327, CC10_327),
+      aff_action_after = if_else(cycle == 1012,  CC12_327, CC14_327),
       aff_action_delta = if_else(aff_action_before %in% c(1:4) & aff_action_after %in% c(1:4), aff_action_after - aff_action_before, NA),
-      guns_before = if_else(cycle == 1214, eval(ecol("CC12_320")), eval(ecol("CC10_320"))),
-      guns_after = if_else(cycle == 1012,  eval(ecol("CC12_320")), eval(ecol("CC14_320"))),
+      guns_before = if_else(cycle == 1214, CC12_320, CC10_320),
+      guns_after = if_else(cycle == 1012,  CC12_320, CC14_320),
       guns_delta = if_else(guns_before %in% c(1:3) & guns_after %in% c(1:3), guns_after - guns_before, NA),
-      tax_or_spend_before = if_else(cycle == 1214, eval(ecol("CC12_415r")), eval(ecol("CC10_415r"))),
-      tax_or_spend_after = if_else(cycle == 1012,  eval(ecol("CC12_415r")), eval(ecol("CC14_415r"))),
+      tax_or_spend_before = if_else(cycle == 1214, CC12_415r, CC10_415r),
+      tax_or_spend_after = if_else(cycle == 1012,  CC12_415r, CC14_415r),
       tax_or_spend_delta = if_else(tax_or_spend_before %in% c(0:100) & tax_or_spend_after %in% c(0:100), tax_or_spend_after - tax_or_spend_before, NA),
-      sales_or_inc_before = if_else(cycle == 1214, eval(ecol("CC12_416r")), eval(ecol("CC10_416r"))),
-      sales_or_inc_after = if_else(cycle == 1012,  eval(ecol("CC12_416r")), eval(ecol("CC14_416r"))),
+      sales_or_inc_before = if_else(cycle == 1214, CC12_416r, CC10_416r),
+      sales_or_inc_after = if_else(cycle == 1012,  CC12_416r, CC14_416r),
       sales_or_inc_delta = if_else(sales_or_inc_before %in% c(0:100) & sales_or_inc_after %in% c(0:100), sales_or_inc_after - sales_or_inc_before, NA),
     ) %>% select(-ends_with("_320"), -ends_with("_321"), -ends_with("_325"), -ends_with("_327"),
                  -ends_with("_415r"), -ends_with("_416r"))
@@ -198,19 +198,19 @@ two_years <- add_continuous_opinions(two_years)
 add_categorical_opinions <- function (df) {
   return(
     df %>% mutate(
-      gay_marriage_before = if_else(cycle == 1214, eval(ecol("CC12_326")), eval(ecol("CC10_326"))),
-      gay_marriage_after = if_else(cycle == 1012,  eval(ecol("CC12_326")), eval(ecol("CC14_326"))),
+      gay_marriage_before = if_else(cycle == 1214, CC12_326, CC10_326),
+      gay_marriage_after = if_else(cycle == 1012,  CC12_326, CC14_326),
       gay_marriage_change = if_else(
         gay_marriage_before %nin% c(1, 2) | gay_marriage_after %nin% c(1, 2), NA,
         if_else(gay_marriage_before == gay_marriage_after, 0, 1)),
-      budget_before = if_else(cycle == 1214, eval(ecol("CC12_328")), eval(ecol("CC10_328"))),
-      budget_after = if_else(cycle == 1012,  eval(ecol("CC12_328")), eval(ecol("CC14_328"))),
+      budget_before = if_else(cycle == 1214, CC12_328, CC10_328),
+      budget_after = if_else(cycle == 1012,  CC12_328, CC14_328),
       budget_change = if_else(
         budget_before %nin% c(1:3) | budget_after %nin% c(1:3), NA,
         if_else(budget_before == budget_after, 0, 1)),
       budget_combo = budget_before * 10 + budget_after,
-      budget_avoid_before = if_else(cycle == 1214, eval(ecol("CC12_329")), eval(ecol("CC10_329"))),
-      budget_avoid_after = if_else(cycle == 1012,  eval(ecol("CC12_329")), eval(ecol("CC14_329"))),
+      budget_avoid_before = if_else(cycle == 1214, CC12_329, CC10_329),
+      budget_avoid_after = if_else(cycle == 1012,  CC12_329, CC14_329),
       budget_avoid_change = if_else(budget_avoid_before == budget_avoid_after, 0, 1),
       budget_avoid_change = if_else(
         budget_avoid_before %nin% c(1:3) | budget_avoid_after %nin% c(1:3), NA,
