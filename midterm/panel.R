@@ -154,6 +154,7 @@ add_ideo <- function(df) {
       ideo_before = if_else(cycle == 1214, ideo5_12, ideo5_10),
       ideo_after = if_else(cycle == 1012, ideo5_12, ideo5_14),
       ideo_delta = if_else(ideo_before %in% valid & ideo_after %in% valid, ideo_after - ideo_before, NA),
+      ideo_delta_abs = abs(ideo_delta),
       ideo_direction = if_else(is.na(ideo_delta),
                                NA,
                                if_else(ideo_delta > 0, 
@@ -172,6 +173,7 @@ add_pid <- function(df) {
       pid_before = if_else(cycle == 1214, pid7_12, pid7_10),
       pid_after = if_else(cycle == 1012,  pid7_12, pid7_14),
       pid_delta = if_else(pid_before %in% valid & pid_after %in% valid, pid_after - pid_before, NA),
+      pid_delta_abs = abs(pid_delta),
       pid_direction = if_else(is.na(pid_delta),
                               NA,
                               if_else(pid_delta > 0,
@@ -252,11 +254,38 @@ count_flippers <- function (data_frame, before, after, valid_values) {
     eval(ecol(after)) %in% valid_values
   )
   flippers <- valid_rows %>% filter(eval(ecol(before)) != eval(ecol(after)))
+  flippers <- flippers %>% mutate(delta = eval(ecol(before)) - eval(ecol(after)))
+  #ggplot(flippers, aes(x = delta)) +
+  #  geom_histogram(fill = "steelblue", binwidth = 1)
+  #ggplot(flippers, aes(x = eval(ecol(before)))) +
+  #  geom_histogram(fill = "steelblue", binwidth = 1)
   return(
     round(nrow(flippers) * 100 / nrow(valid_rows), 1)
   )
 }
 count_flippers(three_years, "pid3_10", "pid3_12", c(1:2))
+count_flippers(three_years, "pid7_10", "pid7_12", c(1:7)) # 20%
+count_flippers(three_years, "pid7_12", "pid7_14", c(1:7)) # 20%
+count_flippers(three_years, "pid7_10", "pid7_14", c(1:7)) # 25%
+count_flippers(three_years, "ideo5_10", "ideo5_12", c(1:5)) # 25%
+count_flippers(three_years, "ideo5_12", "ideo5_14", c(1:5)) # 20%
+count_flippers(three_years, "ideo5_10", "ideo5_14", c(1:5)) # 28%
+
+## Descriptive stats on ideology and party
+
+# Iedology is roughly normal, skewing conservative
+panel %>% group_by(ideo5_10) %>% summarise(count = n())
+ggplot(three_years, aes(x = ideo5_10)) +
+  geom_histogram(fill = "steelblue", binwidth = 1)
+ggplot(three_years %>% filter(new_child == 1), aes(x = ideo5_10)) +
+  geom_histogram(fill = "steelblue", binwidth = 1)
+
+# Party affiliation is U-shaped
+panel %>% group_by(pid7_10) %>% summarise(count = n())
+ggplot(three_years, aes(x = pid7_10)) +
+  geom_histogram(fill = "steelblue", binwidth = 1)
+ggplot(three_years %>% filter(new_child == 1), aes(x = pid7_10)) +
+  geom_histogram(fill = "steelblue", binwidth = 1)
 
 # In two cycles: 420 with new child, 18580 without
 two_years %>% group_by(new_child) %>% summarise(count = n())
@@ -269,6 +298,11 @@ three_years %>% group_by(new_child) %>% summarise(count = n())
 # New parents: 49 + 304 + 43 = 396: 12.4% more liberal, 10.9% more conservative
 two_years %>%
   filter(!is.na(ideo_delta)) %>% 
+  group_by(new_child, ideo_direction) %>%
+  summarise(count = n())
+two_years %>%
+  filter(!is.na(ideo_delta)) %>% 
+  filter(age < 30) %>% 
   group_by(new_child, ideo_direction) %>%
   summarise(count = n())
 # Limit to people who were consistent over three cycles
@@ -287,12 +321,54 @@ filter_na <- function (data_frame, column) {
   )
 }
 
+# Average ideological change over two years: barely liberal
+two_years %>%
+  filter(!is.na(ideo_delta)) %>% 
+  group_by(new_child) %>%
+  summarise(average_ideo = mean(ideo_delta), average_ideo_abs = mean(ideo_delta_abs))
+two_years %>% # Using firstborn instead doesn't change anything remotely meaningful
+  filter(!is.na(ideo_delta)) %>% 
+  group_by(firstborn) %>%
+  summarise(average_ideo = mean(ideo_delta), average_ideo_abs = mean(ideo_delta_abs))
+two_years %>%
+  filter(!is.na(ideo_delta)) %>% 
+  filter(age < 30) %>% 
+  group_by(new_child) %>%
+  summarise(average_ideo = mean(ideo_delta), average_ideo_abs = mean(ideo_delta_abs))
+
+# Average party change over two years: bigger, but still not shifting the group
+two_years %>%
+  filter(!is.na(pid_delta)) %>% 
+  group_by(new_child) %>%
+  summarise(average_pid = mean(pid_delta), average_pid_abs = mean(pid_delta_abs))
+two_years %>%
+  filter(!is.na(pid_delta)) %>% 
+  group_by(firstborn) %>%
+  summarise(average_pid = mean(pid_delta), average_pid_abs = mean(pid_delta_abs))
+two_years %>%
+  filter(!is.na(pid_delta)) %>% 
+  filter(age < 30) %>% 
+  group_by(firstborn) %>%
+  summarise(average_pid = mean(pid_delta), average_pid_abs = mean(pid_delta_abs))
  
-# Which of these is correct to use? I think it's the t test, which is about comparing two groups.
 t.test(ideo_delta~new_child, data=filter_na(two_years, "ideo_delta")) # p = 0.4108
+t.test(ideo_delta_abs~new_child, data=filter_na(two_years, "ideo_delta_abs")) # p = 0.6008
+t.test(ideo_delta~new_child, data=filter_na(two_years %>% filter(age < 30), "ideo_delta")) # p = 0.6761
+t.test(ideo_delta_abs~new_child, data=filter_na(two_years %>% filter(age < 30), "ideo_delta_abs")) # p = 0.6028
+
 t.test(pid_delta~new_child, data=filter_na(two_years, "pid_delta")) # p = 0.4348
-get_regression_table(lm(ideo_delta ~ as_factor(new_child), data=filter_na(two_years, "ideo_delta"))) # p = 0.388
-get_regression_table(lm(pid_delta ~ as_factor(new_child), data=filter_na(two_years, "pid_delta"))) # p = 0.345
+t.test(pid_delta_abs~new_child, data=filter_na(two_years, "pid_delta_abs")) # p = 0.07467
+t.test(pid_delta~new_child, data=filter_na(two_years %>% filter(age < 30), "pid_delta")) # p = 0.4663
+t.test(pid_delta_abs~new_child, data=filter_na(two_years %>% filter(age < 30), "pid_delta_abs")) # p = 0.6051
+
+# TODO: Filter by age, noting sample skews towards 50s & 60s
+ggplot(three_years, aes(x = age)) +
+  geom_histogram(fill = "steelblue", binwidth = 5)
+three_years %>% filter(age < 30) # n=282
+ggplot(two_years %>% filter(new_child == 1), aes(x = age)) + # this is surprisingly old
+  geom_histogram(fill = "steelblue", binwidth = 5)
+ggplot(two_years %>% filter(child18_12 == 1 & child18num_12 > child18num_10), aes(x = age)) +
+  geom_histogram(fill = "steelblue", binwidth = 5)
 
 # T tests for parent subsets
 # These groups are pretty small, once you filter to people who changed ideo/pid, only 30-60 people per group
