@@ -76,7 +76,7 @@ three_years <- panel %>% zap_labels() %>%
     gender = gender_10, # Verified gender doesn't change for anyone: all_data %>% filter(gender_10 != gender_12 | gender_12 != gender_14 | gender_10 != gender_14)
     age = 2010 - birthyr_10,
     race = if_else(race_10 < 10, race_10, if_else(race_12 < 10, race_12, race_14)), # Limit to 1-8, categorical
-    income = if_else(faminc_14 < 20, faminc_14, if_else(faminc_12 < 20, faminc_12, faminc_10)), # Bucket this (below)
+    income = faminc_14, # Use faminc_14 because the buckets vary by year, and the 2014 buckets are more granular
     investor = if_else(investor_14 < 3, investor_14, if_else(investor_12 < 3, investor_12, investor_10)), # yes/no has money in stocks
     newsint = if_else(newsint_14 < 5, newsint_14, if_else(newsint_12 < 5, newsint_12, newsint_10)), # interest in news/politics (1 high - 4 little)
     educ = if_else(educ_10 < 7, educ_10, if_else(educ_12 < 7, educ_12, educ_14)), # Limit to 1-6, categorical
@@ -94,15 +94,27 @@ three_years <- panel %>% zap_labels() %>%
   select(-starts_with("marstat_")) %>% 
   select(-starts_with("pew_religimp_"))
 
-# Add income bucket
+# Add income quintiles: note that income options are different by cycle
+# These are approximate, since incomes are given in ranges
+ggplot(panel %>% filter(faminc_14 < 19), aes(x = faminc_14)) +
+  geom_histogram(fill = "steelblue", binwidth = 1)
+panel %>% group_by(faminc_14) %>% summarise(count = n())
 three_years <- three_years %>% 
   mutate(
-    income_bracket = if_else(income %in% seq(1,9),
-                             "low",
-                             if_else(income %in% seq(10, 18),
-                                     "high",
-                                     "unknown"))
+    income_quintile = case_when(
+      income %in% c(1, 2) ~ 1,
+      income %in% c(3, 4) ~ 2,
+      income %in% c(5, 6, 7) ~ 3,
+      income %in% c(8, 9, 10) ~ 4,  # note the 10 response could go into either 4th or 5th
+      income %in% c(11, 12, 13, 14, 15, 16) ~ 5,
+      .default = NA
+    ),
+    high_income = if_else(is.na(income_quintile), NA, if_else(income_quintile == 5, 1, 0)),
+    low_income = if_else(is.na(income_quintile), NA, if_else(income_quintile %in% c(1, 2), 1, 0)),
   )
+three_years %>% group_by(income_quintile) %>% summarise(count = n())
+three_years %>% group_by(high_income) %>% summarise(count = n())
+three_years %>% group_by(low_income) %>% summarise(count = n())
    
 two_years <- merge(
   three_years %>% mutate(cycle = 1012),  # contains all data, but only look at 2010/2012
@@ -424,6 +436,11 @@ run_chisq(two_years_new_parents, "income_bracket", "gay_marriage_change") # p=0.
 run_chisq(two_years_new_parents, "income_bracket", "schip_change") # p=0.7751
 run_chisq(two_years_new_parents, "income_bracket", "budget_change") # p=0.1845
 run_chisq(two_years_new_parents, "income_bracket", "budget_avoid_change") # p=0.5268
+
+# TODO: Look at SCHIP by income:
+#   1. Replace all income_bracket references with income_quintile, high_income, low_income
+#     1.5 See if there's anything interesting there
+#   2. Look at SCHIP distributions
 
 # Non-parents 0.03 more liberal, new parents identical before and after
 filter_na(two_years, "ideo_delta") %>%
