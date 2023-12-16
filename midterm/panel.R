@@ -237,25 +237,33 @@ add_categorical_opinions <- function (df) {
     df %>% mutate(
       gay_marriage_before = if_else(cycle == 1214, CC12_326, CC10_326),
       gay_marriage_after = if_else(cycle == 1012,  CC12_326, CC14_326),
-      gay_marriage_change = if_else(
-        gay_marriage_before %nin% c(1, 2) | gay_marriage_after %nin% c(1, 2), NA,
-        if_else(gay_marriage_before == gay_marriage_after, 0, 1)),
       schip_before = if_else(cycle == 1214, CC12_330B, CC10_330B),
       schip_after = if_else(cycle == 1012,  CC12_330B, CC14_330B),
-      schip_change = if_else(
-        schip_before %nin% c(1, 2) | schip_after %nin% c(1, 2), NA,
-        if_else(schip_before == schip_after, 0, 1)),
       budget_before = if_else(cycle == 1214, CC12_328, CC10_328),
       budget_after = if_else(cycle == 1012,  CC12_328, CC14_328),
-      budget_change = if_else(
-        budget_before %nin% c(1:3) | budget_after %nin% c(1:3), NA,
-        if_else(budget_before == budget_after, 0, 1)),
-      budget_combo = budget_before * 10 + budget_after,
       budget_avoid_before = if_else(cycle == 1214, CC12_329, CC10_329),
       budget_avoid_after = if_else(cycle == 1012,  CC12_329, CC14_329),
-      budget_avoid_change = if_else(budget_avoid_before == budget_avoid_after, 0, 1),
+    ) %>% mutate (
+      gay_marriage_before = if_else(gay_marriage_before %nin% c(1, 2), NA, gay_marriage_before),
+      gay_marriage_after = if_else(gay_marriage_after %nin% c(1, 2), NA, gay_marriage_after),
+      gay_marriage_change = if_else(
+        is.na(gay_marriage_before) | is.na(gay_marriage_after), NA,
+        if_else(gay_marriage_before == gay_marriage_after, 0, 1)),
+      schip_before = if_else(schip_before %nin% c(1, 2), NA, schip_before),
+      schip_after = if_else(schip_after %nin% c(1, 2), NA, schip_after),
+      schip_change = if_else(
+         is.na(schip_before) | is.na(schip_after), NA,
+         if_else(schip_before == schip_after, 0, 1)),
+      budget_before = if_else(budget_before %nin% c(1:3), NA, budget_before),
+      budget_after = if_else(budget_after %nin% c(1:3), NA, budget_after),
+      budget_change = if_else(
+        is.na(budget_before) | is.na(budget_after), NA,
+        if_else(budget_before == budget_after, 0, 1)),
+      budget_combo = budget_before * 10 + budget_after,
+      budget_avoid_before = if_else(budget_avoid_before %nin% c(1:3), NA, budget_avoid_before),
+      budget_avoid_after = if_else(budget_avoid_after %nin% c(1:3), NA, budget_avoid_after),
       budget_avoid_change = if_else(
-        budget_avoid_before %nin% c(1:3) | budget_avoid_after %nin% c(1:3), NA,
+        is.na(budget_avoid_before) | is.na(budget_avoid_after), NA,
         if_else(budget_avoid_before == budget_avoid_after, 0, 1)),
       budget_avoid_combo = budget_avoid_before * 10 + budget_avoid_after,
     ) %>% select(-ends_with("_326"), -ends_with("_328"), -ends_with("_329"), -ends_with("_330B"))
@@ -513,6 +521,10 @@ run_chisq(two_years, "new_child", "gay_marriage_after") # p=0.2971
 run_chisq(two_years, "new_child", "schip_after") # p=0.8188
 run_chisq(two_years, "new_child", "budget_after") # p=0.224
 run_chisq(two_years, "new_child", "budget_avoid_after") # p=0.0814
+two_years %>% group_by(new_child, gay_marriage_after) %>% summarise(count = n())
+two_years %>% group_by(new_child, schip_after) %>% summarise(count = n())
+two_years %>% group_by(new_child, budget_after) %>% summarise(count = n())
+two_years %>% group_by(new_child, budget_avoid_after) %>% summarise(count = n())
 
 # Look closer at budget_change
 agg_combo <- two_years %>% filter(budget_before != budget_after) %>% group_by(new_child, budget_combo) %>% summarise(count = n())
