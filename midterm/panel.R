@@ -8,7 +8,6 @@
 #     - In ideology and pid
 #     - In continuous policy changes
 #     - In categorical policy changes
-#   - For each filter_na call, note how many people were filtered out
 
 library(haven)
 library(tidyverse)
@@ -460,6 +459,17 @@ temp_stats <- two_years %>% group_by(new_child) %>% summarise(
   #sales_or_inc_delta = mean(sales_or_inc_delta, na.rm = TRUE),
   sales_or_inc_delta_abs = mean(sales_or_inc_delta_abs, na.rm = TRUE),
 )
+two_years %>% group_by(new_child) %>% summarise(count = n()) # 18580 / 420
+two_years %>% mutate(has_climate_change = if_else(is.na(climate_change_delta), 0, 1)) %>% group_by(new_child, has_climate_change) %>% summarise(count = n())
+two_years %>% mutate(has_jobs_env = if_else(is.na(jobs_env_delta), 0, 1)) %>% group_by(new_child, has_jobs_env) %>% summarise(count = n())
+two_years %>% mutate(has_aff_action = if_else(is.na(aff_action_delta), 0, 1)) %>% group_by(new_child, has_aff_action) %>% summarise(count = n())
+two_years %>% mutate(has_guns = if_else(is.na(guns_delta), 0, 1)) %>% group_by(new_child, has_guns) %>% summarise(count = n())
+two_years %>% mutate(has_tax_or_spend = if_else(is.na(tax_or_spend_delta), 0, 1)) %>% group_by(new_child, has_tax_or_spend) %>% summarise(count = n())
+two_years %>% mutate(has_sales_or_inc = if_else(is.na(sales_or_inc_delta), 0, 1)) %>% group_by(new_child, has_sales_or_inc) %>% summarise(count = n())
+ggplot(panel, aes(x = CC10_416r)) +
+  geom_histogram(fill = "steelblue", binwidth = 10)
+panel %>% filter(CC10_416r > 100) %>% select(CC10_416r)
+
 t.test(climate_change_after~new_child, data=filter_na(two_years, "climate_change_after")) # p = 0.7907
 t.test(jobs_env_after~new_child, data=filter_na(two_years, "jobs_env_after")) # p = 0.4994
 t.test(aff_action_after~new_child, data=filter_na(two_years, "aff_action_after")) # p = 0.851
@@ -535,10 +545,11 @@ run_chisq(two_years, "new_child", "gay_marriage_after") # p=0.2971
 run_chisq(two_years, "new_child", "schip_after") # p=0.8188
 run_chisq(two_years, "new_child", "budget_after") # p=0.224
 run_chisq(two_years, "new_child", "budget_avoid_after") # p=0.0814
-two_years %>% group_by(new_child, gay_marriage_after) %>% summarise(count = n())
-two_years %>% group_by(new_child, schip_after) %>% summarise(count = n())
-two_years %>% group_by(new_child, budget_after) %>% summarise(count = n())
-two_years %>% group_by(new_child, budget_avoid_after) %>% summarise(count = n())
+two_years %>% group_by(new_child) %>% summarise(count = n()) # 18580 / 420
+two_years %>% group_by(new_child, gay_marriage_change) %>% summarise(count = n())
+two_years %>% group_by(new_child, schip_change) %>% summarise(count = n())
+two_years %>% group_by(new_child, budget_change) %>% summarise(count = n())
+two_years %>% group_by(new_child, budget_avoid_change) %>% summarise(count = n()) # highest NA responses, at 3%
 
 # Look closer at budget_change
 agg_combo <- two_years %>% filter(budget_before != budget_after) %>% group_by(new_child, budget_combo) %>% summarise(count = n())
