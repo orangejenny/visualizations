@@ -399,10 +399,35 @@ ggplot(two_years %>% filter(child18_12 == 1 & child18num_12 > child18num_10), ae
 # T tests for parent subsets
 # These groups are pretty small, once you filter to people who changed ideo/pid, only 30-60 people per group
 two_years_new_parents <- two_years %>% filter(new_child == 1)
+two_years_men <- two_years %>% filter(gender == 1)
+two_years_women <- two_years %>% filter(gender == 2)
+filter_na(two_years, "ideo_delta") %>% group_by(new_child, gender) %>% summarise(
+  ideo_before = mean(ideo_before),
+  ideo_after = mean(ideo_after),
+)
+filter_na(two_years, "pid_delta") %>% group_by(new_child, gender) %>% summarise(
+  pid_before = mean(pid_before),
+  pid_after = mean(pid_after),
+)
 two_years_new_parents %>% filter(pid_delta != 0 & !is.na(pid_delta)) %>% group_by(gender) %>% summarise(count = n())
 two_years_new_parents %>% filter(pid_delta != 0 & !is.na(pid_delta)) %>% group_by(income_bracket) %>% summarise(count = n())
 t.test(ideo_delta~gender, data=filter_na(two_years_new_parents, "ideo_delta")) # p = 0.9288
 t.test(pid_delta~gender, data=filter_na(two_years_new_parents, "pid_delta")) # p = 0.09352 # weird that this is so different from ideo_delta, but groups are small
+t.test(ideo_delta_abs~gender, data=filter_na(two_years_new_parents, "ideo_delta_abs")) # p = 0.2446
+t.test(pid_delta_abs~gender, data=filter_na(two_years_new_parents, "pid_delta_abs")) # p = 0.9272
+
+# Compare new fathers to other men
+t.test(ideo_delta~new_child, data=filter_na(two_years_men, "ideo_delta")) # p = 0.4799
+t.test(pid_delta~new_child, data=filter_na(two_years_men, "pid_delta")) # p = 0.6003
+t.test(ideo_delta_abs~new_child, data=filter_na(two_years_men, "ideo_delta_abs")) # p = 0.8063
+t.test(pid_delta_abs~new_child, data=filter_na(two_years_men, "pid_delta_abs")) # p = 0.3356
+
+# Compare new mothers to other women
+t.test(ideo_delta~new_child, data=filter_na(two_years_women, "ideo_delta")) # p = 0.6568
+t.test(pid_delta~new_child, data=filter_na(two_years_women, "pid_delta")) # p = 0.1065
+t.test(ideo_delta_abs~new_child, data=filter_na(two_years_women, "ideo_delta_abs")) # p = 0.4037
+t.test(pid_delta_abs~new_child, data=filter_na(two_years_women, "pid_delta_abs")) # p = 0.1042
+
 t.test(ideo_delta~income_bracket, data=filter_na(two_years_new_parents, "ideo_delta")) # p = 0.6394
 t.test(pid_delta~income_bracket, data=filter_na(two_years_new_parents, "pid_delta")) # p = 0.56
 
@@ -507,12 +532,54 @@ t.test(sales_or_inc_delta_abs~firstborn, data=filter_na(two_years, "sales_or_inc
 
 # T tests for parent subsets: a couple approach significance on gender (p < 0.1, at least)
 two_years_new_parents <- two_years %>% filter(new_child == 1)
+two_years_men <- two_years %>% filter(gender == 1)
+two_years_women <- two_years %>% filter(gender == 2)
 t.test(climate_change_delta~gender, data=filter_na(two_years_new_parents, "climate_change_delta")) # p=0.8752
 t.test(jobs_env_delta~gender, data=filter_na(two_years_new_parents, "jobs_env_delta")) # p=0.7913
 t.test(aff_action_delta~gender, data=filter_na(two_years_new_parents, "aff_action_delta")) # p=0.0800
 t.test(guns_delta~gender, data=filter_na(two_years_new_parents, "guns_delta")) # p=0.08586
 t.test(tax_or_spend_delta~gender, data=filter_na(two_years_new_parents, "tax_or_spend_delta")) # p=0.04358
 t.test(sales_or_inc_delta~gender, data=filter_na(two_years_new_parents, "sales_or_inc_delta")) # p=0.4426
+t.test(climate_change_delta_abs~gender, data=filter_na(two_years_new_parents, "climate_change_delta_abs")) # p=0.1647
+t.test(jobs_env_delta_abs~gender, data=filter_na(two_years_new_parents, "jobs_env_delta_abs")) # p=0.02414
+t.test(aff_action_delta_abs~gender, data=filter_na(two_years_new_parents, "aff_action_delta_abs")) # p=0.005968
+t.test(guns_delta_abs~gender, data=filter_na(two_years_new_parents, "guns_delta_abs")) # p=0.6765
+t.test(tax_or_spend_delta_abs~gender, data=filter_na(two_years_new_parents, "tax_or_spend_delta_abs")) # p=0.4833
+t.test(sales_or_inc_delta_abs~gender, data=filter_na(two_years_new_parents, "sales_or_inc_delta_abs")) # p=0.7338
+
+t.test(climate_change_delta~new_child, data=filter_na(two_years_men, "climate_change_delta")) # p=0.7033
+t.test(jobs_env_delta~new_child, data=filter_na(two_years_men, "jobs_env_delta")) # p=0.6611
+t.test(aff_action_delta~new_child, data=filter_na(two_years_men, "aff_action_delta")) # p=0.5205
+t.test(guns_delta~new_child, data=filter_na(two_years_men, "guns_delta")) # p=0.102
+t.test(tax_or_spend_delta~new_child, data=filter_na(two_years_men, "tax_or_spend_delta")) # p=0.02781
+t.test(sales_or_inc_delta~new_child, data=filter_na(two_years_men, "sales_or_inc_delta")) # p=0.6959
+t.test(climate_change_delta_abs~new_child, data=filter_na(two_years_men, "climate_change_delta_abs")) # p=0.1032
+t.test(jobs_env_delta_abs~new_child, data=filter_na(two_years_men, "jobs_env_delta_abs")) # p=0.884
+t.test(aff_action_delta_abs~new_child, data=filter_na(two_years_men, "aff_action_delta_abs")) # p=0.8886
+t.test(guns_delta_abs~new_child, data=filter_na(two_years_men, "guns_delta_abs")) # p=0.1481
+t.test(tax_or_spend_delta_abs~new_child, data=filter_na(two_years_men, "tax_or_spend_delta_abs")) # p=0.7743
+t.test(sales_or_inc_delta_abs~new_child, data=filter_na(two_years_men, "sales_or_inc_delta_abs")) # p=0.8004
+
+two_years_men %>% group_by(new_child) %>% summarise(
+  tax_or_spend_before = mean(tax_or_spend_before, na.rm = TRUE),
+  tax_or_spend_after = mean(tax_or_spend_after, na.rm = TRUE),
+  tax_or_spend_delta = mean(tax_or_spend_delta, na.rm = TRUE),
+  tax_or_spend_delta_abs = mean(tax_or_spend_delta_abs, na.rm = TRUE),
+)
+
+t.test(climate_change_delta~new_child, data=filter_na(two_years_women, "climate_change_delta")) # p=0.6708
+t.test(jobs_env_delta~new_child, data=filter_na(two_years_women, "jobs_env_delta")) # p=0.8081
+t.test(aff_action_delta~new_child, data=filter_na(two_years_women, "aff_action_delta")) # p=0.6396
+t.test(guns_delta~new_child, data=filter_na(two_years_women, "guns_delta")) # p=0.7687
+t.test(tax_or_spend_delta~new_child, data=filter_na(two_years_women, "tax_or_spend_delta")) # p=0.3475
+t.test(sales_or_inc_delta~new_child, data=filter_na(two_years_women, "sales_or_inc_delta")) # p=0.3451
+t.test(climate_change_delta_abs~new_child, data=filter_na(two_years_women, "climate_change_delta_abs")) # p=0.001844
+t.test(jobs_env_delta_abs~new_child, data=filter_na(two_years_women, "jobs_env_delta_abs")) # p=0.06299
+t.test(aff_action_delta_abs~new_child, data=filter_na(two_years_women, "aff_action_delta_abs")) # p=0.05126
+t.test(guns_delta_abs~new_child, data=filter_na(two_years_women, "guns_delta_abs")) # p=0.01459
+t.test(tax_or_spend_delta_abs~new_child, data=filter_na(two_years_women, "tax_or_spend_delta_abs")) # p=0.6958
+t.test(sales_or_inc_delta_abs~new_child, data=filter_na(two_years_women, "sales_or_inc_delta_abs")) # p=0.2613
+
 t.test(climate_change_delta~income_bracket, data=filter_na(two_years_new_parents, "climate_change_delta")) # p=0.7924
 t.test(jobs_env_delta~income_bracket, data=filter_na(two_years_new_parents, "jobs_env_delta")) # p=0.5589
 t.test(aff_action_delta~income_bracket, data=filter_na(two_years_new_parents, "aff_action_delta")) # p=0.8019
@@ -576,14 +643,106 @@ ggplot(agg_after, aes(x = as_factor(budget_avoid_after), y = count)) +
   geom_col(fill = "steelblue") +
   facet_wrap(~ as_factor(new_child))
 
+two_years %>% group_by(new_child, budget_before) %>% summarise(count = n())
+# parents: budget_percents(141, 207, 68) = 34 / 50 / 16
+# others: budget_percents(6886, 8139, 3357) = 37 / 44 / 18
+two_years %>% group_by(new_child, budget_after) %>% summarise(count = n())
+# parents: budget_percents(148, 187, 79) = 36 / 45 / 19
+# others: budget_percents(6230, 7948, 4157) = 34 / 43 / 23
+two_years %>% group_by(new_child, budget_avoid_before) %>% summarise(count = n())
+# parents: budget_percents(58, 127, 230) = 14 / 31 / 35
+# others: budget_percents(3006, 6833, 8450) = 16 / 37 / 46
+two_years %>% group_by(new_child, budget_avoid_after) %>% summarise(count = n())
+# parents: budget_percents(82, 145, 183) = 20 / 35 / 45
+# others: budget_percents(3967, 7098, 7125) = 22 / 39 / 39
+
 # Chi square tests within new parents: gender
 two_years_new_parents <- two_years %>% filter(new_child == 1)
+two_years_men <- two_years %>% filter(gender == 1)
+two_years_women <- two_years %>% filter(gender == 2)
 run_chisq(two_years_new_parents, "gender", "ideo_direction") # p=0.595
 run_chisq(two_years_new_parents, "gender", "pid_direction") # p=0.1408
 run_chisq(two_years_new_parents, "gender", "gay_marriage_change") # p=0.485
 run_chisq(two_years_new_parents, "gender", "schip_change") # p=0.6808
 run_chisq(two_years_new_parents, "gender", "budget_change") # p=0.00001167
 run_chisq(two_years_new_parents, "gender", "budget_avoid_change") # p=0.0005327, or p=0.01786 when looking at firstborn
+
+run_chisq(two_years_men, "new_child", "ideo_direction") # p=0.8416
+run_chisq(two_years_men, "new_child", "pid_direction") # p=0.2836
+run_chisq(two_years_men, "new_child", "gay_marriage_change") # p=0.1541
+run_chisq(two_years_men, "new_child", "schip_change") # p=1
+run_chisq(two_years_men, "new_child", "budget_change") # p=1
+run_chisq(two_years_men, "new_child", "budget_avoid_change") # p=0.8526
+
+run_chisq(two_years_women, "new_child", "ideo_direction") # p=0.7833
+run_chisq(two_years_women, "new_child", "pid_direction") # p=0.1103
+run_chisq(two_years_women, "new_child", "gay_marriage_change") # p=0.5236
+run_chisq(two_years_women, "new_child", "schip_change") # p=0.1476
+run_chisq(two_years_women, "new_child", "budget_change") # p=0.0003211
+run_chisq(two_years_women, "new_child", "budget_avoid_change") # p=0.0006512
+
+## Look more closely at the issues that showed differences by gender
+# New mothers vs new fathers
+two_years_new_parents %>% group_by(gender) %>% summarise(
+  jobs_env_before = mean(jobs_env_before, na.rm = TRUE),
+  jobs_env_after = mean(jobs_env_after, na.rm = TRUE),
+  jobs_env_delta_abs = mean(jobs_env_delta_abs, na.rm = TRUE),
+  jobs_env_delta = mean(jobs_env_delta, na.rm = TRUE),
+)
+two_years_new_parents %>% group_by(gender) %>% summarise(
+  aff_action_before = mean(aff_action_before, na.rm = TRUE),
+  aff_action_after = mean(aff_action_after, na.rm = TRUE),
+  aff_action_delta_abs = mean(aff_action_delta_abs, na.rm = TRUE),
+  aff_action_delta = mean(aff_action_delta, na.rm = TRUE),
+)
+two_years_new_parents %>% group_by(gender, budget_before) %>% summarise(count = n())
+# women: 77 / 96 / 39 = 212 = 36% / 45% / 18%
+# men: 64 / 111 / 29 = 204 = 31% / 54% / 14%
+two_years_new_parents %>% group_by(gender, budget_after) %>% summarise(count = n())
+# women: 83 / 89 / 40 = 212 = 39% / 42% / 19%
+# men: 65 / 98 / 39 = 202 = 32% / 49% / 19%
+two_years_new_parents %>% group_by(gender, budget_change) %>% summarise(count = n())
+# men %age who change: 4200 / (202)
+# women %age who change: 8600 / (208)
+
+# New mothers vs other women
+two_years_women %>% group_by(new_child) %>% summarise(
+  climate_change_before = mean(climate_change_before, na.rm = TRUE),
+  climate_change_after = mean(climate_change_after, na.rm = TRUE),
+  climate_change_delta_abs = mean(climate_change_delta_abs, na.rm = TRUE),
+  climate_change_delta = mean(climate_change_delta, na.rm = TRUE),
+)
+two_years_women %>% group_by(new_child) %>% summarise(
+  guns_before = mean(guns_before, na.rm = TRUE),
+  guns_after = mean(guns_after, na.rm = TRUE),
+  guns_delta_abs = mean(guns_delta_abs, na.rm = TRUE),
+  guns_delta = mean(guns_delta, na.rm = TRUE),
+)
+two_years_women %>% group_by(new_child, budget_before) %>% summarise(count = n())
+# mothers: budget_percents(77, 96, 39) = 36 / 45 / 18
+# non-mothers: budget_percents(3575, 2854, 1685)  = 44 / 35 / 21
+two_years_women %>% group_by(new_child, budget_after) %>% summarise(count = n())
+# mothers: budget_percents(83, 89, 40) = 39 / 42 / 19
+# non-mothers: budget_percents(3157, 2804, 2127) = 39 / 35 / 26
+
+# mothers: up down up
+# non-mothers: down same up
+
+two_years_women %>% group_by(new_child, budget_avoid_before) %>% summarise(count = n())
+# mothers: budget_percents(29, 69, 113) = 14 / 33 / 54
+# non-mothers: budget_percents(1239, 3386, 3452) = 15 / 42 / 43
+two_years_women %>% group_by(new_child, budget_avoid_after) %>% summarise(count = n())
+# mothers: budget_percents(51, 76, 83) = 24 / 36 / 40
+# non-mothers: budget_percents(1616, 3526, 2877) = 20 / 44 / 36
+
+budget_percents <- function (one, two, three) {
+  total <- one + two + three
+  return(paste(
+    round(one * 100 / total),
+    round(two * 100 / total),
+    round(three * 100 / total)
+  ))
+}
 
 # Look closer at budget_change and budget_avoid_change, by gender
 # For both, women are a lot more likely to change
