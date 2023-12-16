@@ -481,6 +481,20 @@ t.test(guns_delta_abs~new_child, data=filter_na(two_years, "guns_delta_abs")) # 
 t.test(tax_or_spend_delta_abs~new_child, data=filter_na(two_years, "tax_or_spend_delta_abs")) # p = 0.6814
 t.test(sales_or_inc_delta_abs~new_child, data=filter_na(two_years, "sales_or_inc_delta_abs")) # p = 0.3438
 
+t.test(climate_change_delta~firstborn, data=filter_na(two_years, "climate_change_delta")) # p = 0.5514
+t.test(jobs_env_delta~firstborn, data=filter_na(two_years, "jobs_env_delta")) # p = 0.4092
+t.test(aff_action_delta~firstborn, data=filter_na(two_years, "aff_action_delta")) # p = 0.8448
+t.test(guns_delta~firstborn, data=filter_na(two_years, "guns_delta")) # p = 0.3768
+t.test(tax_or_spend_delta~firstborn, data=filter_na(two_years, "tax_or_spend_delta")) # p = 0.6834
+t.test(sales_or_inc_delta~firstborn, data=filter_na(two_years, "sales_or_inc_delta")) # p = 0.447
+
+t.test(climate_change_delta_abs~firstborn, data=filter_na(two_years, "climate_change_delta_abs")) # p = 0.4946
+t.test(jobs_env_delta_abs~firstborn, data=filter_na(two_years, "jobs_env_delta_abs")) # p = 0.1119
+t.test(aff_action_delta_abs~firstborn, data=filter_na(two_years, "aff_action_delta_abs")) # p = 0.1326
+t.test(guns_delta_abs~firstborn, data=filter_na(two_years, "guns_delta_abs")) # p = 0.06643
+t.test(tax_or_spend_delta_abs~firstborn, data=filter_na(two_years, "tax_or_spend_delta_abs")) # p = 0.5264
+t.test(sales_or_inc_delta_abs~firstborn, data=filter_na(two_years, "sales_or_inc_delta_abs")) # p = 0.2689
+
 # T tests for parent subsets: a couple approach significance on gender (p < 0.1, at least)
 two_years_new_parents <- two_years %>% filter(new_child == 1)
 t.test(climate_change_delta~gender, data=filter_na(two_years_new_parents, "climate_change_delta")) # p=0.8752
