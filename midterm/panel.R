@@ -190,22 +190,41 @@ add_continuous_opinions <- function (df) {
     df %>% mutate(
       climate_change_before = if_else(cycle == 1214, CC12_321, CC10_321),
       climate_change_after = if_else(cycle == 1012,  CC12_321, CC14_321),
-      climate_change_delta = if_else(climate_change_before %in% c(1:5) & climate_change_after %in% c(1:5), climate_change_after - climate_change_before, NA),
       jobs_env_before = if_else(cycle == 1214, CC12_325, CC10_325),
       jobs_env_after = if_else(cycle == 1012,  CC12_325, CC14_325),
-      jobs_env_delta = if_else(jobs_env_before %in% c(1:5) & jobs_env_after %in% c(1:5), jobs_env_after - jobs_env_before, NA),
       aff_action_before = if_else(cycle == 1214, CC12_327, CC10_327),
       aff_action_after = if_else(cycle == 1012,  CC12_327, CC14_327),
-      aff_action_delta = if_else(aff_action_before %in% c(1:4) & aff_action_after %in% c(1:4), aff_action_after - aff_action_before, NA),
       guns_before = if_else(cycle == 1214, CC12_320, CC10_320),
       guns_after = if_else(cycle == 1012,  CC12_320, CC14_320),
-      guns_delta = if_else(guns_before %in% c(1:3) & guns_after %in% c(1:3), guns_after - guns_before, NA),
       tax_or_spend_before = if_else(cycle == 1214, CC12_415r, CC10_415r),
       tax_or_spend_after = if_else(cycle == 1012,  CC12_415r, CC14_415r),
-      tax_or_spend_delta = if_else(tax_or_spend_before %in% c(0:100) & tax_or_spend_after %in% c(0:100), tax_or_spend_after - tax_or_spend_before, NA),
       sales_or_inc_before = if_else(cycle == 1214, CC12_416r, CC10_416r),
       sales_or_inc_after = if_else(cycle == 1012,  CC12_416r, CC14_416r),
-      sales_or_inc_delta = if_else(sales_or_inc_before %in% c(0:100) & sales_or_inc_after %in% c(0:100), sales_or_inc_after - sales_or_inc_before, NA),
+    ) %>% mutate (
+      climate_change_before = if_else(climate_change_before %in% c(1:5), climate_change_before, NA),
+      climate_change_after = if_else(climate_change_after %in% c(1:5), climate_change_after, NA),
+      climate_change_delta = climate_change_after - climate_change_before,
+      climate_change_delta_abs = abs(climate_change_delta),
+      jobs_env_before = if_else(jobs_env_before %in% c(1:5), jobs_env_before, NA),
+      jobs_env_after = if_else(jobs_env_after %in% c(1:5), jobs_env_after, NA),
+      jobs_env_delta =  jobs_env_after - jobs_env_before,
+      jobs_env_delta_abs = abs(jobs_env_delta),
+      aff_action_before = if_else(aff_action_before %in% c(1:4), aff_action_before, NA),
+      aff_action_after = if_else(aff_action_after %in% c(1:4), aff_action_after, NA),
+      aff_action_delta = aff_action_after - aff_action_before,
+      aff_action_delta_abs = abs(aff_action_delta),
+      guns_before = if_else(guns_before %in% c(1:3), guns_before, NA),
+      guns_after = if_else(guns_after %in% c(1:3), guns_after, NA),
+      guns_delta =  guns_after - guns_before,
+      guns_delta_abs = abs(guns_delta),
+      tax_or_spend_before = if_else(tax_or_spend_before %in% c(0:100), tax_or_spend_before, NA),
+      tax_or_spend_after = if_else(tax_or_spend_after %in% c(0:100), tax_or_spend_after, NA),
+      tax_or_spend_delta = tax_or_spend_after - tax_or_spend_before,
+      tax_or_spend_delta_abs = abs(tax_or_spend_delta),
+      sales_or_inc_before = if_else(sales_or_inc_before %in% c(0:100), sales_or_inc_before, NA),
+      sales_or_inc_after = if_else(sales_or_inc_after %in% c(0:100), sales_or_inc_after, NA),
+      sales_or_inc_delta = sales_or_inc_after - sales_or_inc_before,
+      sales_or_inc_delta_abs = abs(sales_or_inc_delta),
     ) %>% select(-ends_with("_320"), -ends_with("_321"), -ends_with("_325"), -ends_with("_327"),
                  -ends_with("_415r"), -ends_with("_416r"))
   )
@@ -407,18 +426,52 @@ run_regression_table <- function (data_frame, dependent_var, independent_var, co
 run_regression_table(filter_na(two_years, "ideo_delta"), "ideo_delta", "as_factor(new_child)", c("age"))
 
 # Policy issues: continuous: only tax or spend is significant
+temp_stats <- two_years %>% group_by(new_child) %>% summarise(
+  #climate_change_before = mean(climate_change_before, na.rm = TRUE),
+  climate_change_after = mean(climate_change_after, na.rm = TRUE),
+  #climate_change_delta = mean(climate_change_delta, na.rm = TRUE),
+  climate_change_delta_abs = mean(climate_change_delta_abs, na.rm = TRUE),
+  #jobs_env_before = mean(jobs_env_before, na.rm = TRUE),
+  jobs_env_after = mean(jobs_env_after, na.rm = TRUE),
+  #jobs_env_delta = mean(jobs_env_delta, na.rm = TRUE),
+  jobs_env_delta_abs = mean(jobs_env_delta_abs, na.rm = TRUE),
+  #aff_action_before = mean(aff_action_before, na.rm = TRUE),
+  aff_action_after = mean(aff_action_after, na.rm = TRUE),
+  #aff_action_delta = mean(aff_action_delta, na.rm = TRUE),
+  aff_action_delta_abs = mean(aff_action_delta_abs, na.rm = TRUE),
+  #guns_before = mean(guns_before, na.rm = TRUE),
+  guns_after = mean(guns_after, na.rm = TRUE),
+  #guns_delta = mean(guns_delta, na.rm = TRUE),
+  guns_delta_abs = mean(guns_delta_abs, na.rm = TRUE),
+  #tax_or_spend_before = mean(tax_or_spend_before, na.rm = TRUE),
+  tax_or_spend_after = mean(tax_or_spend_after, na.rm = TRUE),
+  #tax_or_spend_delta = mean(tax_or_spend_delta, na.rm = TRUE),
+  tax_or_spend_delta_abs = mean(tax_or_spend_delta_abs, na.rm = TRUE),
+  #sales_or_inc_before = mean(sales_or_inc_before, na.rm = TRUE),
+  sales_or_inc_after = mean(sales_or_inc_after, na.rm = TRUE),
+  #sales_or_inc_delta = mean(sales_or_inc_delta, na.rm = TRUE),
+  sales_or_inc_delta_abs = mean(sales_or_inc_delta_abs, na.rm = TRUE),
+)
+t.test(climate_change_after~new_child, data=filter_na(two_years, "climate_change_after")) # p = 0.7907
+t.test(jobs_env_after~new_child, data=filter_na(two_years, "jobs_env_after")) # p = 0.4994
+t.test(aff_action_after~new_child, data=filter_na(two_years, "aff_action_after")) # p = 0.851
+t.test(guns_after~new_child, data=filter_na(two_years, "guns_after")) # p = 0.505
+t.test(tax_or_spend_after~new_child, data=filter_na(two_years, "tax_or_spend_after")) # p = 0.1531
+t.test(sales_or_inc_after~new_child, data=filter_na(two_years, "sales_or_inc_after")) # p = 0.7913
+
 t.test(climate_change_delta~new_child, data=filter_na(two_years, "climate_change_delta")) # p = 0.56
 t.test(jobs_env_delta~new_child, data=filter_na(two_years, "jobs_env_delta")) # p = 0.6602
 t.test(aff_action_delta~new_child, data=filter_na(two_years, "aff_action_delta")) # p = 0.9901
 t.test(guns_delta~new_child, data=filter_na(two_years, "guns_delta")) # p = 0.4005
 t.test(tax_or_spend_delta~new_child, data=filter_na(two_years, "tax_or_spend_delta")) # p = 0.3224
 t.test(sales_or_inc_delta~new_child, data=filter_na(two_years, "sales_or_inc_delta")) # p = 0.345
-t.test(climate_change_delta~new_child, data=filter_na(three_years, "climate_change_delta")) # p = 0.2014
-t.test(jobs_env_delta~new_child, data=filter_na(three_years, "jobs_env_delta")) # p = 0.5924
-t.test(aff_action_delta~new_child, data=filter_na(three_years, "aff_action_delta")) # p = 0.2398
-t.test(guns_delta~new_child, data=filter_na(three_years, "guns_delta")) # p = 0.0979
-t.test(tax_or_spend_delta~new_child, data=filter_na(three_years, "tax_or_spend_delta")) # p = 0.0007678
-t.test(sales_or_inc_delta~new_child, data=filter_na(three_years, "sales_or_inc_delta")) # p = 0.9061
+
+t.test(climate_change_delta_abs~new_child, data=filter_na(two_years, "climate_change_delta_abs")) # p = 0.0005519
+t.test(jobs_env_delta_abs~new_child, data=filter_na(two_years, "jobs_env_delta_abs")) # p = 0.1001
+t.test(aff_action_delta_abs~new_child, data=filter_na(two_years, "aff_action_delta_abs")) # p = 0.07633
+t.test(guns_delta_abs~new_child, data=filter_na(two_years, "guns_delta_abs")) # p = 0.006267
+t.test(tax_or_spend_delta_abs~new_child, data=filter_na(two_years, "tax_or_spend_delta_abs")) # p = 0.6814
+t.test(sales_or_inc_delta_abs~new_child, data=filter_na(two_years, "sales_or_inc_delta_abs")) # p = 0.3438
 
 # T tests for parent subsets: a couple approach significance on gender (p < 0.1, at least)
 two_years_new_parents <- two_years %>% filter(new_child == 1)
