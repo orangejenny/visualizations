@@ -1,14 +1,3 @@
-# Overall TODO (there are specific TODOs for all of these):
-#   - Filter/bucket people before analysis
-#     - Are originally liberal/conservative people affected differently?
-#     - Mothers vs fathers
-#     - Low vs high income
-#     - Limit to people interested in the news (newsint 1-4, with 1 high)
-#   - Pull stats on consistency in three_years
-#     - In ideology and pid
-#     - In continuous policy changes
-#     - In categorical policy changes
-
 library(haven)
 library(tidyverse)
 
