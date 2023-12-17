@@ -515,32 +515,6 @@ two_years_low_income %>% filter_na("high_income") %>% group_by(new_child) %>% su
   ideo_delta_abs = mean(ideo_delta_abs, na.rm = TRUE),
 )
 
-get_regression_table(lm(ideo_delta ~ as_factor(new_child) + age, data=filter_na(two_years, "ideo_delta")))
-get_regression_table(lm(ideo_delta ~ as_factor(new_child) + as_factor(gender), data=filter_na(two_years, "ideo_delta")))
-get_regression_table(lm(ideo_delta ~ as_factor(new_child) + as_factor(income_bracket), data=filter_na(two_years, "ideo_delta")))
-get_regression_table(lm(ideo_delta ~ as_factor(new_child) + age + as_factor(gender), data=filter_na(two_years, "ideo_delta")))
-get_regression_table(lm(ideo_delta ~ as_factor(new_child) + income, data=filter_na(two_years, "ideo_delta")))
-# TODO: try out controls for religiosity, education, race, marital status, investor, newsint
-# TODO: try filtering for newsint first
-
-# dependent_var and independent var are strings, controls is a list of strings
-run_lm <- function (data_frame, dependent_var, independent_var, controls=NULL) {
-  if (length(controls) == 0) {
-    return(lm(eval(ecol(dependent_var)) ~ eval(ecol(independent_var)),
-              data=data_frame))
-  } else {
-    return(lm(eval(ecol(dependent_var)) ~ eval(ecol(independent_var))
-              + eval(ecol(paste(controls, collapse=" + "))),
-              data=data_frame))
-  }
-}
-run_lm(filter_na(two_years, "ideo_delta"), "ideo_delta", "as_factor(new_child)", c("age"))
-
-run_regression_table <- function (data_frame, dependent_var, independent_var, controls=NULL) {
-  return(get_regression_table(run_lm(data_frame, dependent_var, independent_var, controls)))
-}
-run_regression_table(filter_na(two_years, "ideo_delta"), "ideo_delta", "as_factor(new_child)", c("age"))
-
 # Policy issues: continuous: only tax or spend is significant
 temp_stats <- two_years %>% group_by(new_child) %>% summarise(
   #climate_change_before = mean(climate_change_before, na.rm = TRUE),
