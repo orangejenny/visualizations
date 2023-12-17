@@ -1,10 +1,46 @@
 library(haven)
 library(tidyverse)
 
+########################
+# Functions: utilities #
+########################
+
+# Prep column to eval
+ecol <- function (col_name) {
+  return(parse(text=as.name(col_name)))
+}
+
+###################
+# Functions: data #
+###################
+
+# Add columns for new child, new mother, new father
+# Note that there are separate columns for child18 and child18num, but
+# `panel %>% filter(child18num_14 > 1 & child18_14 == 2) %>% summarise(count = n()) == 0`
+# for all three cycles - perhaps child18num was skipped if child18 was asked?
+add_parenting <- function(df) {
+  return(
+    df %>% mutate(
+      new_child = if_else(cycle == 1214,
+                          child18num_12 < child18num_14,
+                          child18num_10 < child18num_12),
+      firstborn = if_else(cycle == 1214,
+                          child18num_12 == 0 & child18num_14 > 0,
+                          child18num_10 == 0 & child18num_12 > 0),
+    ) %>% select(-starts_with("child18num_"))
+  )
+}
+
+#############
+# Load data #
+#############
 setwd("~/Documents/visualizations/midterm")
 panel <- read_dta("CCES_Panel_Full3waves_VV_V4.dta") # n=9500
 
-### Build three base data frames (10-12, 12-14, 10-14) ###
+################
+# Extract data #
+################
+# Build three base data frames (10-12, 12-14, 10-14)
 three_years <- panel %>% zap_labels() %>% 
   select(
     # Ideology and partisanship
@@ -71,6 +107,19 @@ three_years <- panel %>% zap_labels() %>%
     marstat = if_else(marstat_10 < 7, marstat_10, if_else(marstat_12 < 7, marstat_12, marstat_14)), # Limit to 1-6, categorical
     pew_religimp = if_else(pew_religimp_14 < 5, pew_religimp_14, if_else(pew_religimp_12 < 5, pew_religimp_12, pew_religimp_10)), # importance of religion (1 high - 4 little)
   ) %>% 
+  mutate(
+    # Add income brackets
+    income_quintile = case_when(
+      income %in% c(1, 2) ~ 1,
+      income %in% c(3, 4) ~ 2,
+      income %in% c(5, 6, 7) ~ 3,
+      income %in% c(8, 9, 10) ~ 4,  # note the 10 response could go into either 4th or 5th quintile
+      income %in% c(11, 12, 13, 14, 15, 16) ~ 5,
+      .default = NA
+    ),
+    high_income = if_else(is.na(income_quintile), NA, if_else(income_quintile == 5, 1, 0)),
+    low_income = if_else(is.na(income_quintile), NA, if_else(income_quintile %in% c(1, 2), 1, 0)),
+  ) %>% 
   # Now that demographics are consolidated, remove the year-specific columns
   select(-starts_with("gender_")) %>% 
   select(-starts_with("birthyr_")) %>% 
@@ -80,26 +129,31 @@ three_years <- panel %>% zap_labels() %>%
   select(-starts_with("newsint_")) %>% 
   select(-starts_with("educ_")) %>% 
   select(-starts_with("marstat_")) %>% 
-  select(-starts_with("pew_religimp_"))
+  select(-starts_with("pew_religimp_")
+)
+two_years <- merge(
+  three_years %>% mutate(cycle = 1012),  # contains all data, but only look at 2010/2012
+  three_years %>% mutate(cycle = 1214),  # contains all data, but only look at 2012/2014
+  all = TRUE
+)
+
+##################
+# Transform data #
+##################
+three_years <- add_parenting(three_years)
+two_years <- add_parenting(two_years)
+
+############
+# Analysis #
+############
+
+
 
 # Add income quintiles: note that income options are different by cycle
 # These are approximate, since incomes are given in ranges
 ggplot(panel %>% filter(faminc_14 < 19), aes(x = faminc_14)) +
   geom_histogram(fill = "steelblue", binwidth = 1)
 panel %>% group_by(faminc_14) %>% summarise(count = n())
-three_years <- three_years %>% 
-  mutate(
-    income_quintile = case_when(
-      income %in% c(1, 2) ~ 1,
-      income %in% c(3, 4) ~ 2,
-      income %in% c(5, 6, 7) ~ 3,
-      income %in% c(8, 9, 10) ~ 4,  # note the 10 response could go into either 4th or 5th
-      income %in% c(11, 12, 13, 14, 15, 16) ~ 5,
-      .default = NA
-    ),
-    high_income = if_else(is.na(income_quintile), NA, if_else(income_quintile == 5, 1, 0)),
-    low_income = if_else(is.na(income_quintile), NA, if_else(income_quintile %in% c(1, 2), 1, 0)),
-  )
 three_years %>% filter(new_child == 1) %>% group_by(new_child, income) %>% summarise(count = n())
 three_years %>% group_by(income_quintile, new_child) %>% summarise(count = n())
 three_years %>% group_by(high_income) %>% summarise(count = n())
@@ -109,35 +163,8 @@ ggplot(three_years %>% filter(!is.na(income_quintile)), aes(x = income)) +
 ggplot(three_years %>% filter(!is.na(income_quintile)) %>% filter(new_child == 1), aes(x = income)) +
   geom_histogram(fill = "steelblue", binwidth = 1)
    
-two_years <- merge(
-  three_years %>% mutate(cycle = 1012),  # contains all data, but only look at 2010/2012
-  three_years %>% mutate(cycle = 1214),  # contains all data, but only look at 2012/2014
-  all = TRUE
-)
 
-# Prep column to eval
-ecol <- function (col_name) {
-  return(parse(text=as.name(col_name)))
-}
 
-# Add columns for new child, new mother, new father
-# Note that there are separate columns for child18 and child18num, but
-# `panel %>% filter(child18num_14 > 1 & child18_14 == 2) %>% summarise(count = n()) == 0`
-# for all three cycles - perhaps child18num was skipped if child18 was asked?
-add_parenting <- function(df) {
-  return(
-    df %>% mutate(
-      new_child = if_else(cycle == 1214,
-                          child18num_12 < child18num_14,
-                          child18num_10 < child18num_12),
-      firstborn = if_else(cycle == 1214,
-                          child18num_12 == 0 & child18num_14 > 0,
-                          child18num_10 == 0 & child18num_12 > 0),
-    ) %>% select(-starts_with("child18num_"))
-  )
-}
-three_years <- add_parenting(three_years)
-two_years <- add_parenting(two_years)
 
 
 add_ideo <- function(df) {
