@@ -537,6 +537,20 @@ run_chisq(two_years, "new_child", "schip_after") # p=0.8188
 run_chisq(two_years, "new_child", "budget_after") # p=0.224
 run_chisq(two_years, "new_child", "budget_avoid_after") # p=0.0814
 
+# Descriptive statistics on budget
+two_years %>% group_by(new_child, budget_before) %>% summarise(count = n())
+# parents: three_percents(141, 207, 68) = 34 / 50 / 16
+# others: three_percents(6886, 8139, 3357) = 37 / 44 / 18
+two_years %>% group_by(new_child, budget_after) %>% summarise(count = n())
+# parents: three_percents(148, 187, 79) = 36 / 45 / 19
+# others: three_percents(6230, 7948, 4157) = 34 / 43 / 23
+two_years %>% group_by(new_child, budget_avoid_before) %>% summarise(count = n())
+# parents: three_percents(58, 127, 230) = 14 / 31 / 35
+# others: three_percents(3006, 6833, 8450) = 16 / 37 / 46
+two_years %>% group_by(new_child, budget_avoid_after) %>% summarise(count = n())
+# parents: three_percents(82, 145, 183) = 20 / 35 / 45
+# others: three_percents(3967, 7098, 7125) = 22 / 39 / 39
+
 ####################
 # Analysis: Gender #
 ####################
@@ -632,6 +646,17 @@ run_chisq(two_years_new_parents, "gender", "schip_change") # p=0.6808
 run_chisq(two_years_new_parents, "gender", "budget_change") # p=0.00001167**
 run_chisq(two_years_new_parents, "gender", "budget_avoid_change") # p=0.0005327***
 
+# Comparing new fathers to new mothers on budget_change
+two_years_new_parents %>% group_by(gender, budget_before) %>% summarise(count = n())
+# women: three_percents(77, 96, 39) = 36% / 45% / 18%
+# men: three_percents(64, 111, 29) = 31% / 54% / 14%
+two_years_new_parents %>% group_by(gender, budget_after) %>% summarise(count = n())
+# women: 83 / 89 / 40 = 212 = 39% / 42% / 19%
+# men: 65 / 98 / 39 = 202 = 32% / 49% / 19%
+two_years_new_parents %>% group_by(gender, budget_change) %>% summarise(count = n())
+# men %age who change: 4200 / (202)
+# women %age who change: 8600 / (208)
+
 # Compare new fathers to other men: nothing
 run_chisq(two_years_men, "new_child", "ideo_direction") # p=0.8416
 run_chisq(two_years_men, "new_child", "pid_direction") # p=0.2836
@@ -647,6 +672,21 @@ run_chisq(two_years_women, "new_child", "gay_marriage_change") # p=0.5236
 run_chisq(two_years_women, "new_child", "schip_change") # p=0.1476
 run_chisq(two_years_women, "new_child", "budget_change") # p=0.0003211***
 run_chisq(two_years_women, "new_child", "budget_avoid_change") # p=0.0006512***
+
+# Comparing new mothers to other women on budget_change and budget_change_avoid
+two_years_women %>% group_by(new_child, budget_before) %>% summarise(count = n())
+# mothers: three_percents(77, 96, 39) = 36 / 45 / 18
+# non-mothers: three_percents(3575, 2854, 1685)  = 44 / 35 / 21
+two_years_women %>% group_by(new_child, budget_after) %>% summarise(count = n())
+# mothers: three_percents(83, 89, 40) = 39 / 42 / 19
+# non-mothers: three_percents(3157, 2804, 2127) = 39 / 35 / 26
+two_years_women %>% group_by(new_child, budget_avoid_before) %>% summarise(count = n())
+# mothers: three_percents(29, 69, 113) = 14 / 33 / 54
+# non-mothers: three_percents(1239, 3386, 3452) = 15 / 42 / 43
+two_years_women %>% group_by(new_child, budget_avoid_after) %>% summarise(count = n())
+# mothers: three_percents(51, 76, 83) = 24 / 36 / 40
+# non-mothers: three_percents(1616, 3526, 2877) = 20 / 44 / 36
+
 
 ####################
 # Analysis: Income #
@@ -664,18 +704,6 @@ three_years %>% group_by(high_income) %>% summarise(count = n())
 three_years %>% group_by(low_income) %>% summarise(count = n())
 ggplot(three_years %>% filter(!is.na(income_quintile)) %>% filter(new_child == 1), aes(x = income)) +
   geom_histogram(fill = "steelblue", binwidth = 1)
-
-
-
-
-
-
-
-
-
-
-
- 
 
 
 
@@ -734,87 +762,8 @@ t.test(guns_delta_abs~high_income, data=filter_na(two_years_new_parents, "guns_d
 t.test(tax_or_spend_delta_abs~high_income, data=filter_na(two_years_new_parents, "tax_or_spend_delta_abs")) # p=0.562
 t.test(sales_or_inc_delta_abs~high_income, data=filter_na(two_years_new_parents, "sales_or_inc_delta_abs")) # p=0.9427
 
-# Parents are less willing to raise taxes, more interested in spending cuts...but only in three_years
-ggplot(filter_na(three_years, "tax_or_spend_delta") %>% filter(new_child == 1), aes(x = tax_or_spend_delta)) +
-  geom_histogram(fill = "steelblue", binwidth = 10) #+ facet_wrap(~ as_factor(new_child))
-ggplot(three_years %>% filter(tax_or_spend_after < 101) %>% filter(new_child == 0), aes(x = tax_or_spend_after)) +
-  geom_histogram(fill = "steelblue", binwidth = 10) #+ facet_wrap(~ as_factor(new_child))
 
 
-
-# Look closer at budget_change
-agg_combo <- two_years %>% filter(budget_before != budget_after) %>% group_by(new_child, budget_combo) %>% summarise(count = n())
-agg_after <- two_years %>% filter(budget_before != budget_after) %>% group_by(new_child, budget_after) %>% summarise(count = n())
-# Looking at the combos, the most non-parents flip from cutting defense to raising taxes, and the 2nd-most want the opposite
-# Among the parents, the most change from cutting domestic to cutting defense, and the lest want the opposite
-ggplot(agg_combo, aes(x = as_factor(budget_combo), y = count)) +
-  geom_col(fill = "steelblue") +
-  facet_wrap(~ as_factor(new_child))
-# Looking at the "after" answers, non-parents want to raise taxes, while parents want to cut defense spending, and parents are more evenly split
-ggplot(agg_after, aes(x = as_factor(budget_after), y = count)) +
-  geom_col(fill = "steelblue") +
-  facet_wrap(~ as_factor(new_child))
-# Look closer at budget_avoid_change
-agg_combo <- temp %>% filter(budget_avoid_before != budget_avoid_after) %>% group_by(new_child, budget_avoid_combo) %>% summarise(count = n())
-agg_after <- temp %>% filter(budget_avoid_before != budget_avoid_after) %>% group_by(new_child, budget_avoid_after) %>% summarise(count = n())
-# Looking at the combos, the pattern of change is similar, with both parents and non-parents' getting more willing to raise taxes
-ggplot(agg_combo, aes(x = as_factor(budget_avoid_combo), y = count)) +
-  geom_col(fill = "steelblue") +
-  facet_wrap(~ as_factor(new_child))
-# Looking at the "after" answers, parents more want to avoid cutting domestic spending,
-# but both groups want to avoid cutting defense - which seems to contradict the previous question
-ggplot(agg_after, aes(x = as_factor(budget_avoid_after), y = count)) +
-  geom_col(fill = "steelblue") +
-  facet_wrap(~ as_factor(new_child))
-
-two_years %>% group_by(new_child, budget_before) %>% summarise(count = n())
-# parents: three_percents(141, 207, 68) = 34 / 50 / 16
-# others: three_percents(6886, 8139, 3357) = 37 / 44 / 18
-two_years %>% group_by(new_child, budget_after) %>% summarise(count = n())
-# parents: three_percents(148, 187, 79) = 36 / 45 / 19
-# others: three_percents(6230, 7948, 4157) = 34 / 43 / 23
-two_years %>% group_by(new_child, budget_avoid_before) %>% summarise(count = n())
-# parents: three_percents(58, 127, 230) = 14 / 31 / 35
-# others: three_percents(3006, 6833, 8450) = 16 / 37 / 46
-two_years %>% group_by(new_child, budget_avoid_after) %>% summarise(count = n())
-# parents: three_percents(82, 145, 183) = 20 / 35 / 45
-# others: three_percents(3967, 7098, 7125) = 22 / 39 / 39
-
-
-
-two_years_new_parents %>% group_by(gender, budget_before) %>% summarise(count = n())
-# women: 77 / 96 / 39 = 212 = 36% / 45% / 18%
-# men: 64 / 111 / 29 = 204 = 31% / 54% / 14%
-two_years_new_parents %>% group_by(gender, budget_after) %>% summarise(count = n())
-# women: 83 / 89 / 40 = 212 = 39% / 42% / 19%
-# men: 65 / 98 / 39 = 202 = 32% / 49% / 19%
-two_years_new_parents %>% group_by(gender, budget_change) %>% summarise(count = n())
-# men %age who change: 4200 / (202)
-# women %age who change: 8600 / (208)
-
-two_years_women %>% group_by(new_child, budget_before) %>% summarise(count = n())
-# mothers: three_percents(77, 96, 39) = 36 / 45 / 18
-# non-mothers: three_percents(3575, 2854, 1685)  = 44 / 35 / 21
-two_years_women %>% group_by(new_child, budget_after) %>% summarise(count = n())
-# mothers: three_percents(83, 89, 40) = 39 / 42 / 19
-# non-mothers: three_percents(3157, 2804, 2127) = 39 / 35 / 26
-
-two_years_women %>% group_by(new_child, budget_avoid_before) %>% summarise(count = n())
-# mothers: three_percents(29, 69, 113) = 14 / 33 / 54
-# non-mothers: three_percents(1239, 3386, 3452) = 15 / 42 / 43
-two_years_women %>% group_by(new_child, budget_avoid_after) %>% summarise(count = n())
-# mothers: three_percents(51, 76, 83) = 24 / 36 / 40
-# non-mothers: three_percents(1616, 3526, 2877) = 20 / 44 / 36
-
-
-# Look closer at budget_change and budget_avoid_change, by gender
-# For both, women are a lot more likely to change
-two_years_new_parents %>% group_by(gender, budget_change) %>% summarise(count = n())
-two_years_new_parents %>% group_by(gender, budget_avoid_change) %>% summarise(count = n())
-# Women changing are most likely flipping on whether to cut defense or domestic spending
-# Women changing are more open to raising taxes
-two_years_new_parents %>% filter(budget_change == 1) %>% group_by(gender, budget_combo) %>% summarise(count = n())
-two_years_new_parents %>% filter(budget_avoid_change == 1) %>% group_by(gender, budget_avoid_combo) %>% summarise(count = n())
 
 # Chi square tests within new parents: high_income, low_income
 run_chisq(two_years_new_parents, "high_income", "ideo_direction") # p=0.29
