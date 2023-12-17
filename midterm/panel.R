@@ -34,6 +34,17 @@ run_chisq <- function(data, independent_var, dependent_var) {
   )))
 }
 
+summarize_continuous <- function(data, group_by, issue) {
+  return (  
+    data %>% group_by(eval(ecol(group_by))) %>% summarise(
+      before = mean(eval(parse(text=paste(c(issue, "_before"), collapse=""))), na.rm = TRUE),
+      after = mean(eval(parse(text=paste(c(issue, "_after"), collapse=""))), na.rm = TRUE),
+      delta = mean(eval(parse(text=paste(c(issue, "_delta"), collapse=""))), na.rm = TRUE),
+      delta_abs = mean(eval(parse(text=paste(c(issue, "_delta_abs"), collapse=""))), na.rm = TRUE),
+    )
+  )
+}
+
 two_percents <- function(one, two) {
   total <- one + two
   return(
@@ -576,6 +587,9 @@ t.test(aff_action_delta_abs~gender, data=filter_na(two_years_new_parents, "aff_a
 t.test(guns_delta_abs~gender, data=filter_na(two_years_new_parents, "guns_delta_abs")) # p=0.6765
 t.test(tax_or_spend_delta_abs~gender, data=filter_na(two_years_new_parents, "tax_or_spend_delta_abs")) # p=0.4833
 t.test(sales_or_inc_delta_abs~gender, data=filter_na(two_years_new_parents, "sales_or_inc_delta_abs")) # p=0.7338
+summarize_continuous(two_years_new_parents, "gender", "tax_or_spend")
+summarize_continuous(two_years_new_parents, "gender", "jobs_env")
+summarize_continuous(two_years_new_parents, "gender", "aff_action")
  
 # Compare new fathers to all men: tax or spend
 t.test(climate_change_delta~new_child, data=filter_na(two_years_men, "climate_change_delta")) # p=0.7033
@@ -590,6 +604,7 @@ t.test(aff_action_delta_abs~new_child, data=filter_na(two_years_men, "aff_action
 t.test(guns_delta_abs~new_child, data=filter_na(two_years_men, "guns_delta_abs")) # p=0.1481
 t.test(tax_or_spend_delta_abs~new_child, data=filter_na(two_years_men, "tax_or_spend_delta_abs")) # p=0.7743
 t.test(sales_or_inc_delta_abs~new_child, data=filter_na(two_years_men, "sales_or_inc_delta_abs")) # p=0.8004
+summarize_continuous(two_years_men, "new_child", "tax_or_spend")
 
 # Compare new mothers to all women: climate change, guns
 t.test(climate_change_delta~new_child, data=filter_na(two_years_women, "climate_change_delta")) # p=0.6708
@@ -604,6 +619,8 @@ t.test(aff_action_delta_abs~new_child, data=filter_na(two_years_women, "aff_acti
 t.test(guns_delta_abs~new_child, data=filter_na(two_years_women, "guns_delta_abs")) # p=0.01459*
 t.test(tax_or_spend_delta_abs~new_child, data=filter_na(two_years_women, "tax_or_spend_delta_abs")) # p=0.6958
 t.test(sales_or_inc_delta_abs~new_child, data=filter_na(two_years_women, "sales_or_inc_delta_abs")) # p=0.2613
+summarize_continuous(two_years_women, "new_child", "climate_change")
+summarize_continuous(two_years_women, "new_child", "guns")
 
 ### Categorical issues
 
@@ -717,14 +734,6 @@ t.test(guns_delta_abs~high_income, data=filter_na(two_years_new_parents, "guns_d
 t.test(tax_or_spend_delta_abs~high_income, data=filter_na(two_years_new_parents, "tax_or_spend_delta_abs")) # p=0.562
 t.test(sales_or_inc_delta_abs~high_income, data=filter_na(two_years_new_parents, "sales_or_inc_delta_abs")) # p=0.9427
 
-# TODO: turn into function, I'm doing this to compare new fathers with all men
-two_years_men %>% group_by(new_child) %>% summarise(
-  tax_or_spend_before = mean(tax_or_spend_before, na.rm = TRUE),
-  tax_or_spend_after = mean(tax_or_spend_after, na.rm = TRUE),
-  tax_or_spend_delta = mean(tax_or_spend_delta, na.rm = TRUE),
-  tax_or_spend_delta_abs = mean(tax_or_spend_delta_abs, na.rm = TRUE),
-)
-
 # Parents are less willing to raise taxes, more interested in spending cuts...but only in three_years
 ggplot(filter_na(three_years, "tax_or_spend_delta") %>% filter(new_child == 1), aes(x = tax_or_spend_delta)) +
   geom_histogram(fill = "steelblue", binwidth = 10) #+ facet_wrap(~ as_factor(new_child))
@@ -772,20 +781,7 @@ two_years %>% group_by(new_child, budget_avoid_after) %>% summarise(count = n())
 # others: three_percents(3967, 7098, 7125) = 22 / 39 / 39
 
 
-## Look more closely at the issues that showed differences by gender
-# New mothers vs new fathers
-two_years_new_parents %>% group_by(gender) %>% summarise(
-  jobs_env_before = mean(jobs_env_before, na.rm = TRUE),
-  jobs_env_after = mean(jobs_env_after, na.rm = TRUE),
-  jobs_env_delta_abs = mean(jobs_env_delta_abs, na.rm = TRUE),
-  jobs_env_delta = mean(jobs_env_delta, na.rm = TRUE),
-)
-two_years_new_parents %>% group_by(gender) %>% summarise(
-  aff_action_before = mean(aff_action_before, na.rm = TRUE),
-  aff_action_after = mean(aff_action_after, na.rm = TRUE),
-  aff_action_delta_abs = mean(aff_action_delta_abs, na.rm = TRUE),
-  aff_action_delta = mean(aff_action_delta, na.rm = TRUE),
-)
+
 two_years_new_parents %>% group_by(gender, budget_before) %>% summarise(count = n())
 # women: 77 / 96 / 39 = 212 = 36% / 45% / 18%
 # men: 64 / 111 / 29 = 204 = 31% / 54% / 14%
@@ -796,19 +792,6 @@ two_years_new_parents %>% group_by(gender, budget_change) %>% summarise(count = 
 # men %age who change: 4200 / (202)
 # women %age who change: 8600 / (208)
 
-# New mothers vs other women
-two_years_women %>% group_by(new_child) %>% summarise(
-  climate_change_before = mean(climate_change_before, na.rm = TRUE),
-  climate_change_after = mean(climate_change_after, na.rm = TRUE),
-  climate_change_delta_abs = mean(climate_change_delta_abs, na.rm = TRUE),
-  climate_change_delta = mean(climate_change_delta, na.rm = TRUE),
-)
-two_years_women %>% group_by(new_child) %>% summarise(
-  guns_before = mean(guns_before, na.rm = TRUE),
-  guns_after = mean(guns_after, na.rm = TRUE),
-  guns_delta_abs = mean(guns_delta_abs, na.rm = TRUE),
-  guns_delta = mean(guns_delta, na.rm = TRUE),
-)
 two_years_women %>% group_by(new_child, budget_before) %>% summarise(count = n())
 # mothers: three_percents(77, 96, 39) = 36 / 45 / 18
 # non-mothers: three_percents(3575, 2854, 1685)  = 44 / 35 / 21
