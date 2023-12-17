@@ -705,12 +705,10 @@ three_years %>% group_by(low_income) %>% summarise(count = n())
 ggplot(three_years %>% filter(!is.na(income_quintile)) %>% filter(new_child == 1), aes(x = income)) +
   geom_histogram(fill = "steelblue", binwidth = 1)
 
-
-
-
-# Comparing high-income parents to other parents, same for low-income
 two_years_high_income <- two_years %>% filter(high_income == 1)
 two_years_low_income <- two_years %>% filter(high_income == 0)
+
+# Ideology & party: nothing
 two_years %>% filter(!is.na(high_income)) %>% group_by(new_child, high_income) %>% summarise(
   ideo_before = mean(ideo_before, na.rm = TRUE),
   ideo_after = mean(ideo_after, na.rm = TRUE),
@@ -721,83 +719,43 @@ two_years %>% filter(!is.na(high_income)) %>% group_by(new_child, high_income) %
   pid_delta = mean(pid_delta, na.rm = TRUE),
   pid_delta_abs = mean(pid_delta_abs, na.rm = TRUE),
 )
-t.test(ideo_delta~high_income, data=filter_na(two_years_new_parents, "ideo_delta")) # p = 0.9682
-t.test(pid_delta~high_income, data=filter_na(two_years_new_parents, "pid_delta")) # p = 0.977
-t.test(ideo_delta_abs~high_income, data=filter_na(two_years_new_parents, "ideo_delta")) # p = 0.0287**
-t.test(pid_delta_abs~high_income, data=filter_na(two_years_new_parents, "pid_delta")) # p = 0.4497
-t.test(ideo_delta~new_child, data=filter_na(two_years_high_income, "ideo_delta")) # p = 0.5725
-t.test(pid_delta~new_child, data=filter_na(two_years_high_income, "pid_delta")) # p = 0.7628
-t.test(ideo_delta_abs~new_child, data=filter_na(two_years_high_income, "ideo_delta")) # p = 0.2613
-t.test(pid_delta_abs~new_child, data=filter_na(two_years_high_income, "pid_delta")) # p = 0.1528
-t.test(ideo_delta~new_child, data=filter_na(two_years_low_income, "ideo_delta")) # p = 0.4406
-t.test(pid_delta~new_child, data=filter_na(two_years_low_income, "pid_delta")) # p = 0.2779
-t.test(ideo_delta_abs~new_child, data=filter_na(two_years_low_income, "ideo_delta")) # p = 0.04348**
-t.test(pid_delta_abs~new_child, data=filter_na(two_years_low_income, "pid_delta")) # p = 0.1083
+run_chisq(two_years_new_parents, "high_income", "ideo_direction") # p=0.517
+run_chisq(two_years_new_parents, "high_income", "pid_direction") # p=0.5566
+t.test(ideo_delta~high_income, data=filter_na(two_years_new_parents, "ideo_delta")) # p=0.8842
+t.test(pid_delta~high_income, data=filter_na(two_years_new_parents, "pid_delta")) # p=0.4337
+t.test(ideo_delta_abs~high_income, data=filter_na(two_years_new_parents, "ideo_delta")) # p=0.1004
+t.test(pid_delta_abs~high_income, data=filter_na(two_years_new_parents, "pid_delta")) # p=0.8435
+t.test(ideo_delta~new_child, data=filter_na(two_years_high_income, "ideo_delta")) # p=0.9653
+t.test(pid_delta~new_child, data=filter_na(two_years_high_income, "pid_delta")) # p=0.7799
+t.test(ideo_delta_abs~new_child, data=filter_na(two_years_high_income, "ideo_delta")) # p=0.2312
+t.test(pid_delta_abs~new_child, data=filter_na(two_years_high_income, "pid_delta")) # p=0.4288
+t.test(ideo_delta~new_child, data=filter_na(two_years_low_income, "ideo_delta")) # p=0.6019
+t.test(pid_delta~new_child, data=filter_na(two_years_low_income, "pid_delta")) # p=0.1405
+t.test(ideo_delta_abs~new_child, data=filter_na(two_years_low_income, "ideo_delta")) # p=0.4017
+t.test(pid_delta_abs~new_child, data=filter_na(two_years_low_income, "pid_delta")) # p=0.2996
 
-two_years_new_parents %>% filter_na("high_income") %>% group_by(high_income) %>% summarise(
-  ideo_before = mean(ideo_before, na.rm = TRUE),
-  ideo_after = mean(ideo_after, na.rm = TRUE),
-  ideo_delta = mean(ideo_delta, na.rm = TRUE),
-  ideo_delta_abs = mean(ideo_delta_abs, na.rm = TRUE),
-)
-two_years_low_income %>% filter_na("high_income") %>% group_by(new_child) %>% summarise(
-  ideo_before = mean(ideo_before, na.rm = TRUE),
-  ideo_after = mean(ideo_after, na.rm = TRUE),
-  ideo_delta = mean(ideo_delta, na.rm = TRUE),
-  ideo_delta_abs = mean(ideo_delta_abs, na.rm = TRUE),
-)
+# Comparing high-income new parents with other new parents: continuous: climate change
+t.test(climate_change_delta~high_income, data=filter_na(two_years_new_parents, "climate_change_delta")) # p=0.4601
+t.test(jobs_env_delta~high_income, data=filter_na(two_years_new_parents, "jobs_env_delta")) # p=0.1588
+t.test(aff_action_delta~high_income, data=filter_na(two_years_new_parents, "aff_action_delta")) # p=0.2171
+t.test(guns_delta~high_income, data=filter_na(two_years_new_parents, "guns_delta")) # p=0.2396
+t.test(tax_or_spend_delta~high_income, data=filter_na(two_years_new_parents, "tax_or_spend_delta")) # p=0.8402
+t.test(sales_or_inc_delta~high_income, data=filter_na(two_years_new_parents, "sales_or_inc_delta")) # p=0.6458
+t.test(climate_change_delta_abs~high_income, data=filter_na(two_years_new_parents, "climate_change_delta_abs")) # p=0.00521**
+t.test(jobs_env_delta_abs~high_income, data=filter_na(two_years_new_parents, "jobs_env_delta_abs")) # p=0.2419
+t.test(aff_action_delta_abs~high_income, data=filter_na(two_years_new_parents, "aff_action_delta_abs")) # p=0.4451
+t.test(guns_delta_abs~high_income, data=filter_na(two_years_new_parents, "guns_delta_abs")) # p=0.09408
+t.test(tax_or_spend_delta_abs~high_income, data=filter_na(two_years_new_parents, "tax_or_spend_delta_abs")) # p=0.9808
+t.test(sales_or_inc_delta_abs~high_income, data=filter_na(two_years_new_parents, "sales_or_inc_delta_abs")) # p=0.5666
+summarize_continuous(two_years_new_parents, "high_income", "climate_change")
 
+# Chi square tests within new parents: high_income, low_income: nothing
+run_chisq(two_years_new_parents, "high_income", "gay_marriage_change") # p=0.1
+run_chisq(two_years_new_parents, "high_income", "schip_change") # p=0.9467
+run_chisq(two_years_new_parents, "low_income", "schip_change") # p=0.4875
+run_chisq(two_years_new_parents, "high_income", "budget_change") # p=0.2925
+run_chisq(two_years_new_parents, "high_income", "budget_avoid_change") # p=0.8583
 
-
-t.test(climate_change_delta~high_income, data=filter_na(two_years_new_parents, "climate_change_delta")) # p=0.3505
-t.test(jobs_env_delta~high_income, data=filter_na(two_years_new_parents, "jobs_env_delta")) # p=0.3174
-t.test(aff_action_delta~high_income, data=filter_na(two_years_new_parents, "aff_action_delta")) # p=0.1575
-t.test(guns_delta~high_income, data=filter_na(two_years_new_parents, "guns_delta")) # p=0.3622
-t.test(tax_or_spend_delta~high_income, data=filter_na(two_years_new_parents, "tax_or_spend_delta")) # p=0.2071
-t.test(sales_or_inc_delta~high_income, data=filter_na(two_years_new_parents, "sales_or_inc_delta")) # p=0.4536
-t.test(climate_change_delta_abs~high_income, data=filter_na(two_years_new_parents, "climate_change_delta_abs")) # p=0.4348
-t.test(jobs_env_delta_abs~high_income, data=filter_na(two_years_new_parents, "jobs_env_delta_abs")) # p=0.5803
-t.test(aff_action_delta_abs~high_income, data=filter_na(two_years_new_parents, "aff_action_delta_abs")) # p=0.01992*
-t.test(guns_delta_abs~high_income, data=filter_na(two_years_new_parents, "guns_delta_abs")) # p=0.41
-t.test(tax_or_spend_delta_abs~high_income, data=filter_na(two_years_new_parents, "tax_or_spend_delta_abs")) # p=0.562
-t.test(sales_or_inc_delta_abs~high_income, data=filter_na(two_years_new_parents, "sales_or_inc_delta_abs")) # p=0.9427
-
-
-
-
-# Chi square tests within new parents: high_income, low_income
-run_chisq(two_years_new_parents, "high_income", "ideo_direction") # p=0.29
-run_chisq(two_years_new_parents, "high_income", "pid_direction") # p=0.5819
-run_chisq(two_years_new_parents, "high_income", "gay_marriage_change") # p=0.021*
-run_chisq(two_years_new_parents, "high_income", "schip_change") # p=0.1
-run_chisq(two_years_new_parents, "low_income", "schip_change") # p=0.8031
-run_chisq(two_years_new_parents, "high_income", "budget_change") # p=0.2812
-run_chisq(two_years_new_parents, "high_income", "budget_avoid_change") # p=0.08207
-
-two_years_new_parents %>% group_by(high_income) %>% summarise(
-  aff_action_before = mean(aff_action_before, na.rm = TRUE),
-  aff_action_after = mean(aff_action_after, na.rm = TRUE),
-  aff_action_delta_abs = mean(aff_action_delta_abs, na.rm = TRUE),
-  aff_action_delta = mean(aff_action_delta, na.rm = TRUE),
-)
-two_years_new_parents %>% filter(!is.na(high_income)) %>% group_by(high_income, gay_marriage_before) %>% summarise(count = n())
-two_years_new_parents %>% filter(!is.na(high_income)) %>% group_by(high_income, gay_marriage_after) %>% summarise(count = n())
-# high income before: 22 / 42 = 34 / 66
-# high income after: 24 / 40 = 38 / 62
-# low income before: 150 / 192 = 62 / 38
-# low income after: 160 / 184 = 47 / 53
-two_years %>% filter(!is.na(high_income)) %>% group_by(high_income, gay_marriage_before) %>% summarise(count = n())
-two_years %>% filter(!is.na(high_income)) %>% group_by(high_income, gay_marriage_after) %>% summarise(count = n())
-# high income before: two_percents(778, 1882) = 29 / 71
-# high income after: two_percents(652, 2006) = 25 / 75
-# low income before: two_percents(5490, 8250) = 40 / 60
-# low income after: two_percents(4988, 8730) = 36 / 64
-two_years %>% filter(!is.na(high_income), !is.na(gay_marriage_before)) %>% group_by(new_child, high_income, gay_marriage_before) %>% summarise(count = n())
-two_years %>% filter(!is.na(high_income), !is.na(gay_marriage_after)) %>% group_by(new_child, high_income, gay_marriage_after) %>% summarise(count = n())
+# SCHIP
 two_years %>% filter(!is.na(high_income), !is.na(schip_before)) %>% group_by(new_child, high_income, schip_before) %>% summarise(count = n())
 two_years %>% filter(!is.na(high_income), !is.na(schip_after)) %>% group_by(new_child, high_income, schip_after) %>% summarise(count = n())
-
-two_years_new_parents %>% filter(!is.na(high_income)) %>% group_by(high_income, schip_before) %>% summarise(count = n())
-two_years_new_parents %>% filter(!is.na(high_income)) %>% group_by(high_income, schip_after) %>% summarise(count = n())
-two_years %>% filter(!is.na(high_income)) %>% group_by(high_income, schip_before) %>% summarise(count = n())
-two_years %>% filter(!is.na(high_income)) %>% group_by(high_income, schip_after) %>% summarise(count = n())
