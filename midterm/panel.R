@@ -15,6 +15,17 @@ filter_na <- function (data_frame, column) {
   )
 }
 
+count_flippers <- function (data_frame, before, after, valid_values) {
+  valid_rows <- data_frame %>% filter(
+    eval(ecol(before)) %in% valid_values &
+    eval(ecol(after)) %in% valid_values
+  )
+  flippers <- valid_rows %>% filter(eval(ecol(before)) != eval(ecol(after)))
+  return(
+    round(nrow(flippers) * 100 / nrow(valid_rows), 1)
+  )
+}
+
 run_chisq <- function(data, independent_var, dependent_var) {
   filtered <- filter_na(data, dependent_var)
   return(chisq.test(table(
@@ -310,8 +321,6 @@ two_years <- add_categorical_opinions(two_years)
 
 
 
-# Add income quintiles: note that income options are different by cycle
-# These are approximate, since incomes are given in ranges
 ggplot(panel %>% filter(faminc_14 < 19), aes(x = faminc_14)) +
   geom_histogram(fill = "steelblue", binwidth = 1)
 panel %>% group_by(faminc_14) %>% summarise(count = n())
@@ -324,24 +333,8 @@ ggplot(three_years %>% filter(!is.na(income_quintile)), aes(x = income)) +
 ggplot(three_years %>% filter(!is.na(income_quintile)) %>% filter(new_child == 1), aes(x = income)) +
   geom_histogram(fill = "steelblue", binwidth = 1)
 
-# pid3: Too coarse-grained to use as ideology, though note people do flip
 # 1.1% people flipped between the major parties between 2010 and 2014
 # (limited to people who identified with one of the two major parties, ignoring those who flipped twice)
-count_flippers <- function (data_frame, before, after, valid_values) {
-  valid_rows <- data_frame %>% filter(
-    eval(ecol(before)) %in% valid_values &
-    eval(ecol(after)) %in% valid_values
-  )
-  flippers <- valid_rows %>% filter(eval(ecol(before)) != eval(ecol(after)))
-  flippers <- flippers %>% mutate(delta = eval(ecol(before)) - eval(ecol(after)))
-  #ggplot(flippers, aes(x = delta)) +
-  #  geom_histogram(fill = "steelblue", binwidth = 1)
-  #ggplot(flippers, aes(x = eval(ecol(before)))) +
-  #  geom_histogram(fill = "steelblue", binwidth = 1)
-  return(
-    round(nrow(flippers) * 100 / nrow(valid_rows), 1)
-  )
-}
 count_flippers(three_years, "pid3_10", "pid3_12", c(1:2))
 count_flippers(three_years, "pid7_10", "pid7_12", c(1:7)) # 20%
 count_flippers(three_years, "pid7_12", "pid7_14", c(1:7)) # 20%
@@ -859,9 +852,6 @@ two_years %>% filter(!is.na(low_income)) %>% group_by(low_income, schip_after) %
 # high income after: two_percents() = 
 # low income before: two_percents() = 
 # low income after: two_percents() = 
-
-# TODO: Look at SCHIP by income:
-#   2. Look at SCHIP distributions
 
 # Non-parents 0.03 more liberal, new parents identical before and after
 filter_na(two_years, "ideo_delta") %>%
