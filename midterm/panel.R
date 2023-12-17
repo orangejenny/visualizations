@@ -484,32 +484,12 @@ t.test(tax_or_spend_delta_abs~firstborn, data=filter_na(two_years, "tax_or_spend
 t.test(sales_or_inc_delta_abs~firstborn, data=filter_na(two_years, "sales_or_inc_delta_abs")) # p = 0.2689
 
 # Summary of continuous issues
-continuous_stats <- two_years %>% group_by(new_child) %>% summarise(
-  #climate_change_before = mean(climate_change_before, na.rm = TRUE),
-  climate_change_after = mean(climate_change_after, na.rm = TRUE),
-  #climate_change_delta = mean(climate_change_delta, na.rm = TRUE),
-  climate_change_delta_abs = mean(climate_change_delta_abs, na.rm = TRUE),
-  #jobs_env_before = mean(jobs_env_before, na.rm = TRUE),
-  jobs_env_after = mean(jobs_env_after, na.rm = TRUE),
-  #jobs_env_delta = mean(jobs_env_delta, na.rm = TRUE),
-  jobs_env_delta_abs = mean(jobs_env_delta_abs, na.rm = TRUE),
-  #aff_action_before = mean(aff_action_before, na.rm = TRUE),
-  aff_action_after = mean(aff_action_after, na.rm = TRUE),
-  #aff_action_delta = mean(aff_action_delta, na.rm = TRUE),
-  aff_action_delta_abs = mean(aff_action_delta_abs, na.rm = TRUE),
-  #guns_before = mean(guns_before, na.rm = TRUE),
-  guns_after = mean(guns_after, na.rm = TRUE),
-  #guns_delta = mean(guns_delta, na.rm = TRUE),
-  guns_delta_abs = mean(guns_delta_abs, na.rm = TRUE),
-  #tax_or_spend_before = mean(tax_or_spend_before, na.rm = TRUE),
-  tax_or_spend_after = mean(tax_or_spend_after, na.rm = TRUE),
-  #tax_or_spend_delta = mean(tax_or_spend_delta, na.rm = TRUE),
-  tax_or_spend_delta_abs = mean(tax_or_spend_delta_abs, na.rm = TRUE),
-  #sales_or_inc_before = mean(sales_or_inc_before, na.rm = TRUE),
-  sales_or_inc_after = mean(sales_or_inc_after, na.rm = TRUE),
-  #sales_or_inc_delta = mean(sales_or_inc_delta, na.rm = TRUE),
-  sales_or_inc_delta_abs = mean(sales_or_inc_delta_abs, na.rm = TRUE),
-)
+summarize_continuous(two_years, "new_child", "climate_change")
+summarize_continuous(two_years, "new_child", "jobs_env")
+summarize_continuous(two_years, "new_child", "aff_action")
+summarize_continuous(two_years, "new_child", "guns")
+summarize_continuous(two_years, "new_child", "tax_or_spend")
+summarize_continuous(two_years, "new_child", "sales_or_inc")
  
 # Non-response rates, continuous issues
 two_years %>% mutate(has_climate_change = if_else(is.na(climate_change_delta), 0, 1)) %>% group_by(new_child, has_climate_change) %>% summarise(count = n())
