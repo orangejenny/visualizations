@@ -5,9 +5,41 @@ library(tidyverse)
 # Functions: utilities #
 ########################
 
-# Prep column to eval
 ecol <- function (col_name) {
   return(parse(text=as.name(col_name)))
+}
+
+filter_na <- function (data_frame, column) {
+  return(
+    data_frame %>% filter(!is.na(eval(ecol(column))))
+  )
+}
+
+run_chisq <- function(data, independent_var, dependent_var) {
+  filtered <- filter_na(data, dependent_var)
+  return(chisq.test(table(
+    eval(parse(text=paste(c("filtered$", independent_var), collapse=""))),
+    eval(parse(text=paste(c("filtered", "$", dependent_var), collapse="")))
+  )))
+}
+
+two_percents <- function(one, two) {
+  total <- one + two
+  return(
+    paste(
+      round(one * 100 / total),
+      round(two * 100 / total)
+    )
+  )
+}
+
+three_percents <- function (one, two, three) {
+  total <- one + two + three
+  return(paste(
+    round(one * 100 / total),
+    round(two * 100 / total),
+    round(three * 100 / total)
+  ))
 }
 
 ###################
@@ -28,6 +60,123 @@ add_parenting <- function(df) {
                           child18num_12 == 0 & child18num_14 > 0,
                           child18num_10 == 0 & child18num_12 > 0),
     ) %>% select(-starts_with("child18num_"))
+  )
+}
+
+add_ideo <- function(df) {
+  valid = c(1:5)
+  return(
+    df %>% mutate(
+      ideo_before = if_else(cycle == 1214, ideo5_12, ideo5_10),
+      ideo_after = if_else(cycle == 1012, ideo5_12, ideo5_14),
+      ideo_delta = if_else(ideo_before %in% valid & ideo_after %in% valid, ideo_after - ideo_before, NA),
+      ideo_delta_abs = abs(ideo_delta),
+      ideo_direction = if_else(is.na(ideo_delta),
+                               NA,
+                               if_else(ideo_delta > 0, 
+                                       1, 
+                                       if_else(ideo_delta < 0, -1, 0)))
+    )
+  )
+}
+
+add_pid <- function(df) {
+  valid = c(1:7)
+  return(
+    df %>% mutate(
+      pid_before = if_else(cycle == 1214, pid7_12, pid7_10),
+      pid_after = if_else(cycle == 1012,  pid7_12, pid7_14),
+      pid_delta = if_else(pid_before %in% valid & pid_after %in% valid, pid_after - pid_before, NA),
+      pid_delta_abs = abs(pid_delta),
+      pid_direction = if_else(is.na(pid_delta),
+                              NA,
+                              if_else(pid_delta > 0,
+                                      1,
+                                      if_else(pid_delta < 0, -1, 0))),
+    )
+  )
+}
+
+add_continuous_opinions <- function (df) {
+  return(
+    df %>% mutate(
+      climate_change_before = if_else(cycle == 1214, CC12_321, CC10_321),
+      climate_change_after = if_else(cycle == 1012,  CC12_321, CC14_321),
+      jobs_env_before = if_else(cycle == 1214, CC12_325, CC10_325),
+      jobs_env_after = if_else(cycle == 1012,  CC12_325, CC14_325),
+      aff_action_before = if_else(cycle == 1214, CC12_327, CC10_327),
+      aff_action_after = if_else(cycle == 1012,  CC12_327, CC14_327),
+      guns_before = if_else(cycle == 1214, CC12_320, CC10_320),
+      guns_after = if_else(cycle == 1012,  CC12_320, CC14_320),
+      tax_or_spend_before = if_else(cycle == 1214, CC12_415r, CC10_415r),
+      tax_or_spend_after = if_else(cycle == 1012,  CC12_415r, CC14_415r),
+      sales_or_inc_before = if_else(cycle == 1214, CC12_416r, CC10_416r),
+      sales_or_inc_after = if_else(cycle == 1012,  CC12_416r, CC14_416r),
+    ) %>% mutate (
+      climate_change_before = if_else(climate_change_before %in% c(1:5), climate_change_before, NA),
+      climate_change_after = if_else(climate_change_after %in% c(1:5), climate_change_after, NA),
+      climate_change_delta = climate_change_after - climate_change_before,
+      climate_change_delta_abs = abs(climate_change_delta),
+      jobs_env_before = if_else(jobs_env_before %in% c(1:5), jobs_env_before, NA),
+      jobs_env_after = if_else(jobs_env_after %in% c(1:5), jobs_env_after, NA),
+      jobs_env_delta =  jobs_env_after - jobs_env_before,
+      jobs_env_delta_abs = abs(jobs_env_delta),
+      aff_action_before = if_else(aff_action_before %in% c(1:4), aff_action_before, NA),
+      aff_action_after = if_else(aff_action_after %in% c(1:4), aff_action_after, NA),
+      aff_action_delta = aff_action_after - aff_action_before,
+      aff_action_delta_abs = abs(aff_action_delta),
+      guns_before = if_else(guns_before %in% c(1:3), guns_before, NA),
+      guns_after = if_else(guns_after %in% c(1:3), guns_after, NA),
+      guns_delta =  guns_after - guns_before,
+      guns_delta_abs = abs(guns_delta),
+      tax_or_spend_before = if_else(tax_or_spend_before %in% c(0:100), tax_or_spend_before, NA),
+      tax_or_spend_after = if_else(tax_or_spend_after %in% c(0:100), tax_or_spend_after, NA),
+      tax_or_spend_delta = tax_or_spend_after - tax_or_spend_before,
+      tax_or_spend_delta_abs = abs(tax_or_spend_delta),
+      sales_or_inc_before = if_else(sales_or_inc_before %in% c(0:100), sales_or_inc_before, NA),
+      sales_or_inc_after = if_else(sales_or_inc_after %in% c(0:100), sales_or_inc_after, NA),
+      sales_or_inc_delta = sales_or_inc_after - sales_or_inc_before,
+      sales_or_inc_delta_abs = abs(sales_or_inc_delta),
+    ) %>% select(-ends_with("_320"), -ends_with("_321"), -ends_with("_325"), -ends_with("_327"),
+                 -ends_with("_415r"), -ends_with("_416r"))
+  )
+}
+
+add_categorical_opinions <- function (df) {
+  return(
+    df %>% mutate(
+      gay_marriage_before = if_else(cycle == 1214, CC12_326, CC10_326),
+      gay_marriage_after = if_else(cycle == 1012,  CC12_326, CC14_326),
+      schip_before = if_else(cycle == 1214, CC12_330B, CC10_330B),
+      schip_after = if_else(cycle == 1012,  CC12_330B, CC14_330B),
+      budget_before = if_else(cycle == 1214, CC12_328, CC10_328),
+      budget_after = if_else(cycle == 1012,  CC12_328, CC14_328),
+      budget_avoid_before = if_else(cycle == 1214, CC12_329, CC10_329),
+      budget_avoid_after = if_else(cycle == 1012,  CC12_329, CC14_329),
+    ) %>% mutate (
+      gay_marriage_before = if_else(gay_marriage_before %nin% c(1, 2), NA, gay_marriage_before),
+      gay_marriage_after = if_else(gay_marriage_after %nin% c(1, 2), NA, gay_marriage_after),
+      gay_marriage_change = if_else(
+        is.na(gay_marriage_before) | is.na(gay_marriage_after), NA,
+        if_else(gay_marriage_before == gay_marriage_after, 0, 1)),
+      schip_before = if_else(schip_before %nin% c(1, 2), NA, schip_before),
+      schip_after = if_else(schip_after %nin% c(1, 2), NA, schip_after),
+      schip_change = if_else(
+         is.na(schip_before) | is.na(schip_after), NA,
+         if_else(schip_before == schip_after, 0, 1)),
+      budget_before = if_else(budget_before %nin% c(1:3), NA, budget_before),
+      budget_after = if_else(budget_after %nin% c(1:3), NA, budget_after),
+      budget_change = if_else(
+        is.na(budget_before) | is.na(budget_after), NA,
+        if_else(budget_before == budget_after, 0, 1)),
+      budget_combo = budget_before * 10 + budget_after,
+      budget_avoid_before = if_else(budget_avoid_before %nin% c(1:3), NA, budget_avoid_before),
+      budget_avoid_after = if_else(budget_avoid_after %nin% c(1:3), NA, budget_avoid_after),
+      budget_avoid_change = if_else(
+        is.na(budget_avoid_before) | is.na(budget_avoid_after), NA,
+        if_else(budget_avoid_before == budget_avoid_after, 0, 1)),
+      budget_avoid_combo = budget_avoid_before * 10 + budget_avoid_after,
+    ) %>% select(-ends_with("_326"), -ends_with("_328"), -ends_with("_329"), -ends_with("_330B"))
   )
 }
 
@@ -108,7 +257,7 @@ three_years <- panel %>% zap_labels() %>%
     pew_religimp = if_else(pew_religimp_14 < 5, pew_religimp_14, if_else(pew_religimp_12 < 5, pew_religimp_12, pew_religimp_10)), # importance of religion (1 high - 4 little)
   ) %>% 
   mutate(
-    # Add income brackets
+    # Add income brackets. These are approximate, since incomes are given in ranges.
     income_quintile = case_when(
       income %in% c(1, 2) ~ 1,
       income %in% c(3, 4) ~ 2,
@@ -143,6 +292,18 @@ two_years <- merge(
 three_years <- add_parenting(three_years)
 two_years <- add_parenting(two_years)
 
+three_years <- add_ideo(three_years)
+two_years <- add_ideo(two_years)
+
+three_years <- add_pid(three_years)
+two_years <- add_pid(two_years)
+
+three_years <- add_continuous_opinions(three_years)
+two_years <- add_continuous_opinions(two_years)
+
+three_years <- add_categorical_opinions(three_years)
+two_years <- add_categorical_opinions(two_years)
+
 ############
 # Analysis #
 ############
@@ -162,135 +323,6 @@ ggplot(three_years %>% filter(!is.na(income_quintile)), aes(x = income)) +
   geom_histogram(fill = "steelblue", binwidth = 1)
 ggplot(three_years %>% filter(!is.na(income_quintile)) %>% filter(new_child == 1), aes(x = income)) +
   geom_histogram(fill = "steelblue", binwidth = 1)
-   
-
-
-
-
-add_ideo <- function(df) {
-  valid = c(1:5)
-  return(
-    df %>% mutate(
-      ideo_before = if_else(cycle == 1214, ideo5_12, ideo5_10),
-      ideo_after = if_else(cycle == 1012, ideo5_12, ideo5_14),
-      ideo_delta = if_else(ideo_before %in% valid & ideo_after %in% valid, ideo_after - ideo_before, NA),
-      ideo_delta_abs = abs(ideo_delta),
-      ideo_direction = if_else(is.na(ideo_delta),
-                               NA,
-                               if_else(ideo_delta > 0, 
-                                       1, 
-                                       if_else(ideo_delta < 0, -1, 0)))
-    )
-  )
-}
-three_years <- add_ideo(three_years)
-two_years <- add_ideo(two_years)
-
-add_pid <- function(df) {
-  valid = c(1:7)
-  return(
-    df %>% mutate(
-      pid_before = if_else(cycle == 1214, pid7_12, pid7_10),
-      pid_after = if_else(cycle == 1012,  pid7_12, pid7_14),
-      pid_delta = if_else(pid_before %in% valid & pid_after %in% valid, pid_after - pid_before, NA),
-      pid_delta_abs = abs(pid_delta),
-      pid_direction = if_else(is.na(pid_delta),
-                              NA,
-                              if_else(pid_delta > 0,
-                                      1,
-                                      if_else(pid_delta < 0, -1, 0))),
-    )
-  )
-}
-three_years <- add_pid(three_years)
-two_years <- add_pid(two_years)
-
-add_continuous_opinions <- function (df) {
-  return(
-    df %>% mutate(
-      climate_change_before = if_else(cycle == 1214, CC12_321, CC10_321),
-      climate_change_after = if_else(cycle == 1012,  CC12_321, CC14_321),
-      jobs_env_before = if_else(cycle == 1214, CC12_325, CC10_325),
-      jobs_env_after = if_else(cycle == 1012,  CC12_325, CC14_325),
-      aff_action_before = if_else(cycle == 1214, CC12_327, CC10_327),
-      aff_action_after = if_else(cycle == 1012,  CC12_327, CC14_327),
-      guns_before = if_else(cycle == 1214, CC12_320, CC10_320),
-      guns_after = if_else(cycle == 1012,  CC12_320, CC14_320),
-      tax_or_spend_before = if_else(cycle == 1214, CC12_415r, CC10_415r),
-      tax_or_spend_after = if_else(cycle == 1012,  CC12_415r, CC14_415r),
-      sales_or_inc_before = if_else(cycle == 1214, CC12_416r, CC10_416r),
-      sales_or_inc_after = if_else(cycle == 1012,  CC12_416r, CC14_416r),
-    ) %>% mutate (
-      climate_change_before = if_else(climate_change_before %in% c(1:5), climate_change_before, NA),
-      climate_change_after = if_else(climate_change_after %in% c(1:5), climate_change_after, NA),
-      climate_change_delta = climate_change_after - climate_change_before,
-      climate_change_delta_abs = abs(climate_change_delta),
-      jobs_env_before = if_else(jobs_env_before %in% c(1:5), jobs_env_before, NA),
-      jobs_env_after = if_else(jobs_env_after %in% c(1:5), jobs_env_after, NA),
-      jobs_env_delta =  jobs_env_after - jobs_env_before,
-      jobs_env_delta_abs = abs(jobs_env_delta),
-      aff_action_before = if_else(aff_action_before %in% c(1:4), aff_action_before, NA),
-      aff_action_after = if_else(aff_action_after %in% c(1:4), aff_action_after, NA),
-      aff_action_delta = aff_action_after - aff_action_before,
-      aff_action_delta_abs = abs(aff_action_delta),
-      guns_before = if_else(guns_before %in% c(1:3), guns_before, NA),
-      guns_after = if_else(guns_after %in% c(1:3), guns_after, NA),
-      guns_delta =  guns_after - guns_before,
-      guns_delta_abs = abs(guns_delta),
-      tax_or_spend_before = if_else(tax_or_spend_before %in% c(0:100), tax_or_spend_before, NA),
-      tax_or_spend_after = if_else(tax_or_spend_after %in% c(0:100), tax_or_spend_after, NA),
-      tax_or_spend_delta = tax_or_spend_after - tax_or_spend_before,
-      tax_or_spend_delta_abs = abs(tax_or_spend_delta),
-      sales_or_inc_before = if_else(sales_or_inc_before %in% c(0:100), sales_or_inc_before, NA),
-      sales_or_inc_after = if_else(sales_or_inc_after %in% c(0:100), sales_or_inc_after, NA),
-      sales_or_inc_delta = sales_or_inc_after - sales_or_inc_before,
-      sales_or_inc_delta_abs = abs(sales_or_inc_delta),
-    ) %>% select(-ends_with("_320"), -ends_with("_321"), -ends_with("_325"), -ends_with("_327"),
-                 -ends_with("_415r"), -ends_with("_416r"))
-  )
-}
-three_years <- add_continuous_opinions(three_years)
-two_years <- add_continuous_opinions(two_years)
-
-add_categorical_opinions <- function (df) {
-  return(
-    df %>% mutate(
-      gay_marriage_before = if_else(cycle == 1214, CC12_326, CC10_326),
-      gay_marriage_after = if_else(cycle == 1012,  CC12_326, CC14_326),
-      schip_before = if_else(cycle == 1214, CC12_330B, CC10_330B),
-      schip_after = if_else(cycle == 1012,  CC12_330B, CC14_330B),
-      budget_before = if_else(cycle == 1214, CC12_328, CC10_328),
-      budget_after = if_else(cycle == 1012,  CC12_328, CC14_328),
-      budget_avoid_before = if_else(cycle == 1214, CC12_329, CC10_329),
-      budget_avoid_after = if_else(cycle == 1012,  CC12_329, CC14_329),
-    ) %>% mutate (
-      gay_marriage_before = if_else(gay_marriage_before %nin% c(1, 2), NA, gay_marriage_before),
-      gay_marriage_after = if_else(gay_marriage_after %nin% c(1, 2), NA, gay_marriage_after),
-      gay_marriage_change = if_else(
-        is.na(gay_marriage_before) | is.na(gay_marriage_after), NA,
-        if_else(gay_marriage_before == gay_marriage_after, 0, 1)),
-      schip_before = if_else(schip_before %nin% c(1, 2), NA, schip_before),
-      schip_after = if_else(schip_after %nin% c(1, 2), NA, schip_after),
-      schip_change = if_else(
-         is.na(schip_before) | is.na(schip_after), NA,
-         if_else(schip_before == schip_after, 0, 1)),
-      budget_before = if_else(budget_before %nin% c(1:3), NA, budget_before),
-      budget_after = if_else(budget_after %nin% c(1:3), NA, budget_after),
-      budget_change = if_else(
-        is.na(budget_before) | is.na(budget_after), NA,
-        if_else(budget_before == budget_after, 0, 1)),
-      budget_combo = budget_before * 10 + budget_after,
-      budget_avoid_before = if_else(budget_avoid_before %nin% c(1:3), NA, budget_avoid_before),
-      budget_avoid_after = if_else(budget_avoid_after %nin% c(1:3), NA, budget_avoid_after),
-      budget_avoid_change = if_else(
-        is.na(budget_avoid_before) | is.na(budget_avoid_after), NA,
-        if_else(budget_avoid_before == budget_avoid_after, 0, 1)),
-      budget_avoid_combo = budget_avoid_before * 10 + budget_avoid_after,
-    ) %>% select(-ends_with("_326"), -ends_with("_328"), -ends_with("_329"), -ends_with("_330B"))
-  )
-}
-three_years <- add_categorical_opinions(three_years)
-two_years <- add_categorical_opinions(two_years)
 
 # pid3: Too coarse-grained to use as ideology, though note people do flip
 # 1.1% people flipped between the major parties between 2010 and 2014
@@ -362,11 +394,6 @@ three_years %>%
   group_by(new_child, ideo_direction) %>%
   summarise(count = n())
 
-filter_na <- function (data_frame, column) {
-  return(
-    data_frame %>% filter(!is.na(eval(ecol(column))))
-  )
-}
 
 # Average ideological change over two years: barely liberal
 two_years %>%
@@ -656,13 +683,6 @@ ggplot(filter_na(three_years, "tax_or_spend_delta") %>% filter(new_child == 1), 
 ggplot(three_years %>% filter(tax_or_spend_after < 101) %>% filter(new_child == 0), aes(x = tax_or_spend_after)) +
   geom_histogram(fill = "steelblue", binwidth = 10) #+ facet_wrap(~ as_factor(new_child))
 
-run_chisq <- function(data, independent_var, dependent_var) {
-  filtered <- filter_na(data, dependent_var)
-  return(chisq.test(table(
-    eval(parse(text=paste(c("filtered$", independent_var), collapse=""))),
-    eval(parse(text=paste(c("filtered", "$", dependent_var), collapse="")))
-  )))
-}
 
 # Chi square tests for categorical variables
 run_chisq(two_years, "new_child", "ideo_direction") # p=0.8664
@@ -798,14 +818,6 @@ two_years_women %>% group_by(new_child, budget_avoid_after) %>% summarise(count 
 # mothers: three_percents(51, 76, 83) = 24 / 36 / 40
 # non-mothers: three_percents(1616, 3526, 2877) = 20 / 44 / 36
 
-three_percents <- function (one, two, three) {
-  total <- one + two + three
-  return(paste(
-    round(one * 100 / total),
-    round(two * 100 / total),
-    round(three * 100 / total)
-  ))
-}
 
 # Look closer at budget_change and budget_avoid_change, by gender
 # For both, women are a lot more likely to change
@@ -846,15 +858,6 @@ two_years %>% filter(!is.na(high_income)) %>% group_by(high_income, gay_marriage
 # low income after: two_percents(4988, 8730) = 36 / 64
 two_years %>% filter(!is.na(high_income), !is.na(gay_marriage_before)) %>% group_by(new_child, high_income, gay_marriage_before) %>% summarise(count = n())
 two_years %>% filter(!is.na(high_income), !is.na(gay_marriage_after)) %>% group_by(new_child, high_income, gay_marriage_after) %>% summarise(count = n())
-two_percents <- function(one, two) {
-  total <- one + two
-  return(
-    paste(
-      round(one * 100 / total),
-      round(two * 100 / total)
-    )
-  )
-}
 two_years %>% filter(!is.na(high_income), !is.na(schip_before)) %>% group_by(new_child, high_income, schip_before) %>% summarise(count = n())
 two_years %>% filter(!is.na(high_income), !is.na(schip_after)) %>% group_by(new_child, high_income, schip_after) %>% summarise(count = n())
 
