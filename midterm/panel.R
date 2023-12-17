@@ -123,17 +123,17 @@ add_continuous_opinions <- function (df) {
   return(
     df %>% mutate(
       climate_change_before = if_else(cycle == 1214, CC12_321, CC10_321),
-      climate_change_after = if_else(cycle == 1012,  CC12_321, CC14_321),
+      climate_change_after = if_else(cycle == 1214,  CC14_321, CC12_321),
       jobs_env_before = if_else(cycle == 1214, CC12_325, CC10_325),
-      jobs_env_after = if_else(cycle == 1012,  CC12_325, CC14_325),
+      jobs_env_after = if_else(cycle == 1214,  CC14_325, CC12_325),
       aff_action_before = if_else(cycle == 1214, CC12_327, CC10_327),
-      aff_action_after = if_else(cycle == 1012,  CC12_327, CC14_327),
+      aff_action_after = if_else(cycle == 1214,  CC14_327, CC12_327),
       guns_before = if_else(cycle == 1214, CC12_320, CC10_320),
-      guns_after = if_else(cycle == 1012,  CC12_320, CC14_320),
+      guns_after = if_else(cycle == 1214,  CC14_320, CC12_320),
       tax_or_spend_before = if_else(cycle == 1214, CC12_415r, CC10_415r),
-      tax_or_spend_after = if_else(cycle == 1012,  CC12_415r, CC14_415r),
+      tax_or_spend_after = if_else(cycle == 1214,  CC14_415r, CC12_415r),
       sales_or_inc_before = if_else(cycle == 1214, CC12_416r, CC10_416r),
-      sales_or_inc_after = if_else(cycle == 1012,  CC12_416r, CC14_416r),
+      sales_or_inc_after = if_else(cycle == 1214,  CC14_416r, CC12_416r),
     ) %>% mutate (
       climate_change_before = if_else(climate_change_before %in% c(1:5), climate_change_before, NA),
       climate_change_after = if_else(climate_change_after %in% c(1:5), climate_change_after, NA),
@@ -168,35 +168,39 @@ add_categorical_opinions <- function (df) {
   return(
     df %>% mutate(
       gay_marriage_before = if_else(cycle == 1214, CC12_326, CC10_326),
-      gay_marriage_after = if_else(cycle == 1012,  CC12_326, CC14_326),
+      gay_marriage_after = if_else(cycle == 1214,  CC14_326, CC12_326),
       schip_before = if_else(cycle == 1214, CC12_330B, CC10_330B),
-      schip_after = if_else(cycle == 1012,  CC12_330B, CC14_330B),
+      schip_after = if_else(cycle == 1214,  CC14_330B, CC12_330B),
       budget_before = if_else(cycle == 1214, CC12_328, CC10_328),
-      budget_after = if_else(cycle == 1012,  CC12_328, CC14_328),
+      budget_after = if_else(cycle == 1214,  CC14_328, CC12_328),
       budget_avoid_before = if_else(cycle == 1214, CC12_329, CC10_329),
-      budget_avoid_after = if_else(cycle == 1012,  CC12_329, CC14_329),
+      budget_avoid_after = if_else(cycle == 1214,  CC14_329, CC12_329),
     ) %>% mutate (
       gay_marriage_before = if_else(gay_marriage_before %nin% c(1, 2), NA, gay_marriage_before),
       gay_marriage_after = if_else(gay_marriage_after %nin% c(1, 2), NA, gay_marriage_after),
       gay_marriage_change = if_else(
         is.na(gay_marriage_before) | is.na(gay_marriage_after), NA,
         if_else(gay_marriage_before == gay_marriage_after, 0, 1)),
+      gay_marriage_persists = if_else(cycle != 101214, NA, gay_marriage_change & CC12_326 == CC14_326),
       schip_before = if_else(schip_before %nin% c(1, 2), NA, schip_before),
       schip_after = if_else(schip_after %nin% c(1, 2), NA, schip_after),
       schip_change = if_else(
          is.na(schip_before) | is.na(schip_after), NA,
          if_else(schip_before == schip_after, 0, 1)),
+      schip_persists = if_else(cycle != 101214, NA, schip_change & CC12_330B == CC14_330B),
       budget_before = if_else(budget_before %nin% c(1:3), NA, budget_before),
       budget_after = if_else(budget_after %nin% c(1:3), NA, budget_after),
       budget_change = if_else(
         is.na(budget_before) | is.na(budget_after), NA,
         if_else(budget_before == budget_after, 0, 1)),
+      budget_persists = if_else(cycle != 101214, NA, budget_change & CC12_328 == CC14_328),
       budget_combo = budget_before * 10 + budget_after,
       budget_avoid_before = if_else(budget_avoid_before %nin% c(1:3), NA, budget_avoid_before),
       budget_avoid_after = if_else(budget_avoid_after %nin% c(1:3), NA, budget_avoid_after),
       budget_avoid_change = if_else(
         is.na(budget_avoid_before) | is.na(budget_avoid_after), NA,
         if_else(budget_avoid_before == budget_avoid_after, 0, 1)),
+      budget_avoid_persists = if_else(cycle != 101214, NA, budget_avoid_change & CC12_329 == CC14_329),
       budget_avoid_combo = budget_avoid_before * 10 + budget_avoid_after,
     ) %>% select(-ends_with("_326"), -ends_with("_328"), -ends_with("_329"), -ends_with("_330B"))
   )
@@ -505,13 +509,17 @@ two_years %>% group_by(new_child, schip_change) %>% summarise(count = n())
 two_years %>% group_by(new_child, budget_change) %>% summarise(count = n())
 two_years %>% group_by(new_child, budget_avoid_change) %>% summarise(count = n()) # highest NA responses, at 3%
 
-### Testing: categorical variables: both budget questions
+### Testing: categorical variables: both budget questions, but neither persists
 run_chisq(two_years, "new_child", "ideo_direction") # p=0.8664
 run_chisq(two_years, "new_child", "pid_direction") # p=0.3215, but p=0.07 when looking at firstborn
 run_chisq(two_years, "new_child", "gay_marriage_change") # p=0.1347
 run_chisq(two_years, "new_child", "schip_change") # p=0.3306
 run_chisq(two_years, "new_child", "budget_change") # p=0.00280**
 run_chisq(two_years, "new_child", "budget_avoid_change") # p=0.0154*
+run_chisq(three_years, "new_child", "gay_marriage_persists") # p=0.06199
+run_chisq(three_years, "new_child", "schip_persists") # p=0.6948
+run_chisq(three_years, "new_child", "budget_persists") # p=0.32
+run_chisq(three_years, "new_child", "budget_avoid_persists") # p=1
 run_chisq(two_years, "new_child", "gay_marriage_after") # p=0.2971
 run_chisq(two_years, "new_child", "schip_after") # p=0.8188
 run_chisq(two_years, "new_child", "budget_after") # p=0.224
