@@ -757,6 +757,8 @@ summarize_continuous(two_years_men, "new_child", "tax_or_spend")
 t.test(tax_or_spend_persists~new_child, data=filter_na(three_years_men, "tax_or_spend_persists")) # p=0.07183
 t.test(tax_or_spend_persists_abs~new_child, data=filter_na(three_years_men, "tax_or_spend_persists_abs")) # p=0.0003767
 
+t.test(climate_change_persists~high_income, data=filter_na(three_years_new_parents, "climate_change_persists")) # p=0.5825
+
 # Compare new mothers to all women: climate change, guns: none persist
 t.test(climate_change_delta~new_child, data=filter_na(two_years_women, "climate_change_delta")) # p=0.6708
 t.test(jobs_env_delta~new_child, data=filter_na(two_years_women, "jobs_env_delta")) # p=0.8081
@@ -790,6 +792,9 @@ run_chisq(two_years_new_parents, "gender", "budget_avoid_change") # p=0.0005327*
 
 run_chisq(three_years_new_parents, "gender", "budget_persists") # p=0.002303**
 run_chisq(three_years_new_parents, "gender", "budget_avoid_persists") # p=0.516
+
+run_chisq(three_years_high_income, "new_child", "schip_persists") # p=0.? "Chi-squared approximation may be incorrect"
+run_chisq(three_years_low_income, "new_child", "budget_persists") # p=0.09921
 
 # Comparing new fathers to new mothers on budget_change
 two_years_new_parents %>% group_by(gender, budget_before) %>% summarise(count = n())
@@ -854,7 +859,9 @@ ggplot(three_years %>% filter(!is.na(income_quintile)) %>% filter(new_child == 1
   geom_histogram(fill = "steelblue", binwidth = 1)
 
 two_years_high_income <- two_years %>% filter(high_income == 1)
+three_years_high_income <- three_years %>% filter(high_income == 1)
 two_years_low_income <- two_years %>% filter(high_income == 0)
+three_years_low_income <- three_years %>% filter(high_income == 0)
 
 # Ideology & party: nothing
 two_years %>% filter(!is.na(high_income)) %>% group_by(new_child, high_income) %>% summarise(
@@ -934,6 +941,9 @@ summarize_continuous_helper(filter_na(two_years, "high_income") %>% group_by(new
 
 t.test(climate_change_persists~high_income, data=filter_na(three_years_new_parents, "climate_change_persists")) # p=0.5825
 t.test(climate_change_persists_abs~high_income, data=filter_na(three_years_new_parents, "climate_change_persists_abs")) # p=0.5661
+
+t.test(climate_change_persists_abs~new_child, data=filter_na(three_years_low_income, "climate_change_persists_abs")) # p=0.05492
+t.test(jobs_env_persists_abs~new_child, data=filter_na(three_years_low_income, "jobs_env_persists_abs")) # p=0.4577
 
 # Chi square tests within new parents: high_income, low_income: nothing
 run_chisq(two_years_new_parents, "high_income", "gay_marriage_change") # p=0.1
