@@ -103,6 +103,11 @@ three_years = three_years.assign(
     ),
 )
 
+two_years = pd.concat([
+    three_years.assign(cycle=1012), # contains all data, but only look at 2010/2012
+    three_years.assign(cycle=1014)  # contains all data, but only look at 2012/2014
+])
+
 pass
 
 '''
@@ -443,15 +448,6 @@ drop_original_issues <- function (df) {
     )
   )
 }
-
-################
-# Extract data #
-################
-two_years <- merge(
-  three_years %>% mutate(cycle = 1012),  # contains all data, but only look at 2010/2012
-  three_years %>% mutate(cycle = 1214),  # contains all data, but only look at 2012/2014
-  all = TRUE
-)
 
 ##################
 # Transform data #
