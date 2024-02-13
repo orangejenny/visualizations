@@ -48,7 +48,7 @@ three_years = panel.loc[
 ]
 
 # Add cycle
-three_years = three_years.assign(cycle=lambda x: 101214)
+three_years = three_years.assign(cycle=101214)
 
 # Recode guns to be continuous (swapping 2 and 3 so that "no change" is in the middle of "less strict" and "more strict")
 kwargs = {}
@@ -58,52 +58,54 @@ for year in (10, 12, 14):
 three_years = three_years.assign(**kwargs)
 
 # Consolidate demographics, arbitrarily using later data if there are differences
-for demo in ('gender',):
+for demo in ('gender', 'race', 'investor', 'newsint', 'educ', 'marstat', 'pew_religimp'):
     old_labels = [f'{demo}_10', f'{demo}_12', f'{demo}_14']
     three_years[demo] = three_years[old_labels].bfill(axis=1).iloc[:, 0]
     three_years.drop(old_labels, axis=1, inplace=True)
 
+# Income: Start with faminc_14 because the buckets vary by year, and the 2014 buckets are more granular
+# Income brackets are approximate, since incomes are given in ranges.
+three_years.rename(columns={'faminc_14': 'income'}, inplace=True)
+three_years = three_years.assign(
+    income_quintile=lambda x:np.select(
+        [
+            x.income == 1,
+            x.income == 2,
+            x.income == 3,
+            x.income == 4,
+            x.income == 5,
+            x.income == 6,
+            x.income == 7,
+            x.income == 8,
+            x.income == 9,
+            x.income == 10, # note the 10 response could go into either 4th or 5th quintile
+            x.income == 11,
+            x.income == 12,
+            x.income == 13,
+            x.income == 14,
+            x.income == 15,
+            x.income == 16,
+        ],
+        [1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5],
+        default=np.NAN
+    ),
+    # "High income" is top 20% to match Reeves
+    high_income=lambda x: np.where(np.isnan(x.income_quintile), np.NAN, np.where(x.income_quintile == 5, 1, 0)),
+    # "Low income" is bottom 40%, to very roughly correspond with SCHIP eligibility
+    low_income=lambda x: np.select(
+        [
+            np.isnan(x.income_quintile),
+            x.income_quintile == 1,
+            x.income_quintile == 2,
+        ],
+        [np.NAN, 1, 1],
+        default=0
+    ),
+)
+
 pass
 
 '''
-# Build three base data frames (10-12, 12-14, 10-14)
-three_years <- panel %>% zap_labels() %>% 
-  ) %>% mutate(
-    
-    race = if_else(race_10 < 10, race_10, if_else(race_12 < 10, race_12, race_14)), # Limit to 1-8, categorical
-    income = faminc_14, # Use faminc_14 because the buckets vary by year, and the 2014 buckets are more granular
-    investor = if_else(investor_14 < 3, investor_14, if_else(investor_12 < 3, investor_12, investor_10)), # yes/no has money in stocks
-    newsint = if_else(newsint_14 < 5, newsint_14, if_else(newsint_12 < 5, newsint_12, newsint_10)), # interest in news/politics (1 high - 4 little)
-    educ = if_else(educ_10 < 7, educ_10, if_else(educ_12 < 7, educ_12, educ_14)), # Limit to 1-6, categorical
-    marstat = if_else(marstat_10 < 7, marstat_10, if_else(marstat_12 < 7, marstat_12, marstat_14)), # Limit to 1-6, categorical
-    pew_religimp = if_else(pew_religimp_14 < 5, pew_religimp_14, if_else(pew_religimp_12 < 5, pew_religimp_12, pew_religimp_10)), # importance of religion (1 high - 4 little)
-  ) %>% 
-  mutate(
-    # Add income brackets. These are approximate, since incomes are given in ranges.
-    income_quintile = case_when(
-      income %in% c(1, 2) ~ 1,
-      income %in% c(3, 4) ~ 2,
-      income %in% c(5, 6, 7) ~ 3,
-      income %in% c(8, 9, 10) ~ 4,  # note the 10 response could go into either 4th or 5th quintile
-      income %in% c(11, 12, 13, 14, 15, 16) ~ 5,
-      .default = NA
-    ),
-    # "High income" is top 20% to match Reeves
-    high_income = if_else(is.na(income_quintile), NA, if_else(income_quintile == 5, 1, 0)),
-    # "Low income" is bottom 40%, to very roughly correspond with SCHIP eligibility
-    low_income = if_else(is.na(income_quintile), NA, if_else(income_quintile %in% c(1, 2), 1, 0)),
-  ) %>% 
-  # Now that demographics are consolidated, remove the year-specific columns
-  select(-starts_with("gender_")) %>% 
-  select(-starts_with("birthyr_")) %>% 
-  select(-starts_with("race_")) %>% 
-  select(-starts_with("faminc_")) %>% 
-  select(-starts_with("investor_")) %>% 
-  select(-starts_with("newsint_")) %>% 
-  select(-starts_with("educ_")) %>% 
-  select(-starts_with("marstat_")) %>% 
-  select(-starts_with("pew_religimp_")
-)
 ########################
 # Functions: utilities #
 ########################
