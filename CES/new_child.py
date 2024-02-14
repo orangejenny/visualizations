@@ -224,45 +224,25 @@ def add_parenting(df):
     )
     return df.drop([f'child18num_{year}' for year in [10, 12, 14]], axis=1)
 
-def _add_before_after(df, before_pattern, after_prefix):
-    df[f'{after_prefix}_before'] = np.where(df.cycle == 1214, df[before_pattern.replace('XX', '12')], df[before_pattern.replace('XX', '10')])
-    df[f'{after_prefix}_after'] = np.where(df.cycle == 1012, df[before_pattern.replace('XX', '12')], df[before_pattern.replace('XX', '14')])
+def add_continuous(df, before_pattern, prefix, lower_bound, upper_bound):
+    df[f'{prefix}_before'] = np.where(df.cycle == 1214, df[before_pattern.replace('XX', '12')], df[before_pattern.replace('XX', '10')])
+    df[f'{prefix}_after'] = np.where(df.cycle == 1012, df[before_pattern.replace('XX', '12')], df[before_pattern.replace('XX', '14')])
 
-def add_ideo(df):
-    _add_before_after(df, 'ideo5_XX', 'ideo')
-
-    df['ideo_delta'] = df['ideo_after'] - df['ideo_before']
-    df = df.assign(lower_bound=1, upper_bound=5)
+    df[f'{prefix}_delta'] = df[f'{prefix}_after'] - df[f'{prefix}_before']
+    df = df.assign(lower_bound=lower_bound, upper_bound=upper_bound)
     df.loc[np.logical_or(
-        np.logical_or(np.less(df['ideo_before'], df.lower_bound), np.greater(df['ideo_before'], df.upper_bound)),
-        np.logical_or(np.less(df['ideo_after'], df.lower_bound), np.greater(df['ideo_after'], df.upper_bound))
-    ), 'ideo_delta'] = np.nan
+        np.logical_or(np.less(df[f'{prefix}_before'], df.lower_bound), np.greater(df[f'{prefix}_before'], df.upper_bound)),
+        np.logical_or(np.less(df[f'{prefix}_after'], df.lower_bound), np.greater(df[f'{prefix}_after'], df.upper_bound))
+    ), f'{prefix}_delta'] = np.nan
     df.drop(['lower_bound', 'upper_bound'], axis=1)
 
-    df['ideo_delta_abs'] = abs(df['ideo_delta'])
+    df[f'{prefix}_delta_abs'] = abs(df[f'{prefix}_delta'])
 
-    df['ideo_direction'] = np.where(df['ideo_delta'] > 0, 1, np.where(df['ideo_delta'] < 0, -1, 0))
-    df.loc[np.isnan(df['ideo_delta']), 'ideo_direction'] = np.nan
+    df[f'{prefix}_direction'] = np.where(df[f'{prefix}_delta'] > 0, 1, np.where(df[f'{prefix}_delta'] < 0, -1, 0))
+    df.loc[np.isnan(df[f'{prefix}_delta']), f'{prefix}_direction'] = np.nan
 
     return df
 '''
-
-add_pid <- function(df) {
-  valid = c(1:7)
-  return(
-    df %>% mutate(
-      pid_before = if_else(cycle == 1214, pid7_12, pid7_10),
-      pid_after = if_else(cycle == 1012,  pid7_12, pid7_14),
-      pid_delta = if_else(pid_before %in% valid & pid_after %in% valid, pid_after - pid_before, NA),
-      pid_delta_abs = abs(pid_delta),
-      pid_direction = if_else(is.na(pid_delta),
-                              NA,
-                              if_else(pid_delta > 0,
-                                      1,
-                                      if_else(pid_delta < 0, -1, 0))),
-    )
-  )
-}
 
 add_continuous_opinions <- function (df) {
   return(
@@ -459,13 +439,16 @@ drop_original_issues <- function (df) {
 three_years = add_parenting(three_years)
 two_years = add_parenting(two_years)
 
-three_years = add_ideo(three_years)
-two_years = add_ideo(two_years)
+three_years = add_continuous(three_years, 'ideo5_XX', 'ideo', 1, 5)
+two_years = add_continuous(two_years, 'ideo5_XX', 'ideo', 1, 5)
+
+three_years = add_continuous(three_years, 'pid7_XX', 'pid', 1, 7)
+two_years = add_continuous(two_years, 'pid7_XX', 'pid', 1, 7)
+
+import pdb; pdb.set_trace()
+# df.head(20).loc[:, df.columns.str.contains('cycle') + df.columns.str.contains('ideo')]
 
 '''
-three_years <- add_pid(three_years)
-two_years <- add_pid(two_years)
-
 three_years <- add_continuous_opinions(three_years)
 two_years <- add_continuous_opinions(two_years)
 
