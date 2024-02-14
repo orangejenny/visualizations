@@ -382,33 +382,25 @@ two_years = add_categorical_opinions(two_years)
 three_years = add_composite_opinions(three_years)
 two_years = add_composite_opinions(two_years)
 
-import pdb; pdb.set_trace()
-# df.head(20).loc[:, df.columns.str.contains('cycle') + df.columns.str.contains('ideo')]
-'''
-
 ##########################
 # Analysis: Demographics #
 ##########################
 
 # In two cycles: 420 with new child, 18580 without
-two_years %>% group_by(new_child) %>% summarise(count = n())
+counts = two_years.groupby('new_child').count()
+assert counts.iloc[0, 0] == 18580
+assert counts.iloc[1, 0] == 420
 
 # In three cycles: 229 with new child in 2012, 9271 without
-three_years %>% group_by(new_child) %>% summarise(count = n())
-
-# Exploratory: age distributions
-ggplot(three_years, aes(x = age)) +
-  geom_histogram(fill = "steelblue", binwidth = 5)
-three_years %>% filter(age < 30) # n=282
-ggplot(two_years %>% filter(new_child == 1), aes(x = age)) + # this is surprisingly old
-  geom_histogram(fill = "steelblue", binwidth = 5)
-ggplot(panel %>% filter(child18_12 == 1 & child18num_12 > child18num_10), aes(x = birthyr_12)) +
-  geom_histogram(fill = "steelblue", binwidth = 5)
+counts = three_years.groupby('new_child').count()
+assert counts.iloc[0, 0] == 9271
+assert counts.iloc[1, 0] == 229
 
 ############################
 # Analysis: Ideology/Party #
 ############################
 
+'''
 ### Exploratory: How often do people change ideology/party between two waves?
 count_flippers(three_years, "pid3_10", "pid3_12", c(1:2)) # 0.8%: pid3 is too coarse to be useful
 count_flippers(three_years, "pid7_10", "pid7_12", c(1:7)) # 20%
