@@ -224,22 +224,28 @@ def add_parenting(df):
     )
     return df.drop([f'child18num_{year}' for year in [10, 12, 14]], axis=1)
 
+def _add_before_after(df, before_pattern, after_prefix):
+    df[f'{after_prefix}_before'] = np.where(df.cycle == 1214, df[before_pattern.replace('XX', '12')], df[before_pattern.replace('XX', '10')])
+    df[f'{after_prefix}_after'] = np.where(df.cycle == 1012, df[before_pattern.replace('XX', '12')], df[before_pattern.replace('XX', '14')])
+
+def add_ideo(df):
+    _add_before_after(df, 'ideo5_XX', 'ideo')
+
+    df['ideo_delta'] = df['ideo_after'] - df['ideo_before']
+    df = df.assign(lower_bound=1, upper_bound=5)
+    df.loc[np.logical_or(
+        np.logical_or(np.less(df['ideo_before'], df.lower_bound), np.greater(df['ideo_before'], df.upper_bound)),
+        np.logical_or(np.less(df['ideo_after'], df.lower_bound), np.greater(df['ideo_after'], df.upper_bound))
+    ), 'ideo_delta'] = np.nan
+    df.drop(['lower_bound', 'upper_bound'], axis=1)
+
+    df['ideo_delta_abs'] = abs(df['ideo_delta'])
+
+    df['ideo_direction'] = np.where(df['ideo_delta'] > 0, 1, np.where(df['ideo_delta'] < 0, -1, 0))
+    df.loc[np.isnan(df['ideo_delta']), 'ideo_direction'] = np.nan
+
+    return df
 '''
-add_ideo <- function(df) {
-  valid = c(1:5)
-  return(
-    df %>% mutate(
-      ideo_before = if_else(cycle == 1214, ideo5_12, ideo5_10),
-      ideo_after = if_else(cycle == 1012, ideo5_12, ideo5_14),
-      ideo_delta = if_else(ideo_before %in% valid & ideo_after %in% valid, ideo_after - ideo_before, NA),
-      ideo_delta_abs = abs(ideo_delta),
-      ideo_direction = if_else(is.na(ideo_delta),
-                               NA,
-                               if_else(ideo_delta > 0, 
-                                       if_else(ideo_delta < 0, -1, 0)))
-    )
-  )
-}
 
 add_pid <- function(df) {
   valid = c(1:7)
@@ -453,10 +459,10 @@ drop_original_issues <- function (df) {
 three_years = add_parenting(three_years)
 two_years = add_parenting(two_years)
 
-'''
-three_years <- add_ideo(three_years)
-two_years <- add_ideo(two_years)
+three_years = add_ideo(three_years)
+two_years = add_ideo(two_years)
 
+'''
 three_years <- add_pid(three_years)
 two_years <- add_pid(two_years)
 
