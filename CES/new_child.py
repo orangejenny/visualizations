@@ -238,8 +238,11 @@ def _nan_out_of_bounds(df, label, lower_bound=None, upper_bound=None):
 
 
 def _add_before_after(df, before_pattern, prefix, lower_bound=None, upper_bound=None):
-    df[f'{prefix}_before'] = np.where(df.cycle == 1214, df[before_pattern.replace('XX', '12')], df[before_pattern.replace('XX', '10')])
-    df[f'{prefix}_after'] = np.where(df.cycle == 1012, df[before_pattern.replace('XX', '12')], df[before_pattern.replace('XX', '14')])
+    kwargs = {
+        f'{prefix}_before': np.where(df.cycle == 1214, df[before_pattern.replace('XX', '12')], df[before_pattern.replace('XX', '10')]),
+        f'{prefix}_after': np.where(df.cycle == 1012, df[before_pattern.replace('XX', '12')], df[before_pattern.replace('XX', '14')]),
+    }
+    df = df.assign(**kwargs)
     df = _nan_out_of_bounds(df, f'{prefix}_before', lower_bound, upper_bound)
     df = _nan_out_of_bounds(df, f'{prefix}_after', lower_bound, upper_bound)
     return df
@@ -253,22 +256,26 @@ def _drop_pattern(df, pattern):
 def add_continuous(df, before_pattern, prefix, lower_bound=None, upper_bound=None, drop=True):
     df = _add_before_after(df, before_pattern, prefix, lower_bound, upper_bound)
 
-    df[f'{prefix}_delta'] = df[f'{prefix}_after'] - df[f'{prefix}_before']
-    df[f'{prefix}_delta_abs'] = abs(df[f'{prefix}_delta'])
-
-    df[f'{prefix}_direction'] = np.where(df[f'{prefix}_delta'] > 0, 1, np.where(df[f'{prefix}_delta'] < 0, -1, 0))
+    kwargs = {
+        f'{prefix}_delta': lambda x: x[f'{prefix}_after'] - x[f'{prefix}_before'],
+        f'{prefix}_delta_abs': lambda x: abs(x[f'{prefix}_delta']),
+        f'{prefix}_direction': lambda x: np.where(x[f'{prefix}_delta'] > 0, 1, np.where(x[f'{prefix}_delta'] < 0, -1, 0)),
+    }
+    df = df.assign(**kwargs)
     df.loc[np.isnan(df[f'{prefix}_delta']), f'{prefix}_direction'] = np.nan # because some of the 0s should be NaN
 
     # Only relevant in three_years
-    df[f'{prefix}_persists'] = np.where(
-        np.logical_and(
-            df[f'{prefix}_delta'] != 0,
-            np.logical_not(df[f'{prefix}_delta'] * (df[before_pattern.replace('XX', '14')] - df[before_pattern.replace('XX', '12')]) < 0)
+    kwargs = {
+        f'{prefix}_persists': lambda x: np.where(
+            np.logical_and(
+                x[f'{prefix}_delta'] != 0,
+                np.logical_not(x[f'{prefix}_delta'] * (x[before_pattern.replace('XX', '14')] - x[before_pattern.replace('XX', '12')]) < 0)
+            ),
+            x[before_pattern.replace('XX', '14')] - x[before_pattern.replace('XX', '10')], 0
         ),
-        df[before_pattern.replace('XX', '14')] - df[before_pattern.replace('XX', '10')], 0
-    )
-    df.loc[np.logical_not(df.cycle == 101214), f'{prefix}_persists'] = np.nan
-    df[f'{prefix}_persists_abs'] = abs(df[f'{prefix}_persists'])
+        f'{prefix}_persists_abs': lambda x: abs(x[f'{prefix}_persists']),
+    }
+    df = df.assign(**kwargs)
 
     if drop:
         _drop_pattern(df, before_pattern)
