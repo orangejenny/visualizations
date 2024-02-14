@@ -115,12 +115,8 @@ two_years = pd.concat([
 
 '''
 ########################
-# Functions: utilities #
+# TODO: Functions: utilities #
 ########################
-
-ecol <- function (col_name) {
-  return(parse(text=as.name(col_name)))
-}
 
 filter_na <- function (data_frame, column) {
   return(
@@ -225,19 +221,27 @@ def add_parenting(df):
     return df.drop([f'child18num_{year}' for year in [10, 12, 14]], axis=1)
 
 
+def _nan_out_of_bounds(df, label, lower_bound=None, upper_bound=None):
+    if lower_bound is None or upper_bound is None:
+        return df
+
+    df = df.assign(lower_bound=lower_bound, upper_bound=upper_bound)
+
+    df.loc[np.logical_or(
+        np.less(df[label], df.lower_bound),
+        np.greater(df[label], df.upper_bound)
+    ), label] = np.nan
+
+    df.drop(['lower_bound', 'upper_bound'], axis=1)
+
+    return df
+
+
 def _add_before_after(df, before_pattern, prefix, lower_bound=None, upper_bound=None):
     df[f'{prefix}_before'] = np.where(df.cycle == 1214, df[before_pattern.replace('XX', '12')], df[before_pattern.replace('XX', '10')])
     df[f'{prefix}_after'] = np.where(df.cycle == 1012, df[before_pattern.replace('XX', '12')], df[before_pattern.replace('XX', '14')])
-
-    if lower_bound and upper_bound:
-        df = df.assign(lower_bound=lower_bound, upper_bound=upper_bound)
-        for suffix in ('before', 'after'):
-            df.loc[np.logical_or(
-                np.less(df[f'{prefix}_{suffix}'], df.lower_bound),
-                np.greater(df[f'{prefix}_{suffix}'], df.upper_bound)
-            ), f'{prefix}_{suffix}'] = np.nan
-        df.drop(['lower_bound', 'upper_bound'], axis=1)
-
+    df = _nan_out_of_bounds(df, f'{prefix}_before', lower_bound, upper_bound)
+    df = _nan_out_of_bounds(df, f'{prefix}_after', lower_bound, upper_bound)
     return df
 
 
@@ -246,7 +250,7 @@ def _drop_pattern(df, pattern):
         df.pop(pattern.replace('XX', str(year)))
 
 
-def add_continuous(df, before_pattern, prefix, lower_bound=None, upper_bound=None):
+def add_continuous(df, before_pattern, prefix, lower_bound=None, upper_bound=None, drop=True):
     df = _add_before_after(df, before_pattern, prefix, lower_bound, upper_bound)
 
     df[f'{prefix}_delta'] = df[f'{prefix}_after'] - df[f'{prefix}_before']
@@ -266,12 +270,13 @@ def add_continuous(df, before_pattern, prefix, lower_bound=None, upper_bound=Non
     df.loc[np.logical_not(df.cycle == 101214), f'{prefix}_persists'] = np.nan
     df[f'{prefix}_persists_abs'] = abs(df[f'{prefix}_persists'])
 
-    _drop_pattern(df, before_pattern)
+    if drop:
+        _drop_pattern(df, before_pattern)
 
     return df
 
 
-def add_categorical(df, before_pattern, prefix, lower_bound=None, upper_bound=None):
+def add_categorical(df, before_pattern, prefix, lower_bound=None, upper_bound=None, drop=True):
     df = _add_before_after(df, before_pattern, prefix)
 
     df[f'{prefix}_change'] = np.where(np.equal(df[f'{prefix}_before'], df[f'{prefix}_after']), 0, 1)
@@ -285,13 +290,14 @@ def add_categorical(df, before_pattern, prefix, lower_bound=None, upper_bound=No
     ), 1, 0)
     df.loc[np.logical_not(df.cycle == 101214), f'{prefix}_persists'] = np.nan
 
-    _drop_pattern(df, before_pattern)
+    if drop:
+        _drop_pattern(df, before_pattern)
 
     return df
 
 
 def add_continuous_opinions(df):
-    df = add_continuous(df, 'CCXX_321', 'climate_change', 1, 5)
+    df = add_continuous(df, 'CCXX_321', 'climate_change', 1, 5, drop=False)
     df = add_continuous(df, 'CCXX_325', 'jobs_env', 1, 5)
     df = add_continuous(df, 'CCXX_327', 'aff_action', 1, 4)
     df = add_continuous(df, 'CCXX_320', 'guns', 1, 3)
@@ -301,81 +307,52 @@ def add_continuous_opinions(df):
 
 
 def add_categorical_opinions(df):
-    df = add_categorical(df, 'CCXX_326', 'gay_marriage', 1, 2)
+    df = add_categorical(df, 'CCXX_326', 'gay_marriage', 1, 2, drop=False)
     df = add_categorical(df, 'CCXX_330B', 'schip', 1, 2)
     df = add_categorical(df, 'CCXX_328', 'budget', 1, 3)
     df = add_categorical(df, 'CCXX_329', 'budget_avoid', 1, 3)
     return df
 
-'''
-add_composite_opinions <- function (df) {
-  return(
-    df %>% mutate(
-      # TODO: add in the jobs/environment question to this composite?
-      # CC10_321 is climate change: 1-5 with 1 liberal
-      # CC10_330C is clean energy act, with 1 support, 2, oppose, and other values invalid
-      # Composite is 1-5, with lower values more liberal
-      climate_composite_2010 = if_else(CC10_330C %nin% c(1:2), NA, (CC10_321 * 2.5 + CC10_330C) / 2),
-      climate_composite_2012 = if_else(CC12_330C %nin% c(1:2), NA, (CC12_321 * 2.5 + CC12_330C) / 2),
-      climate_composite_2014 = if_else(CC14_330C %nin% c(1:2), NA, (CC14_321 * 2.5 + CC14_330C) / 2),
-      # CC10_326 is gay marriage ban: 1 support, 2 oppose
-      # CC10_330G is ending don't ask don't tell: 1 support, 2 oppose, others invalid
-      gay_composite_2010 = if_else(CC10_330G %nin% c(1:2), NA, (CC10_326 + CC10_330G) / 2),
-      gay_composite_2012 = if_else(CC12_330G %nin% c(1:2), NA, (CC12_326 + CC12_330G) / 2),
-      gay_composite_2014 = if_else(CC14_330G %nin% c(1:2), NA, (CC14_326 + CC14_330G) / 2),
-      # CC10_414_1-CC10_414_6 are all usage of military for for different reasons: 1 yes, 2 no
-      # CC10_414_7 is a "none of the above" for the previous six: 1 yes, 2 no
-      military_composite_2010 = (CC10_414_1 + CC10_414_2 + CC10_414_3 + CC10_414_4 + CC10_414_5 + CC10_414_6 + if_else(CC10_414_7 == 1, 2, 1)) / 7,
-      military_composite_2012 = (CC12_414_1 + CC12_414_2 + CC12_414_3 + CC12_414_4 + CC12_414_5 + CC12_414_6 + if_else(CC12_414_7 == 1, 2, 1)) / 7,
-      military_composite_2014 = (CC14_414_1 + CC14_414_2 + CC14_414_3 + CC14_414_4 + CC14_414_5 + CC14_414_6 + if_else(CC14_414_7 == 1, 2, 1)) / 7,
-      # CC10_322_1-CC10_322_7 are all yes/no immigration questions, 8 and 9 are "nothing"/"none of the above" which aren't clearly liberal or conservative
-      # For 1,7, 1 is more liberal and 2 is more conservative
-      # For 2,3,4,5,6, 1 is more conservative and 2 is more liberal
-      # 2010: 1 2 3 4 7
-      # 2012: 1 2 3 4 5 6 
-      # 2014: 1 2 3 4 5 6
-      immigration_composite_2010 = (if_else(CC10_322_1 == 1, 2, 1) + CC10_322_2 + CC10_322_3 + CC10_322_4 + if_else(CC10_322_7 == 1, 2, 1)) / 5,
-      immigration_composite_2012 = (if_else(CC12_322_1 == 1, 2, 1) + CC12_322_2 + CC12_322_3 + CC12_322_4 + CC12_322_5 + CC12_322_6) / 6,
-      immigration_composite_2014 = (if_else(CC14_322_1 == 1, 2, 1) + CC14_322_2 + CC14_322_3 + CC14_322_4 + CC14_322_5 + CC14_322_6) / 6,
-    ) %>% mutate(
-      climate_composite_before = if_else(cycle == 1214, climate_composite_2012, climate_composite_2010),
-      gay_composite_before = if_else(cycle == 1214, gay_composite_2012, gay_composite_2010),
-      military_composite_before = if_else(cycle == 1214, military_composite_2012, military_composite_2010),
-      immigration_composite_before = if_else(cycle == 1214, immigration_composite_2012, immigration_composite_2010),
-      climate_composite_after = if_else(cycle == 1214, climate_composite_2014, climate_composite_2012),
-      gay_composite_after = if_else(cycle == 1214, gay_composite_2014, gay_composite_2012),
-      military_composite_after = if_else(cycle == 1214, military_composite_2014, military_composite_2012),
-      immigration_composite_after = if_else(cycle == 1214, immigration_composite_2014, immigration_composite_2012),
-    ) %>% mutate (
-      climate_composite_delta = climate_composite_after - climate_composite_before,
-      gay_composite_delta = gay_composite_after - gay_composite_before,
-      military_composite_delta = military_composite_after - military_composite_before,
-      immigration_composite_delta = immigration_composite_after - immigration_composite_before,
-      climate_composite_delta_abs = abs(climate_composite_delta),
-      gay_composite_delta_abs = abs(gay_composite_delta),
-      military_composite_delta_abs = abs(military_composite_delta),
-      immigration_composite_delta_abs = abs(immigration_composite_delta),
-      climate_composite_persists = if_else(
-        climate_composite_delta != 0 & !(climate_composite_delta * (climate_composite_2014 - climate_composite_2012) < 0),
-        climate_composite_2014 - climate_composite_2010, 0),
-      gay_composite_persists = if_else(
-        gay_composite_delta != 0 & !(gay_composite_delta * (gay_composite_2014 - gay_composite_2012) < 0),
-        gay_composite_2014 - gay_composite_2010, 0),
-      military_composite_persists = if_else(
-        military_composite_delta != 0 & !(military_composite_delta * (military_composite_2014 - military_composite_2012) < 0),
-        military_composite_2014 - military_composite_2010, 0),
-      immigration_composite_persists = if_else(
-        immigration_composite_delta != 0 & !(immigration_composite_delta * (immigration_composite_2014 - immigration_composite_2012) < 0),
-        immigration_composite_2014 - immigration_composite_2010, 0),
-      climate_composite_persists_abs = abs(climate_composite_persists),
-      gay_composite_persists_abs = abs(gay_composite_persists),
-      military_composite_persists_abs = abs(military_composite_persists),
-      immigration_composite_persists_abs = abs(immigration_composite_persists),
-    )
-  )
-}
+def add_composite_opinions(df):
+    for year in (10, 12, 14):
+        # TODO: add in the jobs/environment question to this composite?
+        # CC10_321 is climate change: 1-5 with 1 liberal
+        # CC10_330C is clean energy act, with 1 support, 2, oppose, and other values invalid
+        # Composite is 1-5, with lower values more liberal
+        df = _nan_out_of_bounds(df, f'CC{year}_330C', 1, 2)
+        df[f'climate_composite_20{year}'] = np.divide(np.add(np.multiply(df[f'CC{year}_321'], 2.5), df[f'CC{year}_330C']), 2)
 
-'''
+        # CC10_326 is gay marriage ban: 1 support, 2 oppose
+        # CC10_330G is ending don't ask don't tell: 1 support, 2 oppose, others invalid
+        df = _nan_out_of_bounds(df, f'CC{year}_330G', 1, 2)
+        df[f'gay_composite_20{year}'] = np.divide(np.add(df[f'CC{year}_326'], df[f'CC{year}_330G']), 2)
+
+        # CC10_414_1-CC10_414_6 are all usage of military for for different reasons: 1 yes, 2 no
+        # CC10_414_7 is a "none of the above" for the previous six: 1 yes, 2 no
+        df[f'CC{year}_414_7'] = np.where(df[f'CC{year}_414_7'] == 1, 2, 1) # TODO: move further up? This makes calling this function multiple times problematic.
+        df[f'military_composite_20{year}'] = np.divide(np.sum(df.loc[:, df.columns.str.startswith(f'CC{year}_414_')], axis=1), 7)
+
+        # Flip the 2 yes/no immigration questions that are opposite polarity of the other 5
+        # For 1,7, 1 is more liberal and 2 is more conservative
+        # For 2,3,4,5,6, 1 is more conservative and 2 is more liberal
+        # TODO: move further up? This makes calling this function multiple times problematic.
+        df[f'CC{year}_322_1'] = np.where(df[f'CC{year}_322_1'] == 1, 2, 1)
+        if year == 10:  # only asked in 2010
+            df[f'CC{year}_322_7'] = np.where(df[f'CC{year}_322_7'] == 1, 2, np.where(df[f'CC{year}_322_7'] == 2, 1, np.nan))
+
+    # CC10_322_1-CC10_322_7 are all yes/no immigration questions, 8 and 9 are "nothing"/"none of the above" which aren't clearly liberal or conservative
+    # 2010 asked 1 2 3 4 7, 2012 asked 1 2 3 4 5 6, 2014 asked 1 2 3 4 5 6
+    df[f'immigration_composite_2010'] = np.divide(np.add(np.sum(df.loc[:, df.columns.str.contains('CC10_322_[1-4]')], axis=1), df['CC10_322_7']), 5)
+    df[f'immigration_composite_2012'] = np.divide(np.sum(df.loc[:, df.columns.str.contains('CC12_322_[1-6]')], axis=1), 6)
+    df[f'immigration_composite_2014'] = np.divide(np.sum(df.loc[:, df.columns.str.contains('CC14_322_[1-6]')], axis=1), 6)
+
+    df = add_continuous(df, 'climate_composite_20XX', 'climate_composite')
+    df = add_continuous(df, 'gay_composite_20XX', 'gay_composite')
+    df = add_continuous(df, 'military_composite_20XX', 'military_composite')
+    df = add_continuous(df, 'immigration_composite_20XX', 'immigration_composite')
+
+    return df
+
 
 ##################
 # Transform data #
@@ -395,12 +372,12 @@ two_years = add_continuous_opinions(two_years)
 three_years = add_categorical_opinions(three_years)
 two_years = add_categorical_opinions(two_years)
 
+three_years = add_composite_opinions(three_years)
+two_years = add_composite_opinions(two_years)
+
 import pdb; pdb.set_trace()
 # df.head(20).loc[:, df.columns.str.contains('cycle') + df.columns.str.contains('ideo')]
-
 '''
-three_years <- add_composite_opinions(three_years)
-two_years <- add_composite_opinions(two_years)
 
 ##########################
 # Analysis: Demographics #
