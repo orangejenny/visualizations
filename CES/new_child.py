@@ -241,6 +241,11 @@ def _add_before_after(df, before_pattern, prefix, lower_bound=None, upper_bound=
     return df
 
 
+def _drop_pattern(df, pattern):
+    for year in (10, 12, 14):
+        df.pop(pattern.replace('XX', str(year)))
+
+
 def add_continuous(df, before_pattern, prefix, lower_bound=None, upper_bound=None):
     df = _add_before_after(df, before_pattern, prefix, lower_bound, upper_bound)
 
@@ -261,6 +266,8 @@ def add_continuous(df, before_pattern, prefix, lower_bound=None, upper_bound=Non
     df.loc[np.logical_not(df.cycle == 101214), f'{prefix}_persists'] = np.nan
     df[f'{prefix}_persists_abs'] = abs(df[f'{prefix}_persists'])
 
+    _drop_pattern(df, before_pattern)
+
     return df
 
 
@@ -277,6 +284,8 @@ def add_categorical(df, before_pattern, prefix, lower_bound=None, upper_bound=No
         df[before_pattern.replace('XX', '12')] == df[before_pattern.replace('XX', '14')]  # kept 2012 value in 2014
     ), 1, 0)
     df.loc[np.logical_not(df.cycle == 101214), f'{prefix}_persists'] = np.nan
+
+    _drop_pattern(df, before_pattern)
 
     return df
 
@@ -366,16 +375,6 @@ add_composite_opinions <- function (df) {
   )
 }
 
-drop_original_issues <- function (df) {
-  return(
-    df %>% select(
-      -ends_with("_320"), -contains("_321"), -ends_with("_325"), -ends_with("_326"),
-      -ends_with("_327"), -ends_with("_328"), -ends_with("_329"), -ends_with("_330B"),
-      -ends_with("_330C"), -ends_with("_330G"), -contains("_414_"),
-      -ends_with("_415r"), -ends_with("_416r")
-    )
-  )
-}
 '''
 
 ##################
@@ -402,9 +401,6 @@ import pdb; pdb.set_trace()
 '''
 three_years <- add_composite_opinions(three_years)
 two_years <- add_composite_opinions(two_years)
-
-three_years <- drop_original_issues(three_years)
-two_years <- drop_original_issues(two_years)
 
 ##########################
 # Analysis: Demographics #
