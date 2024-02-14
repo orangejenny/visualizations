@@ -6,6 +6,8 @@ panel = pd.read_stata("~/Documents/visualizations/midterm/CCES_Panel_Full3waves_
 # Drop most columns
 three_years = panel.loc[
     :,
+    panel.columns.str.contains('weight') +   # TODO
+
     # Ideology and partisanship
     panel.columns.str.startswith('ideo5_') + 
     panel.columns.str.contains('^pid3_1[024]', regex=True) +
