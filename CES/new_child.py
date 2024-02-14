@@ -224,22 +224,31 @@ def add_parenting(df):
     )
     return df.drop([f'child18num_{year}' for year in [10, 12, 14]], axis=1)
 
-def add_continuous(df, before_pattern, prefix, lower_bound, upper_bound):
+
+def _add_before_after(df, before_pattern, prefix, lower_bound=None, upper_bound=None):
     df[f'{prefix}_before'] = np.where(df.cycle == 1214, df[before_pattern.replace('XX', '12')], df[before_pattern.replace('XX', '10')])
     df[f'{prefix}_after'] = np.where(df.cycle == 1012, df[before_pattern.replace('XX', '12')], df[before_pattern.replace('XX', '14')])
 
-    df[f'{prefix}_delta'] = df[f'{prefix}_after'] - df[f'{prefix}_before']
-    df = df.assign(lower_bound=lower_bound, upper_bound=upper_bound)
-    df.loc[np.logical_or(
-        np.logical_or(np.less(df[f'{prefix}_before'], df.lower_bound), np.greater(df[f'{prefix}_before'], df.upper_bound)),
-        np.logical_or(np.less(df[f'{prefix}_after'], df.lower_bound), np.greater(df[f'{prefix}_after'], df.upper_bound))
-    ), f'{prefix}_delta'] = np.nan
-    df.drop(['lower_bound', 'upper_bound'], axis=1)
+    if lower_bound and upper_bound:
+        df = df.assign(lower_bound=lower_bound, upper_bound=upper_bound)
+        for suffix in ('before', 'after'):
+            df.loc[np.logical_or(
+                np.less(df[f'{prefix}_{suffix}'], df.lower_bound),
+                np.greater(df[f'{prefix}_{suffix}'], df.upper_bound)
+            ), f'{prefix}_{suffix}'] = np.nan
+        df.drop(['lower_bound', 'upper_bound'], axis=1)
 
+    return df
+
+
+def add_continuous(df, before_pattern, prefix, lower_bound=None, upper_bound=None):
+    df = _add_before_after(df, before_pattern, prefix, lower_bound, upper_bound)
+
+    df[f'{prefix}_delta'] = df[f'{prefix}_after'] - df[f'{prefix}_before']
     df[f'{prefix}_delta_abs'] = abs(df[f'{prefix}_delta'])
 
     df[f'{prefix}_direction'] = np.where(df[f'{prefix}_delta'] > 0, 1, np.where(df[f'{prefix}_delta'] < 0, -1, 0))
-    df.loc[np.isnan(df[f'{prefix}_delta']), f'{prefix}_direction'] = np.nan
+    df.loc[np.isnan(df[f'{prefix}_delta']), f'{prefix}_direction'] = np.nan # because some of the 0s should be NaN
 
     # Only relevant in three_years
     df[f'{prefix}_persists'] = np.where(
@@ -249,9 +258,28 @@ def add_continuous(df, before_pattern, prefix, lower_bound, upper_bound):
         ),
         df[before_pattern.replace('XX', '14')] - df[before_pattern.replace('XX', '10')], 0
     )
+    df.loc[np.logical_not(df.cycle == 101214), f'{prefix}_persists'] = np.nan
     df[f'{prefix}_persists_abs'] = abs(df[f'{prefix}_persists'])
 
     return df
+
+
+def add_categorical(df, before_pattern, prefix, lower_bound=None, upper_bound=None):
+    df = _add_before_after(df, before_pattern, prefix)
+
+    df[f'{prefix}_change'] = np.where(np.equal(df[f'{prefix}_before'], df[f'{prefix}_after']), 0, 1)
+    # distinguish between False and NaN
+    for suffix in ('before', 'after'):
+        df.loc[np.isnan(df[f'{prefix}_{suffix}']), f'{prefix}_change'] = np.nan
+
+    df[f'{prefix}_persists'] = np.where(np.logical_and(
+        df[before_pattern.replace('XX', '10')] != df[before_pattern.replace('XX', '12')], # change in 2010 vs 2012
+        df[before_pattern.replace('XX', '12')] == df[before_pattern.replace('XX', '14')]  # kept 2012 value in 2014
+    ), 1, 0)
+    df.loc[np.logical_not(df.cycle == 101214), f'{prefix}_persists'] = np.nan
+
+    return df
+
 
 def add_continuous_opinions(df):
     df = add_continuous(df, 'CCXX_321', 'climate_change', 1, 5)
@@ -262,49 +290,15 @@ def add_continuous_opinions(df):
     df = add_continuous(df, 'CCXX_416r', 'sales_or_inc', 0, 100)
     return df
 
-'''
-add_categorical_opinions <- function (df) {
-  return(
-    df %>% mutate(
-      gay_marriage_before = if_else(cycle == 1214, CC12_326, CC10_326),
-      gay_marriage_after = if_else(cycle == 1214,  CC14_326, CC12_326),
-      schip_before = if_else(cycle == 1214, CC12_330B, CC10_330B),
-      schip_after = if_else(cycle == 1214,  CC14_330B, CC12_330B),
-      budget_before = if_else(cycle == 1214, CC12_328, CC10_328),
-      budget_after = if_else(cycle == 1214,  CC14_328, CC12_328),
-      budget_avoid_before = if_else(cycle == 1214, CC12_329, CC10_329),
-      budget_avoid_after = if_else(cycle == 1214,  CC14_329, CC12_329),
-    ) %>% mutate (
-      gay_marriage_before = if_else(gay_marriage_before %nin% c(1, 2), NA, gay_marriage_before),
-      gay_marriage_after = if_else(gay_marriage_after %nin% c(1, 2), NA, gay_marriage_after),
-      gay_marriage_change = if_else(
-        is.na(gay_marriage_before) | is.na(gay_marriage_after), NA,
-        if_else(gay_marriage_before == gay_marriage_after, 0, 1)),
-      gay_marriage_persists = if_else(cycle != 101214, NA, gay_marriage_change & CC12_326 == CC14_326),
-      schip_before = if_else(schip_before %nin% c(1, 2), NA, schip_before),
-      schip_after = if_else(schip_after %nin% c(1, 2), NA, schip_after),
-      schip_change = if_else(
-         is.na(schip_before) | is.na(schip_after), NA,
-         if_else(schip_before == schip_after, 0, 1)),
-      schip_persists = if_else(cycle != 101214, NA, schip_change & CC12_330B == CC14_330B),
-      budget_before = if_else(budget_before %nin% c(1:3), NA, budget_before),
-      budget_after = if_else(budget_after %nin% c(1:3), NA, budget_after),
-      budget_change = if_else(
-        is.na(budget_before) | is.na(budget_after), NA,
-        if_else(budget_before == budget_after, 0, 1)),
-      budget_persists = if_else(cycle != 101214, NA, budget_change & CC12_328 == CC14_328),
-      budget_combo = budget_before * 10 + budget_after,
-      budget_avoid_before = if_else(budget_avoid_before %nin% c(1:3), NA, budget_avoid_before),
-      budget_avoid_after = if_else(budget_avoid_after %nin% c(1:3), NA, budget_avoid_after),
-      budget_avoid_change = if_else(
-        is.na(budget_avoid_before) | is.na(budget_avoid_after), NA,
-        if_else(budget_avoid_before == budget_avoid_after, 0, 1)),
-      budget_avoid_persists = if_else(cycle != 101214, NA, budget_avoid_change & CC12_329 == CC14_329),
-      budget_avoid_combo = budget_avoid_before * 10 + budget_avoid_after,
-    )
-  )
-}
 
+def add_categorical_opinions(df):
+    df = add_categorical(df, 'CCXX_326', 'gay_marriage', 1, 2)
+    df = add_categorical(df, 'CCXX_330B', 'schip', 1, 2)
+    df = add_categorical(df, 'CCXX_328', 'budget', 1, 3)
+    df = add_categorical(df, 'CCXX_329', 'budget_avoid', 1, 3)
+    return df
+
+'''
 add_composite_opinions <- function (df) {
   return(
     df %>% mutate(
@@ -399,13 +393,13 @@ two_years = add_continuous(two_years, 'pid7_XX', 'pid', 1, 7)
 three_years = add_continuous_opinions(three_years)
 two_years = add_continuous_opinions(two_years)
 
+three_years = add_categorical_opinions(three_years)
+two_years = add_categorical_opinions(two_years)
+
 import pdb; pdb.set_trace()
 # df.head(20).loc[:, df.columns.str.contains('cycle') + df.columns.str.contains('ideo')]
 
 '''
-three_years <- add_categorical_opinions(three_years)
-two_years <- add_categorical_opinions(two_years)
-
 three_years <- add_composite_opinions(three_years)
 two_years <- add_composite_opinions(two_years)
 
