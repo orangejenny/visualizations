@@ -50,12 +50,14 @@ three_years = panel.loc[
 # Add cycle
 three_years = three_years.assign(cycle=101214)
 
-# Recode guns to be continuous (swapping 2 and 3 so that "no change" is in the middle of "less strict" and "more strict")
-kwargs = {}
 for year in (10, 12, 14):
+    # Recode guns to be continuous (swapping 2 and 3 so that "no change" is in the middle of "less strict" and "more strict")
     label = f'CC{year}_320'
-    kwargs['new_' + label] = lambda x: np.where(x[label] == 2, 3, np.where(x[label] == 3, 2, 1))
-three_years = three_years.assign(**kwargs)
+    three_years.loc[:, label] = np.where(three_years[label] == 2, 3, np.where(three_years[label] == 3, 2, np.where(three_years[label] == 1, 1, np.nan)))
+
+    # Replace NA with 0 for child18num columns - seems this question was skipped if child18_{year} was No
+    label = f'child18num_{year}'
+    three_years.loc[np.isnan(three_years[label]), label] = 0
 
 # Consolidate demographics, arbitrarily using later data if there are differences
 for demo in ('gender', 'race', 'investor', 'newsint', 'educ', 'marstat', 'pew_religimp'):
@@ -105,10 +107,9 @@ three_years = three_years.assign(
 
 two_years = pd.concat([
     three_years.assign(cycle=1012), # contains all data, but only look at 2010/2012
-    three_years.assign(cycle=1014)  # contains all data, but only look at 2012/2014
+    three_years.assign(cycle=1214)  # contains all data, but only look at 2012/2014
 ])
 
-pass
 
 '''
 ########################
@@ -206,28 +207,22 @@ three_percents <- function (one, two, three) {
     round(three * 100 / total)
   ))
 }
+'''
 
 ###################
 # Functions: data #
 ###################
+def add_parenting(df):
+    df = df.assign(
+        new_child=lambda x:np.where(x.cycle == 1214, x.child18num_12 < x.child18num_14, x.child18num_10 < x.child18num_12),
+        firstborn=lambda x:np.where(
+            x.new_child == False, False,
+            np.where(x.cycle == 1214, x.child18num_12 == 0, x.child18num_10 == 0)
+        )
+    )
+    return df.drop([f'child18num_{year}' for year in [10, 12, 14]], axis=1)
 
-# Add columns for new child, new mother, new father
-# Note that there are separate columns for child18 and child18num, but
-# `panel %>% filter(child18num_14 > 1 & child18_14 == 2) %>% summarise(count = n()) == 0`
-# for all three cycles - perhaps child18num was skipped if child18 was asked?
-add_parenting <- function(df) {
-  return(
-    df %>% mutate(
-      new_child = if_else(cycle == 1214,
-                          child18num_12 < child18num_14,
-                          child18num_10 < child18num_12),
-      firstborn = if_else(cycle == 1214,
-                          child18num_12 == 0 & child18num_14 > 0,
-                          child18num_10 == 0 & child18num_12 > 0),
-    ) %>% select(-starts_with("child18num_"))
-  )
-}
-
+'''
 add_ideo <- function(df) {
   valid = c(1:5)
   return(
@@ -448,13 +443,15 @@ drop_original_issues <- function (df) {
     )
   )
 }
+'''
 
 ##################
 # Transform data #
 ##################
-three_years <- add_parenting(three_years)
-two_years <- add_parenting(two_years)
+three_years = add_parenting(three_years)
+two_years = add_parenting(two_years)
 
+'''
 three_years <- add_ideo(three_years)
 two_years <- add_ideo(two_years)
 
