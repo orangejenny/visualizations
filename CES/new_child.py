@@ -241,77 +241,28 @@ def add_continuous(df, before_pattern, prefix, lower_bound, upper_bound):
     df[f'{prefix}_direction'] = np.where(df[f'{prefix}_delta'] > 0, 1, np.where(df[f'{prefix}_delta'] < 0, -1, 0))
     df.loc[np.isnan(df[f'{prefix}_delta']), f'{prefix}_direction'] = np.nan
 
-    return df
-'''
-
-add_continuous_opinions <- function (df) {
-  return(
-    df %>% mutate(
-      climate_change_before = if_else(cycle == 1214, CC12_321, CC10_321),
-      climate_change_after = if_else(cycle == 1214,  CC14_321, CC12_321),
-      jobs_env_before = if_else(cycle == 1214, CC12_325, CC10_325),
-      jobs_env_after = if_else(cycle == 1214,  CC14_325, CC12_325),
-      aff_action_before = if_else(cycle == 1214, CC12_327, CC10_327),
-      aff_action_after = if_else(cycle == 1214,  CC14_327, CC12_327),
-      guns_before = if_else(cycle == 1214, CC12_320, CC10_320),
-      guns_after = if_else(cycle == 1214,  CC14_320, CC12_320),
-      tax_or_spend_before = if_else(cycle == 1214, CC12_415r, CC10_415r),
-      tax_or_spend_after = if_else(cycle == 1214,  CC14_415r, CC12_415r),
-      sales_or_inc_before = if_else(cycle == 1214, CC12_416r, CC10_416r),
-      sales_or_inc_after = if_else(cycle == 1214,  CC14_416r, CC12_416r),
-    ) %>% mutate (
-      climate_change_before = if_else(climate_change_before %in% c(1:5), climate_change_before, NA),
-      climate_change_after = if_else(climate_change_after %in% c(1:5), climate_change_after, NA),
-      climate_change_delta = climate_change_after - climate_change_before,
-      climate_change_delta_abs = abs(climate_change_delta),
-      climate_change_persists = if_else(
-        climate_change_delta != 0 & !(climate_change_delta * (CC14_321 - CC12_321) < 0),
-        CC14_321 - CC10_321, 0),
-      climate_change_persists_abs = abs(climate_change_persists),
-      jobs_env_before = if_else(jobs_env_before %in% c(1:5), jobs_env_before, NA),
-      jobs_env_after = if_else(jobs_env_after %in% c(1:5), jobs_env_after, NA),
-      jobs_env_delta = jobs_env_after - jobs_env_before,
-      jobs_env_delta_abs = abs(jobs_env_delta),
-      jobs_env_persists = if_else(
-        jobs_env_delta != 0 & !(jobs_env_delta * (CC14_325 - CC12_325) < 0),
-        CC14_325 - CC10_325, 0),
-      jobs_env_persists_abs = abs(jobs_env_persists),
-      aff_action_before = if_else(aff_action_before %in% c(1:4), aff_action_before, NA),
-      aff_action_after = if_else(aff_action_after %in% c(1:4), aff_action_after, NA),
-      aff_action_delta = aff_action_after - aff_action_before,
-      aff_action_delta_abs = abs(aff_action_delta),
-      aff_action_persists = if_else(
-        aff_action_delta != 0 & !(aff_action_delta * (CC14_327 - CC12_327) < 0),
-        CC14_327 - CC10_327, 0),
-      aff_action_persists_abs = abs(aff_action_persists),
-      guns_before = if_else(guns_before %in% c(1:3), guns_before, NA),
-      guns_after = if_else(guns_after %in% c(1:3), guns_after, NA),
-      guns_delta =  guns_after - guns_before,
-      guns_delta_abs = abs(guns_delta),
-      guns_persists = if_else(
-        guns_delta != 0 & !(guns_delta * (CC14_320 - CC12_320) < 0),
-        CC14_320 - CC10_320, 0),
-      guns_persists_abs = abs(guns_persists),
-      tax_or_spend_before = if_else(tax_or_spend_before %in% c(0:100), tax_or_spend_before, NA),
-      tax_or_spend_after = if_else(tax_or_spend_after %in% c(0:100), tax_or_spend_after, NA),
-      tax_or_spend_delta = tax_or_spend_after - tax_or_spend_before,
-      tax_or_spend_delta_abs = abs(tax_or_spend_delta),
-      tax_or_spend_persists = if_else(
-        tax_or_spend_delta != 0 & !(tax_or_spend_delta * (CC14_415r - CC12_415r) < 0),
-        CC14_415r - CC10_415r, 0),
-      tax_or_spend_persists_abs = abs(tax_or_spend_persists),
-      sales_or_inc_before = if_else(sales_or_inc_before %in% c(0:100), sales_or_inc_before, NA),
-      sales_or_inc_after = if_else(sales_or_inc_after %in% c(0:100), sales_or_inc_after, NA),
-      sales_or_inc_delta = sales_or_inc_after - sales_or_inc_before,
-      sales_or_inc_delta_abs = abs(sales_or_inc_delta),
-      sales_or_inc_persists = if_else(
-        sales_or_inc_delta != 0 & !(sales_or_inc_delta * (CC14_416r - CC12_416r) < 0),
-        CC14_416r - CC10_416r, 0),
-      sales_or_inc_persists_abs = abs(sales_or_inc_persists),
+    # Only relevant in three_years
+    df[f'{prefix}_persists'] = np.where(
+        np.logical_and(
+            df[f'{prefix}_delta'] != 0,
+            np.logical_not(df[f'{prefix}_delta'] * (df[before_pattern.replace('XX', '14')] - df[before_pattern.replace('XX', '12')]) < 0)
+        ),
+        df[before_pattern.replace('XX', '14')] - df[before_pattern.replace('XX', '10')], 0
     )
-  )
-}
+    df[f'{prefix}_persists_abs'] = abs(df[f'{prefix}_persists'])
 
+    return df
+
+def add_continuous_opinions(df):
+    df = add_continuous(df, 'CCXX_321', 'climate_change', 1, 5)
+    df = add_continuous(df, 'CCXX_325', 'jobs_env', 1, 5)
+    df = add_continuous(df, 'CCXX_327', 'aff_action', 1, 4)
+    df = add_continuous(df, 'CCXX_320', 'guns', 1, 3)
+    df = add_continuous(df, 'CCXX_415r', 'tax_or_spend', 0, 100)
+    df = add_continuous(df, 'CCXX_416r', 'sales_or_inc', 0, 100)
+    return df
+
+'''
 add_categorical_opinions <- function (df) {
   return(
     df %>% mutate(
@@ -445,13 +396,13 @@ two_years = add_continuous(two_years, 'ideo5_XX', 'ideo', 1, 5)
 three_years = add_continuous(three_years, 'pid7_XX', 'pid', 1, 7)
 two_years = add_continuous(two_years, 'pid7_XX', 'pid', 1, 7)
 
+three_years = add_continuous_opinions(three_years)
+two_years = add_continuous_opinions(two_years)
+
 import pdb; pdb.set_trace()
 # df.head(20).loc[:, df.columns.str.contains('cycle') + df.columns.str.contains('ideo')]
 
 '''
-three_years <- add_continuous_opinions(three_years)
-two_years <- add_continuous_opinions(two_years)
-
 three_years <- add_categorical_opinions(three_years)
 two_years <- add_categorical_opinions(two_years)
 
