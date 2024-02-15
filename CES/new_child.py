@@ -367,11 +367,11 @@ def add_composite_opinions(df):
 three_years = add_parenting(three_years)
 two_years = add_parenting(two_years)
 
-three_years = add_continuous(three_years, 'ideo5_XX', 'ideo', 1, 5)
-two_years = add_continuous(two_years, 'ideo5_XX', 'ideo', 1, 5)
+three_years = add_continuous(three_years, 'ideo5_XX', 'ideo', 1, 5, drop=False)
+two_years = add_continuous(two_years, 'ideo5_XX', 'ideo', 1, 5, drop=False)
 
 three_years = add_continuous(three_years, 'pid7_XX', 'pid', 1, 7, drop=False)
-two_years = add_continuous(two_years, 'pid7_XX', 'pid', 1, 7)
+two_years = add_continuous(two_years, 'pid7_XX', 'pid', 1, 7, drop=False)
 
 three_years = add_continuous_opinions(three_years)
 two_years = add_continuous_opinions(two_years)
@@ -412,23 +412,16 @@ assert 24.9, count_flippers(three_years, "ideo5_10", "ideo5_12", 1, 5)
 assert 20.1, count_flippers(three_years, "ideo5_12", "ideo5_14", 1, 5)
 assert 27.8, count_flippers(three_years, "ideo5_10", "ideo5_14", 1, 5)
 
-'''
 ### Exploratory: Ideology distribution across panel: roughly normal, skewing conservative
-panel %>% group_by(ideo5_10) %>% summarise(count = n())
-ggplot(three_years, aes(x = ideo5_10)) +
-  geom_histogram(fill = "steelblue", binwidth = 1)
-ggplot(three_years %>% filter(new_child == 1), aes(x = ideo5_10)) +
-  geom_histogram(fill = "steelblue", binwidth = 1)
+panel.groupby("ideo5_10").count().loc[:,'weight']
 
 ### Exploratory: Party distribution across panel
 # Not normal, but U-shaped, with more strong Democrats but similar total Dem/Rep
-panel %>% group_by(pid7_10) %>% summarise(count = n())
-ggplot(three_years, aes(x = pid7_10)) +
-  geom_histogram(fill = "steelblue", binwidth = 1)
+panel.groupby("pid7_10").count().loc[:,'weight']
 # Parents are still U-shaped, a little more liberal, also looks like more moderates
-ggplot(three_years %>% filter(new_child == 1), aes(x = pid7_10)) +
-  geom_histogram(fill = "steelblue", binwidth = 1)
+three_years.loc[np.equal(three_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'weight']
 
+'''
 ### Testing: ideological change: nothing significant
 t.test(ideo_delta~new_child, data=filter_na(two_years, "ideo_delta")) # p = 0.4108
 t.test(ideo_delta_abs~new_child, data=filter_na(two_years, "ideo_delta_abs")) # p = 0.6008
