@@ -113,28 +113,28 @@ two_years = pd.concat([
 ])
 
 
+########################
+# Functions: utilities #
+########################
+
+def count_flippers(df, before_label, after_label, lower_bound, upper_bound):
+    valid_rows = df.loc[
+        np.logical_and(
+            np.logical_and(
+                np.greater_equal(df[before_label], lower_bound),
+                np.greater_equal(df[after_label], lower_bound),
+            ),
+            np.logical_and(
+                np.less_equal(df[before_label], upper_bound),
+                np.less_equal(df[after_label], upper_bound),
+            )
+        ), [before_label, after_label]
+    ]
+    flippers = valid_rows.loc[np.not_equal(valid_rows[before_label], valid_rows[after_label]), :]
+    return round(len(flippers) * 100 / len(valid_rows), 1)
+
 '''
-########################
-# TODO: Functions: utilities #
-########################
-
-filter_na <- function (data_frame, column) {
-  return(
-    data_frame %>% filter(!is.na(eval(ecol(column))))
-  )
-}
-
-count_flippers <- function (data_frame, before, after, valid_values) {
-  valid_rows <- data_frame %>% filter(
-    eval(ecol(before)) %in% valid_values &
-    eval(ecol(after)) %in% valid_values
-  )
-  flippers <- valid_rows %>% filter(eval(ecol(before)) != eval(ecol(after)))
-  return(
-    round(nrow(flippers) * 100 / nrow(valid_rows), 1)
-  )
-}
-
+# TODO: delete
 run_chisq <- function(data, independent_var, dependent_var) {
   filtered <- filter_na(data, dependent_var)
   return(chisq.test(table(
@@ -370,7 +370,7 @@ two_years = add_parenting(two_years)
 three_years = add_continuous(three_years, 'ideo5_XX', 'ideo', 1, 5)
 two_years = add_continuous(two_years, 'ideo5_XX', 'ideo', 1, 5)
 
-three_years = add_continuous(three_years, 'pid7_XX', 'pid', 1, 7)
+three_years = add_continuous(three_years, 'pid7_XX', 'pid', 1, 7, drop=False)
 two_years = add_continuous(two_years, 'pid7_XX', 'pid', 1, 7)
 
 three_years = add_continuous_opinions(three_years)
@@ -400,16 +400,19 @@ assert counts.iloc[1, 0] == 229
 # Analysis: Ideology/Party #
 ############################
 
-'''
 ### Exploratory: How often do people change ideology/party between two waves?
-count_flippers(three_years, "pid3_10", "pid3_12", c(1:2)) # 0.8%: pid3 is too coarse to be useful
-count_flippers(three_years, "pid7_10", "pid7_12", c(1:7)) # 20%
-count_flippers(three_years, "pid7_12", "pid7_14", c(1:7)) # 20%
-count_flippers(three_years, "pid7_10", "pid7_14", c(1:7)) # 25%
-count_flippers(three_years, "ideo5_10", "ideo5_12", c(1:5)) # 25%
-count_flippers(three_years, "ideo5_12", "ideo5_14", c(1:5)) # 20%
-count_flippers(three_years, "ideo5_10", "ideo5_14", c(1:5)) # 28%
+# For pid3, 0.8%, too coarse to be useful
+assert 0.8, count_flippers(three_years, "pid3_10", "pid3_12", 1, 2)
 
+# For pid7, 20-25% each 2 years
+assert 20.9, count_flippers(three_years, "pid7_10", "pid7_12", 1, 7)
+assert 18.9, count_flippers(three_years, "pid7_12", "pid7_14", 1, 7)
+assert 25.2, count_flippers(three_years, "pid7_10", "pid7_14", 1, 7)
+assert 24.9, count_flippers(three_years, "ideo5_10", "ideo5_12", 1, 5)
+assert 20.1, count_flippers(three_years, "ideo5_12", "ideo5_14", 1, 5)
+assert 27.8, count_flippers(three_years, "ideo5_10", "ideo5_14", 1, 5)
+
+'''
 ### Exploratory: Ideology distribution across panel: roughly normal, skewing conservative
 panel %>% group_by(ideo5_10) %>% summarise(count = n())
 ggplot(three_years, aes(x = ideo5_10)) +
