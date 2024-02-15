@@ -1,11 +1,14 @@
 import numpy as np
 import pandas as pd
 
+from scipy.stats import ttest_ind
+
 panel = pd.read_stata("~/Documents/visualizations/midterm/CCES_Panel_Full3waves_VV_V4.dta", convert_categoricals=False)  # n=9500
 
 # Drop most columns
 three_years = panel.loc[
     :,
+    panel.columns.str.contains('caseid') +
     panel.columns.str.contains('weight') +   # TODO
 
     # Ideology and partisanship
@@ -49,8 +52,11 @@ three_years = panel.loc[
     panel.columns.str.startswith("pew_religimp_") # Limit to 1-4, 1 is "very important"
 ]
 
-# Add cycle
-three_years = three_years.assign(cycle=101214)
+# Add cycle and age
+three_years = three_years.assign(
+    cycle=101214,
+    age=lambda x: 2010 - x.birthyr_10,
+)
 
 for year in (10, 12, 14):
     # Recode guns to be continuous (swapping 2 and 3 so that "no change" is in the middle of "less strict" and "more strict")
@@ -116,7 +122,6 @@ two_years = pd.concat([
 ########################
 # Functions: utilities #
 ########################
-
 def count_flippers(df, before_label, after_label, lower_bound, upper_bound):
     valid_rows = df.loc[
         np.logical_and(
@@ -132,6 +137,13 @@ def count_flippers(df, before_label, after_label, lower_bound, upper_bound):
     ]
     flippers = valid_rows.loc[np.not_equal(valid_rows[before_label], valid_rows[after_label]), :]
     return round(len(flippers) * 100 / len(valid_rows), 1)
+
+
+def t_test(df, independent_label, dependent_label, a_value=0, b_value=1):
+    na_filtered = df.loc[np.logical_not(np.isnan(df[independent_label]))]
+    group_a = na_filtered.loc[np.equal(na_filtered[dependent_label], a_value), independent_label]
+    group_b = na_filtered.loc[np.equal(na_filtered[dependent_label], b_value), independent_label]
+    return ttest_ind(group_a, group_b, equal_var=False)
 
 '''
 # TODO: delete
@@ -421,13 +433,15 @@ panel.groupby("pid7_10").count().loc[:,'weight']
 # Parents are still U-shaped, a little more liberal, also looks like more moderates
 three_years.loc[np.equal(three_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'weight']
 
-'''
 ### Testing: ideological change: nothing significant
-t.test(ideo_delta~new_child, data=filter_na(two_years, "ideo_delta")) # p = 0.4108
-t.test(ideo_delta_abs~new_child, data=filter_na(two_years, "ideo_delta_abs")) # p = 0.6008
-t.test(ideo_delta~new_child, data=filter_na(two_years %>% filter(age < 30), "ideo_delta")) # p = 0.6761
-t.test(ideo_delta_abs~new_child, data=filter_na(two_years %>% filter(age < 30), "ideo_delta_abs")) # p = 0.6028
+assert 0.4108, round(t_test(two_years, 'ideo_delta', 'new_child', 0, 1).pvalue, 4)
+assert 0.6008, round(t_test(two_years, 'ideo_delta_abs', 'new_child', 0, 1).pvalue, 4)
 
+young_adults = two_years.loc[np.less(two_years['age'], 30),:]
+assert 0.6761, round(t_test(young_adults, 'ideo_delta', 'new_child', 0, 1).pvalue, 4)
+assert 0.6028, round(t_test(young_adults, 'ideo_delta_abs', 'new_child', 0, 1).pvalue, 4)
+
+'''
 ### Descriptive: ideological change
 # Average ideological change over two years: trivially liberal, moreso for non-new-parents
 two_years %>%
