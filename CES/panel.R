@@ -352,6 +352,9 @@ panel <- read_dta("CCES_Panel_Full3waves_VV_V4.dta") # n=9500
 # Build three base data frames (10-12, 12-14, 10-14)
 three_years <- panel %>% zap_labels() %>% 
   select(
+    "caseid",
+    "weight",
+    
     # Ideology and partisanship
     starts_with("ideo5_"),
     matches("pid3_1[024]"),
