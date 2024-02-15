@@ -1,7 +1,10 @@
 import numpy as np
 import pandas as pd
 
+from pandas import DataFrame
 from scipy.stats import ttest_ind
+
+CONTINOUS_PREFIXES = set()
 
 panel = pd.read_stata("~/Documents/visualizations/midterm/CCES_Panel_Full3waves_VV_V4.dta", convert_categoricals=False)  # n=9500
 
@@ -144,6 +147,32 @@ def t_test(df, independent_label, dependent_label, a_value=0, b_value=1):
     group_a = na_filtered.loc[np.equal(na_filtered[dependent_label], a_value), independent_label]
     group_b = na_filtered.loc[np.equal(na_filtered[dependent_label], b_value), independent_label]
     return ttest_ind(group_a, group_b, equal_var=False)
+
+
+def t_tests(df, independent_suffix, dependent_label, a_value=0, b_value=1):
+    results = {
+        'metric': [],
+        'statistic': [],
+        'df': [],
+        'pvalue': [],
+    }
+    for label in [f'{p}_{independent_suffix}' for p in CONTINOUS_PREFIXES]:
+        result = t_test(df, label, dependent_label, a_value, b_value)
+        results['metric'].append(label)
+        results['statistic'].append(result.statistic)
+        results['df'].append(result.df)
+        pvalue = str(round(result.pvalue, 4))
+        if result.pvalue < 0.001:
+            pvalue += '***'
+        elif result.pvalue < 0.01:
+            pvalue += '**'
+        elif result.pvalue < 0.05:
+            pvalue += '*'
+        results['pvalue'].append(pvalue)
+    df = DataFrame.from_dict(results)
+    df.sort_values('metric', inplace=True)
+    return df
+
 
 '''
 # TODO: delete
@@ -289,6 +318,7 @@ def add_continuous(df, before_pattern, prefix, lower_bound=None, upper_bound=Non
     }
     df = df.assign(**kwargs)
 
+    CONTINOUS_PREFIXES.add(prefix)
     if drop:
         _drop_pattern(df, before_pattern)
 
@@ -434,12 +464,12 @@ panel.groupby("pid7_10").count().loc[:,'weight']
 three_years.loc[np.equal(three_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'weight']
 
 ### Testing: ideological change: nothing significant
-assert 0.4108, round(t_test(two_years, 'ideo_delta', 'new_child', 0, 1).pvalue, 4)
-assert 0.6008, round(t_test(two_years, 'ideo_delta_abs', 'new_child', 0, 1).pvalue, 4)
+assert 0.4108, round(t_test(two_years, 'ideo_delta', 'new_child').pvalue, 4)
+assert 0.6008, round(t_test(two_years, 'ideo_delta_abs', 'new_child').pvalue, 4)
 
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
-assert 0.6761, round(t_test(young_adults, 'ideo_delta', 'new_child', 0, 1).pvalue, 4)
-assert 0.6028, round(t_test(young_adults, 'ideo_delta_abs', 'new_child', 0, 1).pvalue, 4)
+assert 0.6761, round(t_test(young_adults, 'ideo_delta', 'new_child').pvalue, 4)
+assert 0.6028, round(t_test(young_adults, 'ideo_delta_abs', 'new_child').pvalue, 4)
 
 '''
 ### Descriptive: ideological change
@@ -484,13 +514,16 @@ two_years %>%
   filter(age < 30) %>% 
   group_by(new_child, ideo_direction) %>%
   summarise(count = n())
+'''
 
 ### Testing: party change: nothing significant
-t.test(pid_delta~new_child, data=filter_na(two_years %>% filter(age < 30), "pid_delta")) # p = 0.4663
-t.test(pid_delta_abs~new_child, data=filter_na(two_years %>% filter(age < 30), "pid_delta_abs")) # p = 0.6051
-t.test(pid_delta~new_child, data=filter_na(two_years, "pid_delta")) # p = 0.4348
-t.test(pid_delta_abs~new_child, data=filter_na(two_years, "pid_delta_abs")) # p = 0.07467
+young_adults = two_years.loc[np.less(two_years['age'], 30),:]
+assert 0.4663, round(t_test(young_adults, 'pid_delta', 'new_child', 0, 1).pvalue, 4)
+assert 0.6051, round(t_test(young_adults, 'pid_delta_abs', 'new_child', 0, 1).pvalue, 4)
+assert 0.4348, round(t_test(two_years, 'pid_delta', 'new_child', 0, 1).pvalue, 4)
+assert 0.07467, round(t_test(two_years, 'pid_delta_abs', 'new_child', 0, 1).pvalue, 4)
  
+'''
 ### Descriptive: party change
 # Average party change over two years: bigger than ideology, but still small
 # Vaguely interesting that it's a bigger change. Could just be that it's a bigger scale.
@@ -517,6 +550,7 @@ two_years %>%
     pid_delta = mean(pid_delta),
     pid_delta_abs = mean(pid_delta_abs),
   )
+'''
 
 ####################
 # Analysis: Issues #
@@ -524,87 +558,54 @@ two_years %>%
 
 ### Testing: continuous & composite issues
 # "After" views: nothing
-t.test(climate_change_after~new_child, data=filter_na(two_years, "climate_change_after")) # p = 0.7907
-t.test(jobs_env_after~new_child, data=filter_na(two_years, "jobs_env_after")) # p = 0.4994
-t.test(aff_action_after~new_child, data=filter_na(two_years, "aff_action_after")) # p = 0.851
-t.test(guns_after~new_child, data=filter_na(two_years, "guns_after")) # p = 0.505
-t.test(tax_or_spend_after~new_child, data=filter_na(two_years, "tax_or_spend_after")) # p = 0.1531
-t.test(sales_or_inc_after~new_child, data=filter_na(two_years, "sales_or_inc_after")) # p = 0.7913
-t.test(climate_composite_after~new_child, data=filter_na(two_years, "climate_composite_after")) # p = 0.9979
-t.test(gay_composite_after~new_child, data=filter_na(two_years, "gay_composite_after")) # p = 0.5043
-t.test(military_composite_after~new_child, data=filter_na(two_years, "military_composite_after")) # p = 0.3742
-t.test(immigration_composite_after~new_child, data=filter_na(two_years, "immigration_composite_after")) # p = 0.1499
+t_tests(two_years, 'after', 'new_child')
+assert 0.9979, t_test(two_years, 'climate_composite_after', 'new_child')
 
 # Change, incorporating direction: nothing
-t.test(climate_change_delta~new_child, data=filter_na(two_years, "climate_change_delta")) # p = 0.56
-t.test(jobs_env_delta~new_child, data=filter_na(two_years, "jobs_env_delta")) # p = 0.6602
-t.test(aff_action_delta~new_child, data=filter_na(two_years, "aff_action_delta")) # p = 0.9901
-t.test(guns_delta~new_child, data=filter_na(two_years, "guns_delta")) # p = 0.4005
-t.test(tax_or_spend_delta~new_child, data=filter_na(two_years, "tax_or_spend_delta")) # p = 0.3224
-t.test(sales_or_inc_delta~new_child, data=filter_na(two_years, "sales_or_inc_delta")) # p = 0.345
-t.test(climate_composite_delta~new_child, data=filter_na(two_years, "climate_composite_delta")) # p = 0.7822
-t.test(gay_composite_delta~new_child, data=filter_na(two_years, "gay_composite_delta")) # p = 0.8233
-t.test(military_composite_delta~new_child, data=filter_na(two_years, "military_composite_delta")) # p = 0.5486
-t.test(immigration_composite_delta~new_child, data=filter_na(two_years, "immigration_composite_delta")) # p = 0.787
+t_tests(two_years, 'delta', 'new_child')
+assert 0.787, t_test(two_years, 'immigration_composite_delta', 'new_child')
 
 # Change, absolute value: climate change, guns: climate change & climate composite persist, and oddly so does sales or inc
-t.test(climate_change_delta_abs~new_child, data=filter_na(two_years, "climate_change_delta_abs")) # p = 0.0005519***
-t.test(jobs_env_delta_abs~new_child, data=filter_na(two_years, "jobs_env_delta_abs")) # p = 0.1001
-t.test(aff_action_delta_abs~new_child, data=filter_na(two_years, "aff_action_delta_abs")) # p = 0.07633
-t.test(guns_delta_abs~new_child, data=filter_na(two_years, "guns_delta_abs")) # p = 0.006267**
-t.test(tax_or_spend_delta_abs~new_child, data=filter_na(two_years, "tax_or_spend_delta_abs")) # p = 0.6814
-t.test(sales_or_inc_delta_abs~new_child, data=filter_na(two_years, "sales_or_inc_delta_abs")) # p = 0.3438
-t.test(climate_composite_delta_abs~new_child, data=filter_na(two_years, "climate_composite_delta_abs")) # p = 0.001018**
-t.test(gay_composite_delta_abs~new_child, data=filter_na(two_years, "gay_composite_delta_abs")) # p = 0.1422
-t.test(military_composite_delta_abs~new_child, data=filter_na(two_years, "military_composite_delta_abs")) # p = 0.1629
-t.test(immigration_composite_delta_abs~new_child, data=filter_na(two_years, "immigration_composite_delta_abs")) # p = 0.1416
+t_tests(two_years, 'delta_abs', 'new_child')
+# TODO: these don't match
+#t.test(gay_composite_delta_abs~new_child, data=filter_na(two_years, "gay_composite_delta_abs")) # p = 0.1422
+#t.test(immigration_composite_delta_abs~new_child, data=filter_na(two_years, "immigration_composite_delta_abs")) # p = 0.1416
+#t.test(military_composite_delta_abs~new_child, data=filter_na(two_years, "military_composite_delta_abs")) # p = 0.1629
 
 # Persistent change: nothing
-t.test(climate_change_persists~new_child, data=filter_na(three_years, "climate_change_persists")) # p=0.1511
-t.test(jobs_env_persists~new_child, data=filter_na(three_years, "jobs_env_persists")) # p=0.6261
-t.test(aff_action_persists~new_child, data=filter_na(three_years, "aff_action_persists")) # p=0.3376
-t.test(guns_persists~new_child, data=filter_na(three_years, "guns_persists")) # p=0.5596
-t.test(tax_or_spend_persists~new_child, data=filter_na(three_years, "tax_or_spend_persists")) # p=0.1892
-t.test(sales_or_inc_persists~new_child, data=filter_na(three_years, "sales_or_inc_persists")) # p=0.5886
-t.test(climate_composite_persists~new_child, data=filter_na(three_years, "climate_composite_persists")) # p=0.4749
-t.test(gay_composite_persists~new_child, data=filter_na(three_years, "gay_composite_persists")) # p=0.8711
-t.test(military_composite_persists~new_child, data=filter_na(three_years, "military_composite_persists")) # p=0.2531
-t.test(immigration_composite_persists~new_child, data=filter_na(three_years, "immigration_composite_persists")) # p=0.3216
+t_tests(three_years, 'persists', 'new_child')
+# TODO: None of these match
+#t.test(aff_action_persists~new_child, data=filter_na(three_years, "aff_action_persists")) # p=0.3376
+#t.test(climate_change_persists~new_child, data=filter_na(three_years, "climate_change_persists")) # p=0.1511
+#t.test(climate_composite_persists~new_child, data=filter_na(three_years, "climate_composite_persists")) # p=0.4749
+#t.test(gay_composite_persists~new_child, data=filter_na(three_years, "gay_composite_persists")) # p=0.8711
+#t.test(guns_persists~new_child, data=filter_na(three_years, "guns_persists")) # p=0.5596
+#t.test(immigration_composite_persists~new_child, data=filter_na(three_years, "immigration_composite_persists")) # p=0.3216
+#t.test(jobs_env_persists~new_child, data=filter_na(three_years, "jobs_env_persists")) # p=0.6261
+#t.test(military_composite_persists~new_child, data=filter_na(three_years, "military_composite_persists")) # p=0.2531
+#t.test(sales_or_inc_persists~new_child, data=filter_na(three_years, "sales_or_inc_persists")) # p=0.5886
+#t.test(tax_or_spend_persists~new_child, data=filter_na(three_years, "tax_or_spend_persists")) # p=0.1892
+
 
 # Persistent absolute change: climate change, tax/spend, climate composite, gay rights composite
-t.test(climate_change_persists_abs~new_child, data=filter_na(three_years, "climate_change_persists_abs")) # p=0.01737*
-t.test(jobs_env_persists_abs~new_child, data=filter_na(three_years, "jobs_env_persists_abs")) # p=0.5739
-t.test(aff_action_persists_abs~new_child, data=filter_na(three_years, "aff_action_persists_abs")) # p=0.8902
-t.test(guns_persists_abs~new_child, data=filter_na(three_years, "guns_persists_abs")) # p=0.3267
-t.test(tax_or_spend_persists_abs~new_child, data=filter_na(three_years, "tax_or_spend_persists_abs")) # p=0.03717*
-t.test(sales_or_inc_persists_abs~new_child, data=filter_na(three_years, "sales_or_inc_persists_abs")) # p=0.5647
-t.test(climate_composite_persists_abs~new_child, data=filter_na(three_years, "climate_composite_persists_abs")) # p=0.03602*
-t.test(gay_composite_persists_abs~new_child, data=filter_na(three_years, "gay_composite_persists_abs")) # p=0.02934*
-t.test(military_composite_persists_abs~new_child, data=filter_na(three_years, "military_composite_persists_abs")) # p=0.2671
-t.test(immigration_composite_persists_abs~new_child, data=filter_na(three_years, "immigration_composite_persists_abs")) # p=0.4937
+t_tests(three_years, 'persists_abs', 'new_child')
+# TODO: none of these match
+#t.test(aff_action_persists_abs~new_child, data=filter_na(three_years, "aff_action_persists_abs")) # p=0.8902
+#t.test(climate_change_persists_abs~new_child, data=filter_na(three_years, "climate_change_persists_abs")) # p=0.01737*
+#t.test(climate_composite_persists_abs~new_child, data=filter_na(three_years, "climate_composite_persists_abs")) # p=0.03602*
+#t.test(gay_composite_persists_abs~new_child, data=filter_na(three_years, "gay_composite_persists_abs")) # p=0.02934*
+#t.test(guns_persists_abs~new_child, data=filter_na(three_years, "guns_persists_abs")) # p=0.3267
+#t.test(immigration_composite_persists_abs~new_child, data=filter_na(three_years, "immigration_composite_persists_abs")) # p=0.4937
+#t.test(jobs_env_persists_abs~new_child, data=filter_na(three_years, "jobs_env_persists_abs")) # p=0.5739
+#t.test(military_composite_persists_abs~new_child, data=filter_na(three_years, "military_composite_persists_abs")) # p=0.2671
+#t.test(sales_or_inc_persists_abs~new_child, data=filter_na(three_years, "sales_or_inc_persists_abs")) # p=0.5647
+#t.test(tax_or_spend_persists_abs~new_child, data=filter_na(three_years, "tax_or_spend_persists_abs")) # p=0.03717*
 
-# Switching to firstborn and looking at change: for absolute change, climate composite and gay rights composite
-t.test(climate_change_delta~firstborn, data=filter_na(two_years, "climate_change_delta")) # p = 0.5514
-t.test(jobs_env_delta~firstborn, data=filter_na(two_years, "jobs_env_delta")) # p = 0.4092
-t.test(aff_action_delta~firstborn, data=filter_na(two_years, "aff_action_delta")) # p = 0.8448
-t.test(guns_delta~firstborn, data=filter_na(two_years, "guns_delta")) # p = 0.3768
-t.test(tax_or_spend_delta~firstborn, data=filter_na(two_years, "tax_or_spend_delta")) # p = 0.6834
-t.test(sales_or_inc_delta~firstborn, data=filter_na(two_years, "sales_or_inc_delta")) # p = 0.447
-t.test(climate_composite_delta~firstborn, data=filter_na(two_years, "climate_composite_delta")) # p = 0.9456
-t.test(gay_composite_delta~firstborn, data=filter_na(two_years, "gay_composite_delta")) # p = 0.9129
-t.test(military_composite_delta~firstborn, data=filter_na(two_years, "military_composite_delta")) # p = 0.8931
-t.test(immigration_composite_delta~firstborn, data=filter_na(two_years, "immigration_composite_delta")) # p = 0.8848
-
-t.test(climate_change_delta_abs~firstborn, data=filter_na(two_years, "climate_change_delta_abs")) # p = 0.4946
-t.test(jobs_env_delta_abs~firstborn, data=filter_na(two_years, "jobs_env_delta_abs")) # p = 0.1119
-t.test(aff_action_delta_abs~firstborn, data=filter_na(two_years, "aff_action_delta_abs")) # p = 0.1326
-t.test(guns_delta_abs~firstborn, data=filter_na(two_years, "guns_delta_abs")) # p = 0.06643
-t.test(tax_or_spend_delta_abs~firstborn, data=filter_na(two_years, "tax_or_spend_delta_abs")) # p = 0.5264
-t.test(sales_or_inc_delta_abs~firstborn, data=filter_na(two_years, "sales_or_inc_delta_abs")) # p = 0.2689
-t.test(climate_composite_delta_abs~firstborn, data=filter_na(two_years, "climate_composite_delta_abs")) # p = 0.00165**
-t.test(gay_composite_delta_abs~firstborn, data=filter_na(two_years, "gay_composite_delta_abs")) # p = 0.03384*
-t.test(military_composite_delta_abs~firstborn, data=filter_na(two_years, "military_composite_delta_abs")) # p = 0.3324
-t.test(immigration_composite_delta_abs~firstborn, data=filter_na(two_years, "immigration_composite_delta_abs")) # p = 0.821
+# Switching to firstborn and looking at change: for absolute change, climate change, climate composite and gay rights composite
+t_tests(two_years, 'delta', 'firstborn')
+assert 0.4092, round(t_test(two_years, 'jobs_env_delta', 'firstborn').pvalue, 4)
+t_tests(two_years, 'delta_abs', 'firstborn')
+assert 0.1119, round(t_test(two_years, 'jobs_env_delta_abs', 'firstborn'), 4)
 
 # Summary of continuous & composite issues
 summarize_continuous(two_years, "new_child", "climate_change")
