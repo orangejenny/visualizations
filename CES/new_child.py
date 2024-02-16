@@ -2,9 +2,10 @@ import numpy as np
 import pandas as pd
 
 from pandas import DataFrame
-from scipy.stats import ttest_ind
+from scipy.stats import chi2_contingency, ttest_ind
 
 CONTINOUS_PREFIXES = set()
+CATEGORICAL_PREFIXES = set()
 
 panel = pd.read_stata("~/Documents/visualizations/midterm/CCES_Panel_Full3waves_VV_V4.dta", convert_categoricals=False)  # n=9500
 
@@ -149,6 +150,16 @@ def t_test(df, independent_label, dependent_label, a_value=0, b_value=1):
     return ttest_ind(group_a, group_b, equal_var=False)
 
 
+def pvalue_stars(pvalue):
+    if pvalue < 0.001:
+        return '***'
+    if pvalue < 0.01:
+        return '**'
+    if pvalue < 0.05:
+        return '*'
+    return ''
+
+
 def t_tests(df, independent_suffix, dependent_label, a_value=0, b_value=1):
     results = {
         'metric': [],
@@ -161,29 +172,33 @@ def t_tests(df, independent_suffix, dependent_label, a_value=0, b_value=1):
         results['metric'].append(label)
         results['statistic'].append(result.statistic)
         results['df'].append(result.df)
-        pvalue = str(round(result.pvalue, 4))
-        if result.pvalue < 0.001:
-            pvalue += '***'
-        elif result.pvalue < 0.01:
-            pvalue += '**'
-        elif result.pvalue < 0.05:
-            pvalue += '*'
-        results['pvalue'].append(pvalue)
+        results['pvalue'].append(str(round(result.pvalue, 4)) + pvalue_stars(result.pvalue))
     df = DataFrame.from_dict(results)
     df.sort_values('metric', inplace=True)
     return df
 
 
-'''
-# TODO: delete
-run_chisq <- function(data, independent_var, dependent_var) {
-  filtered <- filter_na(data, dependent_var)
-  return(chisq.test(table(
-    eval(parse(text=paste(c("filtered$", independent_var), collapse=""))),
-    eval(parse(text=paste(c("filtered", "$", dependent_var), collapse="")))
-  )))
-}
-'''
+def chisq(df, factor1, factor2):
+    return chi2_contingency(pd.crosstab(df[factor1], df[factor2]))
+
+
+def chisqs(df, independent_suffix, dependent_label, a_value=0, b_value=1):
+    results = {
+        'metric': [],
+        'statistic': [],
+        'dof': [],
+        'pvalue': [],
+    }
+    for label in [f'{p}_{independent_suffix}' for p in CATEGORICAL_PREFIXES]:
+        result = chisq(df, label, dependent_label)
+        results['metric'].append(label)
+        results['statistic'].append(result.statistic)
+        results['dof'].append(result.dof)
+        results['pvalue'].append(str(round(result.pvalue, 4)) + pvalue_stars(result.pvalue))
+    df = DataFrame.from_dict(results)
+    df.sort_values('metric', inplace=True)
+    return df
+
 
 def summarize_continuous(df, group_by_label, issue):
     return df.loc[:,[
@@ -222,7 +237,7 @@ categorical_persists <- function(data, issue) {
 
 '''
 def count_percentages(df, group_by_label, metric_label):
-    counts = df.loc[:,['caseid', group_by_label, metric_label]].groupby([group_by_label, metric_label], as_index=False).count()
+    counts = df.loc[:,['caseid', group_by_label, metric_label]].groupby([group_by_label, metric_label], as_index=False).count() # roughly pd.crosstab
     totals = df.loc[:,['caseid', group_by_label]].groupby([group_by_label], as_index=False).count()
     results = counts.join(totals, on=group_by_label, rsuffix='_total')
     results.pop(f'{group_by_label}_total')
@@ -321,6 +336,7 @@ def add_categorical(df, before_pattern, prefix, lower_bound=None, upper_bound=No
     ), 1, 0)
     df.loc[np.logical_not(df.cycle == 101214), f'{prefix}_persists'] = np.nan
 
+    CATEGORICAL_PREFIXES.add(prefix)
     if drop:
         _drop_pattern(df, before_pattern)
 
@@ -621,23 +637,19 @@ two_years %>% group_by(new_child, gay_marriage_change) %>% summarise(count = n()
 two_years %>% group_by(new_child, schip_change) %>% summarise(count = n())
 two_years %>% group_by(new_child, budget_change) %>% summarise(count = n())
 two_years %>% group_by(new_child, budget_avoid_change) %>% summarise(count = n()) # highest NA responses, at 3%
+'''
 
 ### Testing: categorical variables: both budget questions, but neither persists
-run_chisq(two_years, "new_child", "ideo_direction") # p=0.8664
-run_chisq(two_years, "new_child", "pid_direction") # p=0.3215, but p=0.07 when looking at firstborn
-run_chisq(two_years, "new_child", "gay_marriage_change") # p=0.1347
-run_chisq(two_years, "new_child", "schip_change") # p=0.3306
-run_chisq(two_years, "new_child", "budget_change") # p=0.00280**
-run_chisq(two_years, "new_child", "budget_avoid_change") # p=0.0154*
-run_chisq(three_years, "new_child", "gay_marriage_persists") # p=0.06199
-run_chisq(three_years, "new_child", "schip_persists") # p=0.6948
-run_chisq(three_years, "new_child", "budget_persists") # p=0.32
-run_chisq(three_years, "new_child", "budget_avoid_persists") # p=1
-run_chisq(two_years, "new_child", "gay_marriage_after") # p=0.2971
-run_chisq(two_years, "new_child", "schip_after") # p=0.8188
-run_chisq(two_years, "new_child", "budget_after") # p=0.224
-run_chisq(two_years, "new_child", "budget_avoid_after") # p=0.0814
-'''
+assert 0.8664 == round(chisq(two_years, 'new_child', 'ideo_direction').pvalue, 4)
+assert 0.3215 == round(chisq(two_years, 'new_child', 'pid_direction').pvalue, 4)
+chisqs(two_years, 'after', 'new_child')
+chisqs(two_years, 'change', 'new_child')
+# TODO: this one doesn't work because the '_persists' columns are NaN
+#chisqs(two_years, 'persists', 'new_child')
+#run_chisq(three_years, "new_child", "gay_marriage_persists") # p=0.06199
+#run_chisq(three_years, "new_child", "schip_persists") # p=0.6948
+#run_chisq(three_years, "new_child", "budget_persists") # p=0.32
+#run_chisq(three_years, "new_child", "budget_avoid_persists") # p=1
 
 # Descriptive statistics on categorical issues
 count_percentages(two_years, 'new_child', 'gay_marriage_before')
