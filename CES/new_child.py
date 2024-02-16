@@ -428,15 +428,15 @@ assert (counts.loc[:, 'caseid'] == [9271, 229]).all()
 
 ### Exploratory: How often do people change ideology/party between two waves?
 # For pid3, 0.8%, too coarse to be useful
-assert 0.8, count_flippers(three_years, "pid3_10", "pid3_12", 1, 2)
+assert 0.8 == count_flippers(three_years, "pid3_10", "pid3_12", 1, 2)
 
 # For pid7, 20-25% each 2 years
-assert 20.9, count_flippers(three_years, "pid7_10", "pid7_12", 1, 7)
-assert 18.9, count_flippers(three_years, "pid7_12", "pid7_14", 1, 7)
-assert 25.2, count_flippers(three_years, "pid7_10", "pid7_14", 1, 7)
-assert 24.9, count_flippers(three_years, "ideo5_10", "ideo5_12", 1, 5)
-assert 20.1, count_flippers(three_years, "ideo5_12", "ideo5_14", 1, 5)
-assert 27.8, count_flippers(three_years, "ideo5_10", "ideo5_14", 1, 5)
+assert 20.9 == count_flippers(three_years, "pid7_10", "pid7_12", 1, 7)
+assert 18.9 == count_flippers(three_years, "pid7_12", "pid7_14", 1, 7)
+assert 25.2 == count_flippers(three_years, "pid7_10", "pid7_14", 1, 7)
+assert 24.9 == count_flippers(three_years, "ideo5_10", "ideo5_12", 1, 5)
+assert 20.1 == count_flippers(three_years, "ideo5_12", "ideo5_14", 1, 5)
+assert 27.8 == count_flippers(three_years, "ideo5_10", "ideo5_14", 1, 5)
 
 ### Exploratory: Ideology distribution across panel: roughly normal, skewing conservative
 panel.groupby("ideo5_10").count().loc[:,'weight']
@@ -448,12 +448,12 @@ panel.groupby("pid7_10").count().loc[:,'weight']
 three_years.loc[np.equal(three_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'weight']
 
 ### Testing: ideological change: nothing significant
-assert 0.4108, round(t_test(two_years, 'ideo_delta', 'new_child').pvalue, 4)
-assert 0.6008, round(t_test(two_years, 'ideo_delta_abs', 'new_child').pvalue, 4)
+assert 0.4108 == round(t_test(two_years, 'ideo_delta', 'new_child').pvalue, 4)
+assert 0.6008 == round(t_test(two_years, 'ideo_delta_abs', 'new_child').pvalue, 4)
 
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
-assert 0.6761, round(t_test(young_adults, 'ideo_delta', 'new_child').pvalue, 4)
-assert 0.6028, round(t_test(young_adults, 'ideo_delta_abs', 'new_child').pvalue, 4)
+assert 0.6761 == round(t_test(young_adults, 'ideo_delta', 'new_child').pvalue, 4)
+assert 0.6028 == round(t_test(young_adults, 'ideo_delta_abs', 'new_child').pvalue, 4)
 
 '''
 ### Descriptive: ideological change
@@ -502,10 +502,10 @@ two_years %>%
 
 ### Testing: party change: nothing significant
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
-assert 0.4663, round(t_test(young_adults, 'pid_delta', 'new_child', 0, 1).pvalue, 4)
-assert 0.6051, round(t_test(young_adults, 'pid_delta_abs', 'new_child', 0, 1).pvalue, 4)
-assert 0.4348, round(t_test(two_years, 'pid_delta', 'new_child', 0, 1).pvalue, 4)
-assert 0.07467, round(t_test(two_years, 'pid_delta_abs', 'new_child', 0, 1).pvalue, 4)
+assert 0.4663 == round(t_test(young_adults, 'pid_delta', 'new_child', 0, 1).pvalue, 4)
+assert 0.6051 == round(t_test(young_adults, 'pid_delta_abs', 'new_child', 0, 1).pvalue, 4)
+assert 0.4348 == round(t_test(two_years, 'pid_delta', 'new_child', 0, 1).pvalue, 4)
+assert 0.0747 == round(t_test(two_years, 'pid_delta_abs', 'new_child', 0, 1).pvalue, 4)
  
 '''
 ### Descriptive: party change
@@ -543,11 +543,11 @@ two_years %>%
 ### Testing: continuous & composite issues
 # "After" views: nothing
 t_tests(two_years, 'after', 'new_child')
-assert 0.9979, t_test(two_years, 'climate_composite_after', 'new_child')
+assert 0.9979 == round(t_test(two_years, 'climate_composite_after', 'new_child').pvalue, 4)
 
 # Change, incorporating direction: nothing
 t_tests(two_years, 'delta', 'new_child')
-assert 0.787, t_test(two_years, 'immigration_composite_delta', 'new_child')
+assert 0.787 == round(t_test(two_years, 'immigration_composite_delta', 'new_child').pvalue, 4)
 
 # Change, absolute value: climate change, guns: climate change & climate composite persist, and oddly so does sales or inc
 t_tests(two_years, 'delta_abs', 'new_child')
@@ -587,9 +587,9 @@ t_tests(three_years, 'persists_abs', 'new_child')
 
 # Switching to firstborn and looking at change: for absolute change, climate change, climate composite and gay rights composite
 t_tests(two_years, 'delta', 'firstborn')
-assert 0.4092, round(t_test(two_years, 'jobs_env_delta', 'firstborn').pvalue, 4)
+assert 0.4092 == round(t_test(two_years, 'jobs_env_delta', 'firstborn').pvalue, 4)
 t_tests(two_years, 'delta_abs', 'firstborn')
-assert 0.1119, round(t_test(two_years, 'jobs_env_delta_abs', 'firstborn'), 4)
+assert 0.1119 == round(t_test(two_years, 'jobs_env_delta_abs', 'firstborn').pvalue, 4)
 
 # Summary of continuous & composite issues
 summarize_continuous(two_years, "new_child", "climate_change")
