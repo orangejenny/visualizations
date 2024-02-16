@@ -220,25 +220,15 @@ categorical_persists <- function(data, issue) {
   )
 }
 
-two_percents <- function(one, two) {
-  total <- one + two
-  return(
-    paste(
-      round(one * 100 / total),
-      round(two * 100 / total)
-    )
-  )
-}
-
-three_percents <- function (one, two, three) {
-  total <- one + two + three
-  return(paste(
-    round(one * 100 / total),
-    round(two * 100 / total),
-    round(three * 100 / total)
-  ))
-}
 '''
+def count_percentages(df, group_by_label, metric_label):
+    counts = df.loc[:,['caseid', group_by_label, metric_label]].groupby([group_by_label, metric_label], as_index=False).count()
+    totals = df.loc[:,['caseid', group_by_label]].groupby([group_by_label], as_index=False).count()
+    results = counts.join(totals, on=group_by_label, rsuffix='_total')
+    results.pop(f'{group_by_label}_total')
+    results['percent'] = np.round(np.divide(np.multiply(results['caseid'], 100), results['caseid_total']), decimals=1)
+    return results
+
 
 ###################
 # Functions: data #
@@ -416,19 +406,21 @@ two_years = add_categorical_opinions(two_years)
 three_years = add_composite_opinions(three_years)
 two_years = add_composite_opinions(two_years)
 
+# De-fragment frames
+two_years = two_years.copy()
+three_years = three_years.copy()
+
 ##########################
 # Analysis: Demographics #
 ##########################
 
 # In two cycles: 420 with new child, 18580 without
-counts = two_years.groupby('new_child').count()
-assert counts.iloc[0, 0] == 18580
-assert counts.iloc[1, 0] == 420
+counts = two_years.groupby('new_child', as_index=False).count()
+assert (counts.loc[:, 'caseid'] == [18580, 420]).all()
 
 # In three cycles: 229 with new child in 2012, 9271 without
-counts = three_years.groupby('new_child').count()
-assert counts.iloc[0, 0] == 9271
-assert counts.iloc[1, 0] == 229
+counts = three_years.groupby('new_child', as_index=False).count()
+assert (counts.loc[:, 'caseid'] == [9271, 229]).all()
 
 ############################
 # Analysis: Ideology/Party #
@@ -645,39 +637,24 @@ run_chisq(two_years, "new_child", "gay_marriage_after") # p=0.2971
 run_chisq(two_years, "new_child", "schip_after") # p=0.8188
 run_chisq(two_years, "new_child", "budget_after") # p=0.224
 run_chisq(two_years, "new_child", "budget_avoid_after") # p=0.0814
+'''
 
 # Descriptive statistics on categorical issues
-two_years %>% group_by(new_child, gay_marriage_before) %>% summarise(count = n())
-two_years %>% group_by(new_child, gay_marriage_after) %>% summarise(count = n())
-two_percents(165, 254) # parents: 39 / 61
-two_percents(6793, 11680) # others: 37 / 63
-two_years %>% group_by(new_child, schip_after) %>% summarise(count = n())
-two_percents(294, 123) # parents: 71 / 29
-two_percents(12862, 5549) # others: 70 / 30
-two_years %>% group_by(new_child, schip_after) %>% summarise(count = n())
-# parents: three_percents(141, 207, 68) = 34 / 50 / 16
-# others: three_percents(6886, 8139, 3357) = 37 / 44 / 18
-two_years %>% group_by(new_child, budget_before) %>% summarise(count = n())
-# parents: three_percents(141, 207, 68) = 34 / 50 / 16
-# others: three_percents(6886, 8139, 3357) = 37 / 44 / 18
-two_years %>% group_by(new_child, budget_after) %>% summarise(count = n())
-# parents: three_percents(148, 187, 79) = 36 / 45 / 19
-# others: three_percents(6230, 7948, 4157) = 34 / 43 / 23
-two_years %>% group_by(new_child, budget_avoid_before) %>% summarise(count = n())
-# parents: three_percents(58, 127, 230) = 14 / 31 / 35
-# others: three_percents(3006, 6833, 8450) = 16 / 37 / 46
-two_years %>% group_by(new_child, budget_avoid_after) %>% summarise(count = n())
-# parents: three_percents(82, 145, 183) = 20 / 35 / 45
-# others: three_percents(3967, 7098, 7125) = 22 / 39 / 39
+count_percentages(two_years, 'new_child', 'gay_marriage_before')
+after_counts = count_percentages(two_years, 'new_child', 'gay_marriage_after')
+assert (after_counts.loc[np.equal(after_counts['new_child'], True), 'percent'].values == [39.3, 60.5]).all()
 
+count_percentages(two_years, 'new_child', 'schip_before')
+count_percentages(two_years, 'new_child', 'schip_after')
 
-two_years %>% group_by(new_child, gay_marriage_after) %>% summarise(count = n())
-two_percents(165, 254) # parents: 39 / 61
-two_percents(6793, 11680) # others: 37 / 63
-two_years %>% group_by(new_child, gay_marriage_change) %>% summarise(count = n())
+count_percentages(two_years, 'new_child', 'budget_before')
+count_percentages(two_years, 'new_child', 'budget_after')
 
-two_years_new_parents %>% group_by(gender, gay_marriage_after) %>% summarise(count = n())
+count_percentages(two_years, 'new_child', 'budget_avoid_before')
+after_counts = count_percentages(two_years, 'new_child', 'budget_avoid_after')
+assert (after_counts.loc[np.equal(after_counts['new_child'], True), 'percent'].values == [19.5, 34.5, 43.6]).all()
 
+'''
 # Persistence: how common is persistent change?
 # Of the new parents who changed, how many keep that change?
 # New parents often slightly more likely to experience persistent change than others
