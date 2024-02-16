@@ -183,24 +183,16 @@ run_chisq <- function(data, independent_var, dependent_var) {
     eval(parse(text=paste(c("filtered", "$", dependent_var), collapse="")))
   )))
 }
+'''
 
-summarize_continuous <- function(data, group_by, issue) {
-  return(
-    summarize_continuous_helper(data %>% group_by(eval(ecol(group_by))), issue)
-  )
-}
+def summarize_continuous(df, group_by_label, issue):
+    return df.loc[:,[
+        group_by_label,
+        f'{issue}_before', f'{issue}_after', f'{issue}_delta', f'{issue}_delta_abs',
+    ]].groupby(group_by_label).mean()
 
-summarize_continuous_helper <- function(grouped_data, issue) {
-  return (  
-     grouped_data %>% summarise(
-      before = mean(eval(parse(text=paste(c(issue, "_before"), collapse=""))), na.rm = TRUE),
-      after = mean(eval(parse(text=paste(c(issue, "_after"), collapse=""))), na.rm = TRUE),
-      delta = mean(eval(parse(text=paste(c(issue, "_delta"), collapse=""))), na.rm = TRUE),
-      delta_abs = mean(eval(parse(text=paste(c(issue, "_delta_abs"), collapse=""))), na.rm = TRUE),
-     )
-  )
-}
-
+'''
+# TODO: delete
 continuous_persists <- function(data, issue) {
   numbers <- data %>% 
       filter(!is.na(eval(parse(text=paste(c(issue, "_persists"), collapse=""))))) %>% 
@@ -619,6 +611,7 @@ summarize_continuous(two_years, "new_child", "gay_composite")
 summarize_continuous(two_years, "new_child", "military_composite")
 summarize_continuous(two_years, "new_child", "immigration_composite")
  
+'''
 # Non-response rates, continuous & composite issues
 two_years %>% mutate(has_climate_change = if_else(is.na(climate_change_delta), 0, 1)) %>% group_by(new_child, has_climate_change) %>% summarise(count = n())
 two_years %>% mutate(has_jobs_env = if_else(is.na(jobs_env_delta), 0, 1)) %>% group_by(new_child, has_jobs_env) %>% summarise(count = n())
