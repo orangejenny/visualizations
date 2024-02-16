@@ -686,7 +686,7 @@ t.test(gay_composite_delta~firstborn, data=filter_na(two_years, "gay_composite_d
 t.test(military_composite_delta~firstborn, data=filter_na(two_years, "military_composite_delta")) # p = 0.8931
 t.test(immigration_composite_delta~firstborn, data=filter_na(two_years, "immigration_composite_delta")) # p = 0.8848
 
-t.test(climate_change_delta_abs~firstborn, data=filter_na(two_years, "climate_change_delta_abs")) # p = 0.4946
+t.test(climate_change_delta_abs~firstborn, data=filter_na(two_years, "climate_change_delta_abs")) # p = 0.001621**
 t.test(jobs_env_delta_abs~firstborn, data=filter_na(two_years, "jobs_env_delta_abs")) # p = 0.1119
 t.test(aff_action_delta_abs~firstborn, data=filter_na(two_years, "aff_action_delta_abs")) # p = 0.1326
 t.test(guns_delta_abs~firstborn, data=filter_na(two_years, "guns_delta_abs")) # p = 0.06643
