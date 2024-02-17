@@ -476,51 +476,25 @@ young_adults = two_years.loc[np.less(two_years['age'], 30),:]
 assert 0.6761 == round(t_test(young_adults, 'ideo_delta', 'new_child').pvalue, 4)
 assert 0.6028 == round(t_test(young_adults, 'ideo_delta_abs', 'new_child').pvalue, 4)
 
-'''
-TODO
 ### Descriptive: ideological change
 # Average ideological change over two years: trivially liberal, moreso for non-new-parents
-two_years %>%
-  filter(!is.na(ideo_delta)) %>% 
-  group_by(new_child) %>%
-  summarise(
-    ideo_before = mean(ideo_before),
-    ideo_after = mean(ideo_after),
-    ideo_delta = mean(ideo_delta),
-    ideo_delta_abs = mean(ideo_delta_abs)
-)
+summarize_continuous(filter_na(two_years, 'ideo_delta'), 'new_child', 'ideo')
+
 # Counts of liberal/conservative movement, ignoring magnitude
-# New parents: three_percents(49, 304, 43) = 12% more liberal, 11% more conservative
-# Non-new-parents: three_percents(2230, 13853, 1795) = 12% more liberal, 10% more conservative
-two_years %>%
-  filter(!is.na(ideo_delta)) %>% 
-  group_by(new_child, ideo_direction) %>%
-  summarise(count = n())
+# New parents: 12% more liberal, 11% more conservative
+# Non-new-parents: 12% more liberal, 10% more conservative
+count_percentages(filter_na(two_years, 'ideo_delta'), 'new_child', 'ideo_direction')
+
 # Using firstborn instead of new_child is still trivial, but new parents more conservative
-two_years %>%
-  filter(!is.na(ideo_delta)) %>% 
-  group_by(firstborn) %>%
-  summarise(average_ideo = mean(ideo_delta), average_ideo_abs = mean(ideo_delta_abs))
+summarize_continuous(filter_na(two_years, 'ideo_delta'), 'firstborn', 'ideo')
+
 # Younger adults look about the same as the whole cohort, trivially more liberal
-two_years %>%
-  filter(!is.na(ideo_delta)) %>% 
-  filter(age < 30) %>% 
-  group_by(new_child) %>%
-  summarise(
-    ideo_before = mean(ideo_before),
-    ideo_after = mean(ideo_after),
-    ideo_delta = mean(ideo_delta),
-    ideo_delta_abs = mean(ideo_delta_abs)
-  )
+summarize_continuous(filter_na(young_adults, 'ideo_delta'), 'new_child', 'ideo')
+
 # Counts of liberal/conservative movement, ignoring magnitude, for younger adults
-# New parents: three_percents(11, 40, 5) = 20% more liberal, % more conservative
-# Non-new-parents: three_percents(70, 368, 49) = 14% more liberal, 10% more conservative
-two_years %>%
-  filter(!is.na(ideo_delta)) %>% 
-  filter(age < 30) %>% 
-  group_by(new_child, ideo_direction) %>%
-  summarise(count = n())
-'''
+# New parents: 20% more liberal, 9% more conservative
+# Non-new-parents: 14% more liberal, 10% more conservative
+count_percentages(filter_na(young_adults, 'ideo_delta'), 'new_child', 'ideo_direction')
 
 ### Testing: party change: nothing significant
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
@@ -529,35 +503,12 @@ assert 0.6051 == round(t_test(young_adults, 'pid_delta_abs', 'new_child', 0, 1).
 assert 0.4348 == round(t_test(two_years, 'pid_delta', 'new_child', 0, 1).pvalue, 4)
 assert 0.0747 == round(t_test(two_years, 'pid_delta_abs', 'new_child', 0, 1).pvalue, 4)
  
-'''
-TODO
 ### Descriptive: party change
 # Average party change over two years: bigger than ideology, but still small
 # Vaguely interesting that it's a bigger change. Could just be that it's a bigger scale.
-# Are people less attached to party than ideological identity?
-two_years %>%
-  filter(!is.na(pid_delta)) %>% 
-  group_by(new_child) %>%
-  summarise(
-    pid_after = mean(pid_after),
-    pid_delta = mean(pid_delta),
-    pid_delta_abs = mean(pid_delta_abs)
-  )
-two_years %>%
-  filter(!is.na(pid_delta)) %>% 
-  group_by(firstborn) %>%
-  summarise(average_pid = mean(pid_delta), average_pid_abs = mean(pid_delta_abs))
-two_years %>%
-  filter(!is.na(pid_delta)) %>% 
-  filter(age < 30) %>% 
-  group_by(firstborn) %>%
-  summarise(
-    pid_before = mean(pid_before),
-    pid_after = mean(pid_after),
-    pid_delta = mean(pid_delta),
-    pid_delta_abs = mean(pid_delta_abs),
-  )
-'''
+summarize_continuous(filter_na(two_years, 'pid_delta'), 'new_child', 'pid')
+summarize_continuous(filter_na(two_years, 'pid_delta'), 'firstborn', 'pid')
+summarize_continuous(filter_na(young_adults, 'pid_delta'), 'firstborn', 'pid')
 
 ####################
 # Analysis: Issues #
