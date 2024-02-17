@@ -243,10 +243,9 @@ categorical_persists <- function(data, issue) {
 '''
 def count_percentages(df, group_by_label, metric_label):
     counts = df.loc[:,['caseid', group_by_label, metric_label]].groupby([group_by_label, metric_label], as_index=False).count() # roughly pd.crosstab
-    totals = df.loc[:,['caseid', group_by_label]].groupby([group_by_label], as_index=False).count()
-    results = counts.join(totals, on=group_by_label, rsuffix='_total')
-    results.pop(f'{group_by_label}_total')
-    results['percent'] = np.round(np.divide(np.multiply(results['caseid'], 100), results['caseid_total']), decimals=1)
+    totals = filter_na(df, metric_label).loc[:,['caseid', group_by_label]].groupby([group_by_label], as_index=False).count()
+    results = counts.merge(totals, on=group_by_label)
+    results['percent'] = np.round(np.divide(np.multiply(results['caseid_x'], 100), results['caseid_y']), decimals=1)
     return results
 
 
@@ -614,7 +613,7 @@ chisqs(two_years, 'change', 'new_child')
 # Descriptive statistics on categorical issues
 count_percentages(two_years, 'new_child', 'gay_marriage_before')
 after_counts = count_percentages(two_years, 'new_child', 'gay_marriage_after')
-assert (after_counts.loc[np.equal(after_counts['new_child'], True), 'percent'].values == [39.3, 60.5]).all()
+assert (after_counts.loc[np.equal(after_counts['new_child'], True), 'percent'].values == [39.4, 60.6]).all()
 
 count_percentages(two_years, 'new_child', 'schip_before')
 count_percentages(two_years, 'new_child', 'schip_after')
@@ -624,7 +623,7 @@ count_percentages(two_years, 'new_child', 'budget_after')
 
 count_percentages(two_years, 'new_child', 'budget_avoid_before')
 after_counts = count_percentages(two_years, 'new_child', 'budget_avoid_after')
-assert (after_counts.loc[np.equal(after_counts['new_child'], True), 'percent'].values == [19.5, 34.5, 43.6]).all()
+assert (after_counts.loc[np.equal(after_counts['new_child'], True), 'percent'].values == [20, 35.4, 44.6]).all()
 
 '''
 TODO
@@ -735,20 +734,12 @@ chisqs(two_years_new_parents, 'change', 'gender')
 #run_chisq(three_years_high_income, "new_child", "schip_persists") # p=0.? "Chi-squared approximation may be incorrect"
 #run_chisq(three_years_low_income, "new_child", "budget_persists") # p=0.09921
 
-'''
-TODO
 # Comparing new fathers to new mothers on budget_change
-#count_percentages(two_years_new_parents, "gender", "budget_before")
-two_years_new_parents %>% group_by(gender, budget_before) %>% summarise(count = n())
-# women: three_percents(77, 96, 39) = 36% / 45% / 18%
-# men: three_percents(64, 111, 29) = 31% / 54% / 14%
-two_years_new_parents %>% group_by(gender, budget_after) %>% summarise(count = n())
-# women: 83 / 89 / 40 = 212 = 39% / 42% / 19%
-# men: 65 / 98 / 39 = 202 = 32% / 49% / 19%
-two_years_new_parents %>% group_by(gender, budget_change) %>% summarise(count = n())
-# men %age who change: 4200 / (202)
-# women %age who change: 8600 / (208)
-'''
+count_percentages(two_years_new_parents, "gender", "budget_before")
+count_percentages(two_years_new_parents, "gender", "budget_after")
+counts = count_percentages(two_years_new_parents, "gender", "budget_change")
+assert (counts['caseid_x'].values == [160,  42, 122,  86]).all()
+assert (counts['percent'].values == [79.2, 20.8, 58.7, 41.3]).all()
 
 # Compare new fathers to other men: nothing
 assert 0.8416 == round(chisq(two_years_men, 'new_child', 'ideo_direction').pvalue, 4)
