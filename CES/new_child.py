@@ -62,6 +62,7 @@ three_years = three_years.assign(
     age=lambda x: 2010 - x.birthyr_10,
 )
 
+# Recode a few columns to streamline later calculations
 for year in (10, 12, 14):
     # Recode guns to be continuous (swapping 2 and 3 so that "no change" is in the middle of "less strict" and "more strict")
     label = f'CC{year}_320'
@@ -70,6 +71,17 @@ for year in (10, 12, 14):
     # Replace NA with 0 for child18num columns - seems this question was skipped if child18_{year} was No
     label = f'child18num_{year}'
     three_years.loc[np.isnan(three_years[label]), label] = 0
+
+    # CC10_414_1-CC10_414_6 are all usage of military for for different reasons: 1 yes, 2 no
+    # CC10_414_7 is a "none of the above" for the previous six: 1 yes, 2 no
+    three_years[f'CC{year}_414_7'] = np.where(three_years[f'CC{year}_414_7'] == 1, 2, 1)
+
+    # Flip the 2 yes/no immigration questions that are opposite polarity of the other 5
+    # For 1,7, 1 is more liberal and 2 is more conservative
+    # For 2,3,4,5,6, 1 is more conservative and 2 is more liberal
+    three_years[f'CC{year}_322_1'] = np.where(three_years[f'CC{year}_322_1'] == 1, 2, 1)
+    if year == 10:  # only asked in 2010
+        three_years[f'CC{year}_322_7'] = np.where(three_years[f'CC{year}_322_7'] == 1, 2, np.where(three_years[f'CC{year}_322_7'] == 2, 1, np.nan))
 
 # Consolidate demographics, arbitrarily using later data if there are differences
 for demo in ('gender', 'race', 'investor', 'newsint', 'educ', 'marstat', 'pew_religimp'):
@@ -378,18 +390,8 @@ def add_composite_opinions(df):
         df = _nan_out_of_bounds(df, f'CC{year}_330G', 1, 2)
         df[f'gay_composite_20{year}'] = np.divide(np.add(df[f'CC{year}_326'], df[f'CC{year}_330G']), 2)
 
-        # CC10_414_1-CC10_414_6 are all usage of military for for different reasons: 1 yes, 2 no
-        # CC10_414_7 is a "none of the above" for the previous six: 1 yes, 2 no
-        df[f'CC{year}_414_7'] = np.where(df[f'CC{year}_414_7'] == 1, 2, 1) # TODO: move further up? This makes calling this function multiple times problematic.
+        # yes/no questions on military force usage
         df[f'military_composite_20{year}'] = np.divide(np.sum(df.loc[:, df.columns.str.startswith(f'CC{year}_414_')], axis=1), 7)
-
-        # Flip the 2 yes/no immigration questions that are opposite polarity of the other 5
-        # For 1,7, 1 is more liberal and 2 is more conservative
-        # For 2,3,4,5,6, 1 is more conservative and 2 is more liberal
-        # TODO: move further up? This makes calling this function multiple times problematic.
-        df[f'CC{year}_322_1'] = np.where(df[f'CC{year}_322_1'] == 1, 2, 1)
-        if year == 10:  # only asked in 2010
-            df[f'CC{year}_322_7'] = np.where(df[f'CC{year}_322_7'] == 1, 2, np.where(df[f'CC{year}_322_7'] == 2, 1, np.nan))
 
     # CC10_322_1-CC10_322_7 are all yes/no immigration questions, 8 and 9 are "nothing"/"none of the above" which aren't clearly liberal or conservative
     # 2010 asked 1 2 3 4 7, 2012 asked 1 2 3 4 5 6, 2014 asked 1 2 3 4 5 6
@@ -524,6 +526,7 @@ assert 0.787 == round(t_test(two_years, 'immigration_composite_delta', 'new_chil
 
 # Change, absolute value: climate change, gay, guns: climate change & climate composite persist, and oddly so does sales or inc
 t_tests(two_years, 'delta_abs', 'new_child')
+assert 0.5486 == round(t_test(two_years, 'military_composite_delta', 'new_child').pvalue, 4)
 
 # Persistent change: nothing
 t_tests(three_years, 'persists', 'new_child')
@@ -564,12 +567,14 @@ assert 0.1119 == round(t_test(two_years, 'jobs_env_delta_abs', 'firstborn').pval
 summarize_continuous(two_years, "new_child", "climate_change")
 summarize_continuous(two_years, "new_child", "jobs_env")
 summarize_continuous(two_years, "new_child", "aff_action")
-summarize_continuous(two_years, "new_child", "guns")
+guns = summarize_continuous(two_years, "new_child", "guns")
+assert ([round(v, 2) for v in guns.iloc[1, 1:].values] == [1.78, 1.72, -0.06, 0.29])
 summarize_continuous(two_years, "new_child", "tax_or_spend")
 summarize_continuous(two_years, "new_child", "sales_or_inc")
 summarize_continuous(two_years, "new_child", "climate_composite")
 summarize_continuous(two_years, "new_child", "gay_composite")
-summarize_continuous(two_years, "new_child", "military_composite")
+military = summarize_continuous(two_years, "new_child", "military_composite")
+assert ([round(v, 2) for v in military.iloc[1, 1:].values] == [1.46, 1.49, 0.02, 0.16])
 summarize_continuous(two_years, "new_child", "immigration_composite")
  
 '''
