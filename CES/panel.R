@@ -638,7 +638,7 @@ t.test(gay_composite_delta~new_child, data=filter_na(two_years, "gay_composite_d
 t.test(military_composite_delta~new_child, data=filter_na(two_years, "military_composite_delta")) # p = 0.5486
 t.test(immigration_composite_delta~new_child, data=filter_na(two_years, "immigration_composite_delta")) # p = 0.787
 
-# Change, absolute value: climate change, guns: climate change & climate composite persist, and oddly so does sales or inc
+# Change, absolute value: climate change, gay, guns: climate change & climate composite persist, and oddly so does sales or inc
 t.test(climate_change_delta_abs~new_child, data=filter_na(two_years, "climate_change_delta_abs")) # p = 0.0005519***
 t.test(jobs_env_delta_abs~new_child, data=filter_na(two_years, "jobs_env_delta_abs")) # p = 0.1001
 t.test(aff_action_delta_abs~new_child, data=filter_na(two_years, "aff_action_delta_abs")) # p = 0.07633
@@ -646,9 +646,9 @@ t.test(guns_delta_abs~new_child, data=filter_na(two_years, "guns_delta_abs")) # 
 t.test(tax_or_spend_delta_abs~new_child, data=filter_na(two_years, "tax_or_spend_delta_abs")) # p = 0.6814
 t.test(sales_or_inc_delta_abs~new_child, data=filter_na(two_years, "sales_or_inc_delta_abs")) # p = 0.3438
 t.test(climate_composite_delta_abs~new_child, data=filter_na(two_years, "climate_composite_delta_abs")) # p = 0.001018**
-t.test(gay_composite_delta_abs~new_child, data=filter_na(two_years, "gay_composite_delta_abs")) # p = 0.1422
-t.test(military_composite_delta_abs~new_child, data=filter_na(two_years, "military_composite_delta_abs")) # p = 0.1629
-t.test(immigration_composite_delta_abs~new_child, data=filter_na(two_years, "immigration_composite_delta_abs")) # p = 0.1416
+t.test(gay_composite_delta_abs~new_child, data=filter_na(two_years, "gay_composite_delta_abs")) # p = 0.006143**
+t.test(military_composite_delta_abs~new_child, data=filter_na(two_years, "military_composite_delta_abs")) # p = 0.6701
+t.test(immigration_composite_delta_abs~new_child, data=filter_na(two_years, "immigration_composite_delta_abs")) # p = 0.5729
 
 # Persistent change: nothing
 t.test(climate_change_persists~new_child, data=filter_na(three_years, "climate_change_persists")) # p=0.1511

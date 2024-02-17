@@ -523,12 +523,8 @@ assert 0.9979 == round(t_test(two_years, 'climate_composite_after', 'new_child')
 t_tests(two_years, 'delta', 'new_child')
 assert 0.787 == round(t_test(two_years, 'immigration_composite_delta', 'new_child').pvalue, 4)
 
-# Change, absolute value: climate change, guns: climate change & climate composite persist, and oddly so does sales or inc
+# Change, absolute value: climate change, gay, guns: climate change & climate composite persist, and oddly so does sales or inc
 t_tests(two_years, 'delta_abs', 'new_child')
-# TODO: these don't match
-#t.test(gay_composite_delta_abs~new_child, data=filter_na(two_years, "gay_composite_delta_abs")) # p = 0.1422
-#t.test(immigration_composite_delta_abs~new_child, data=filter_na(two_years, "immigration_composite_delta_abs")) # p = 0.1416
-#t.test(military_composite_delta_abs~new_child, data=filter_na(two_years, "military_composite_delta_abs")) # p = 0.1629
 
 # Persistent change: nothing
 t_tests(three_years, 'persists', 'new_child')
