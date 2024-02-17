@@ -759,38 +759,24 @@ chisqs(two_years_women, 'change', 'new_child')
 #run_chisq(three_years_women, "gender", "budget_persists") # p < 0.00000000000000022***
 #run_chisq(three_years_women, "gender", "budget_avoid_persists") # p < 0.00000000000000022***
 
-'''
-TODO
 # Comparing new mothers to other women on budget_change and budget_change_avoid
-two_years_women %>% group_by(new_child, budget_before) %>% summarise(count = n())
-# mothers: three_percents(77, 96, 39) = 36 / 45 / 18
-# non-mothers: three_percents(3575, 2854, 1685)  = 44 / 35 / 21
-two_years_women %>% group_by(new_child, budget_after) %>% summarise(count = n())
-# mothers: three_percents(83, 89, 40) = 39 / 42 / 19
-# non-mothers: three_percents(3157, 2804, 2127) = 39 / 35 / 26
-two_years_women %>% group_by(new_child, budget_avoid_before) %>% summarise(count = n())
-# mothers: three_percents(29, 69, 113) = 14 / 33 / 54
-# non-mothers: three_percents(1239, 3386, 3452) = 15 / 42 / 43
-two_years_women %>% group_by(new_child, budget_avoid_after) %>% summarise(count = n())
-# mothers: three_percents(51, 76, 83) = 24 / 36 / 40
-# non-mothers: three_percents(1616, 3526, 2877) = 20 / 44 / 36
+count_percentages(two_years_women, "new_child", "budget_before")
+count_percentages(two_years_women, "new_child", "budget_after")
+count_percentages(two_years_women, "new_child", "budget_avoid_before")
+count_percentages(two_years_women, "new_child", "budget_avoid_after")
 
 
 ####################
 # Analysis: Income #
 ####################
-
 # Exploratory: what does the income distribution look like across the panel?
-panel %>% group_by(faminc_14) %>% summarise(count = n())
+panel.loc[:, ['caseid', 'faminc_14']].groupby("faminc_14").count()
 
 # Exploratory: what does the income distribution look like for new parents?
-three_years %>% filter(new_child == 1) %>% group_by(new_child, income) %>% summarise(count = n())
-three_years %>% group_by(income_quintile, new_child) %>% summarise(count = n())
-three_years %>% group_by(high_income) %>% summarise(count = n())
-three_years %>% group_by(low_income) %>% summarise(count = n())
-ggplot(three_years %>% filter(!is.na(income_quintile)) %>% filter(new_child == 1), aes(x = income)) +
-  geom_histogram(fill = "steelblue", binwidth = 1)
-'''
+three_years.loc[np.equal(three_years['new_child'], 1),['income', 'new_child', 'caseid']].groupby('income').count()
+three_years.loc[:,['new_child', 'income_quintile', 'caseid']].groupby(['new_child', 'income_quintile']).count()
+three_years.loc[:,['high_income', 'caseid']].groupby('high_income').count()
+three_years.loc[:,['low_income', 'caseid']].groupby('low_income').count()
 
 two_years_high_income = two_years.loc[np.equal(two_years['high_income'], 1),:]
 three_years_high_income = three_years.loc[np.equal(three_years['high_income'], 1),:]
@@ -799,20 +785,10 @@ three_years_low_income = three_years.loc[np.equal(three_years['high_income'], 0)
 assert 0.7833 == round(chisq(two_years_women, 'new_child', 'ideo_direction').pvalue, 4)
 assert 0.1103 == round(chisq(two_years_women, 'new_child', 'pid_direction').pvalue, 4)
 chisqs(two_years_women, 'change', 'new_child')
-'''
-TODO
+
 # Ideology & party: nothing
-two_years %>% filter(!is.na(high_income)) %>% group_by(new_child, high_income) %>% summarise(
-  ideo_before = mean(ideo_before, na.rm = TRUE),
-  ideo_after = mean(ideo_after, na.rm = TRUE),
-  ideo_delta = mean(ideo_delta, na.rm = TRUE),
-  ideo_delta_abs = mean(ideo_delta_abs, na.rm = TRUE),
-  pid_before = mean(pid_before, na.rm = TRUE),
-  pid_after = mean(pid_after, na.rm = TRUE),
-  pid_delta = mean(pid_delta, na.rm = TRUE),
-  pid_delta_abs = mean(pid_delta_abs, na.rm = TRUE),
-)
-'''
+summarize_continuous(filter_na(two_years, 'high_income'), ['new_child', 'high_income'], 'ideo')
+summarize_continuous(filter_na(two_years, 'high_income'), ['new_child', 'high_income'], 'pid')
 assert 0.517 == round(chisq(two_years_new_parents, 'high_income', 'ideo_direction').pvalue, 4)
 assert 0.5566 == round(chisq(two_years_new_parents, 'high_income', 'pid_direction').pvalue, 4)
 
@@ -832,7 +808,7 @@ t_tests(two_years_low_income, 'delta', 'new_child')
 t_tests(two_years_low_income, 'delta_abs', 'new_child')
 
 for prefix in CONTINUOUS_PREFIXES:
-    print(summarize_continuous(two_years, ["new_child", "high_income"], prefix))
+    summarize_continuous(two_years, ["new_child", "high_income"], prefix)
 
 # TODO: persists
 #t.test(climate_change_persists~high_income, data=filter_na(three_years_new_parents, "climate_change_persists")) # p=0.5825

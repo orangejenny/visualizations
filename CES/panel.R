@@ -131,6 +131,9 @@ add_ideo <- function(df) {
                                if_else(ideo_delta > 0, 
                                        1, 
                                        if_else(ideo_delta < 0, -1, 0)))
+    ) %>% mutate(
+      ideo_before = if_else(ideo_before %in% valid, ideo_before, NA),
+      ideo_after = if_else(ideo_after %in% valid, ideo_after, NA),
     )
   )
 }
@@ -148,6 +151,9 @@ add_pid <- function(df) {
                               if_else(pid_delta > 0,
                                       1,
                                       if_else(pid_delta < 0, -1, 0))),
+    ) %>% mutate(
+      pid_before = if_else(pid_before %in% valid, pid_before, NA),
+      pid_after = if_else(pid_after %in% valid, pid_after, NA),
     )
   )
 }
