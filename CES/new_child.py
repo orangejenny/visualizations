@@ -223,36 +223,21 @@ def summarize_continuous(df, group_by_labels, issue):
         group_by_labels + [f'{issue}_before', f'{issue}_after', f'{issue}_delta', f'{issue}_delta_abs']
     ].groupby(group_by_labels, as_index=False).mean()
 
-'''
-# TODO: delete
-continuous_persists <- function(data, issue) {
-  numbers <- data %>% 
-      filter(!is.na(eval(parse(text=paste(c(issue, "_persists"), collapse=""))))) %>% 
-      mutate(has_issue = if_else(eval(parse(text=paste(c(issue, "_persists"), collapse=""))) == 0, 0, 1)) %>% 
-      group_by(new_child, has_issue) %>% 
-      summarise(count = n())
-  counts <- as.list(numbers$count)
-  return(
-    paste("New parents: ", two_percents(counts[[3]], counts[[4]]),
-          ";",
-          "Others: ", two_percents(counts[[1]], counts[[2]]))
-  )
-}
 
-categorical_persists <- function(data, issue) {
-  numbers <- data %>% 
-      filter(!is.na(eval(parse(text=paste(c(issue, "_persists"), collapse=""))))) %>% 
-      group_by(new_child, eval(parse(text=paste(c(issue, "_persists"), collapse="")))) %>% 
-      summarise(count = n())
-  counts <- as.list(numbers$count)
-  return(
-    paste("New parents: ", two_percents(counts[[3]], counts[[4]]),
-          ";",
-          "Others: ", two_percents(counts[[1]], counts[[2]]))
-  )
-}
+def continuous_persists(df, issue):
+    flags = filter_na(df, f'{issue}_persists')
+    flags[f'{issue}_persistence_flag'] = np.bool_(flags[f'{issue}_persists'])
+    flags.groupby(['new_child', f'{issue}_persistence_flag']).count()
+    return count_percentages(flags, 'new_child', f'{issue}_persistence_flag')
 
-'''
+
+def categorical_persists(df, issue):
+    flags = filter_na(df, f'{issue}_persists')
+    flags[f'{issue}_persistence_flag'] = np.bool_(flags[f'{issue}_persists'])
+    flags.groupby(['new_child', f'{issue}_persistence_flag']).count()
+    return count_percentages(filter_na(df, f'{issue}_persists'), 'new_child', f'{issue}_persists')
+
+
 def count_percentages(df, group_by_label, metric_label):
     counts = df.loc[:,['caseid', group_by_label, metric_label]].groupby([group_by_label, metric_label], as_index=False).count() # roughly pd.crosstab
     totals = filter_na(df, metric_label).loc[:,['caseid', group_by_label]].groupby([group_by_label], as_index=False).count()
@@ -352,7 +337,10 @@ def add_categorical(df, before_pattern, prefix, lower_bound=None, upper_bound=No
         df[before_pattern.replace('XX', '10')] != df[before_pattern.replace('XX', '12')], # change in 2010 vs 2012
         df[before_pattern.replace('XX', '12')] == df[before_pattern.replace('XX', '14')]  # kept 2012 value in 2014
     ), 1, 0)
-    df.loc[np.logical_not(df.cycle == 101214), f'{prefix}_persists'] = np.nan
+    df.loc[np.isnan(df[before_pattern.replace('XX', '10')]), f'{prefix}_persists'] = np.nan
+    df.loc[np.isnan(df[before_pattern.replace('XX', '12')]), f'{prefix}_persists'] = np.nan
+    df.loc[np.isnan(df[before_pattern.replace('XX', '14')]), f'{prefix}_persists'] = np.nan
+    df[f'{prefix}_persists_abs'] = np.abs(df[f'{prefix}_persists'])
 
     CATEGORICAL_PREFIXES.add(prefix)
     if drop:
@@ -587,12 +575,7 @@ assert 0.8664 == round(chisq(two_years, 'new_child', 'ideo_direction').pvalue, 4
 assert 0.3215 == round(chisq(two_years, 'new_child', 'pid_direction').pvalue, 4)
 chisqs(two_years, 'after', 'new_child')
 chisqs(two_years, 'change', 'new_child')
-# TODO: this one doesn't work because the '_persists' columns are NaN
-#chisqs(two_years, 'persists', 'new_child')
-#run_chisq(three_years, "new_child", "gay_marriage_persists") # p=0.06199
-#run_chisq(three_years, "new_child", "schip_persists") # p=0.6948
-#run_chisq(three_years, "new_child", "budget_persists") # p=0.32
-#run_chisq(three_years, "new_child", "budget_avoid_persists") # p=1
+chisqs(three_years, 'persists', 'new_child')
 
 # Descriptive statistics on categorical issues
 count_percentages(two_years, 'new_child', 'gay_marriage_before')
@@ -609,12 +592,10 @@ count_percentages(two_years, 'new_child', 'budget_avoid_before')
 after_counts = count_percentages(two_years, 'new_child', 'budget_avoid_after')
 assert (after_counts.loc[np.equal(after_counts['new_child'], True), 'percent'].values == [20, 35.4, 44.6]).all()
 
-'''
-TODO
+
 # Persistence: how common is persistent change?
 # Of the new parents who changed, how many keep that change?
 # New parents often slightly more likely to experience persistent change than others
-
 continuous_persists(three_years, "climate_change") # 25% vs 18%
 continuous_persists(three_years, "jobs_env") # 23% vs 23%
 continuous_persists(three_years, "aff_action") # 16% vs 16%
@@ -631,7 +612,6 @@ categorical_persists(three_years, "schip") # 15% vs 12%
 categorical_persists(three_years, "budget") # 15% vs 12%
 categorical_persists(three_years, "budget_avoid") # 16% vs 16%
 
-'''
 ####################
 # Analysis: Gender #
 ####################
