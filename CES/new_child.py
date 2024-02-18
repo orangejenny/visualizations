@@ -294,7 +294,7 @@ def _nan_out_of_bounds(df, label, lower_bound=None, upper_bound=None):
 def _add_before_after(df, before_pattern, prefix, lower_bound=None, upper_bound=None):
     kwargs = {
         f'{prefix}_before': np.where(df.cycle == 1214, df[before_pattern.replace('XX', '12')], df[before_pattern.replace('XX', '10')]),
-        f'{prefix}_after': np.where(df.cycle == 1012, df[before_pattern.replace('XX', '12')], df[before_pattern.replace('XX', '14')]),
+        f'{prefix}_after': np.where(df.cycle == 1214, df[before_pattern.replace('XX', '14')], df[before_pattern.replace('XX', '12')]),
     }
     df = df.assign(**kwargs)
     df = _nan_out_of_bounds(df, f'{prefix}_before', lower_bound, upper_bound)
@@ -330,6 +330,8 @@ def add_continuous(df, before_pattern, prefix, lower_bound=None, upper_bound=Non
         f'{prefix}_persists_abs': lambda x: abs(x[f'{prefix}_persists']),
     }
     df = df.assign(**kwargs)
+    df.loc[np.isnan(df[f'{prefix}_delta']), f'{prefix}_persists'] = np.nan # same as above
+    df.loc[np.isnan(df[f'{prefix}_delta']), f'{prefix}_persists_abs'] = np.nan # same as above
 
     CONTINUOUS_PREFIXES.add(prefix)
     if drop:
@@ -530,32 +532,9 @@ assert 0.5486 == round(t_test(two_years, 'military_composite_delta', 'new_child'
 
 # Persistent change: nothing
 t_tests(three_years, 'persists', 'new_child')
-# TODO: None of these match
-#t.test(aff_action_persists~new_child, data=filter_na(three_years, "aff_action_persists")) # p=0.3376
-#t.test(climate_change_persists~new_child, data=filter_na(three_years, "climate_change_persists")) # p=0.1511
-#t.test(climate_composite_persists~new_child, data=filter_na(three_years, "climate_composite_persists")) # p=0.4749
-#t.test(gay_composite_persists~new_child, data=filter_na(three_years, "gay_composite_persists")) # p=0.8711
-#t.test(guns_persists~new_child, data=filter_na(three_years, "guns_persists")) # p=0.5596
-#t.test(immigration_composite_persists~new_child, data=filter_na(three_years, "immigration_composite_persists")) # p=0.3216
-#t.test(jobs_env_persists~new_child, data=filter_na(three_years, "jobs_env_persists")) # p=0.6261
-#t.test(military_composite_persists~new_child, data=filter_na(three_years, "military_composite_persists")) # p=0.2531
-#t.test(sales_or_inc_persists~new_child, data=filter_na(three_years, "sales_or_inc_persists")) # p=0.5886
-#t.test(tax_or_spend_persists~new_child, data=filter_na(three_years, "tax_or_spend_persists")) # p=0.1892
-
 
 # Persistent absolute change: climate change, tax/spend, climate composite, gay rights composite
 t_tests(three_years, 'persists_abs', 'new_child')
-# TODO: none of these match
-#t.test(aff_action_persists_abs~new_child, data=filter_na(three_years, "aff_action_persists_abs")) # p=0.8902
-#t.test(climate_change_persists_abs~new_child, data=filter_na(three_years, "climate_change_persists_abs")) # p=0.01737*
-#t.test(climate_composite_persists_abs~new_child, data=filter_na(three_years, "climate_composite_persists_abs")) # p=0.03602*
-#t.test(gay_composite_persists_abs~new_child, data=filter_na(three_years, "gay_composite_persists_abs")) # p=0.02934*
-#t.test(guns_persists_abs~new_child, data=filter_na(three_years, "guns_persists_abs")) # p=0.3267
-#t.test(immigration_composite_persists_abs~new_child, data=filter_na(three_years, "immigration_composite_persists_abs")) # p=0.4937
-#t.test(jobs_env_persists_abs~new_child, data=filter_na(three_years, "jobs_env_persists_abs")) # p=0.5739
-#t.test(military_composite_persists_abs~new_child, data=filter_na(three_years, "military_composite_persists_abs")) # p=0.2671
-#t.test(sales_or_inc_persists_abs~new_child, data=filter_na(three_years, "sales_or_inc_persists_abs")) # p=0.5647
-#t.test(tax_or_spend_persists_abs~new_child, data=filter_na(three_years, "tax_or_spend_persists_abs")) # p=0.03717*
 
 # Switching to firstborn and looking at change: for absolute change, climate change, climate composite and gay rights composite
 t_tests(two_years, 'delta', 'firstborn')
