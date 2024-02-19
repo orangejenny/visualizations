@@ -131,6 +131,9 @@ add_ideo <- function(df) {
                                if_else(ideo_delta > 0, 
                                        1, 
                                        if_else(ideo_delta < 0, -1, 0)))
+    ) %>% mutate(
+      ideo_before = if_else(ideo_before %in% valid, ideo_before, NA),
+      ideo_after = if_else(ideo_after %in% valid, ideo_after, NA),
     )
   )
 }
@@ -148,6 +151,9 @@ add_pid <- function(df) {
                               if_else(pid_delta > 0,
                                       1,
                                       if_else(pid_delta < 0, -1, 0))),
+    ) %>% mutate(
+      pid_before = if_else(pid_before %in% valid, pid_before, NA),
+      pid_after = if_else(pid_after %in% valid, pid_after, NA),
     )
   )
 }
@@ -237,26 +243,42 @@ add_categorical_opinions <- function (df) {
       gay_marriage_change = if_else(
         is.na(gay_marriage_before) | is.na(gay_marriage_after), NA,
         if_else(gay_marriage_before == gay_marriage_after, 0, 1)),
-      gay_marriage_persists = if_else(cycle != 101214, NA, gay_marriage_change & CC12_326 == CC14_326),
+      gay_marriage_persists = if_else(
+        cycle != 101214 | is.na(CC10_326 + CC12_326 + CC14_326),
+        NA,
+        gay_marriage_change & CC12_326 == CC14_326
+      ),
       schip_before = if_else(schip_before %nin% c(1, 2), NA, schip_before),
       schip_after = if_else(schip_after %nin% c(1, 2), NA, schip_after),
       schip_change = if_else(
          is.na(schip_before) | is.na(schip_after), NA,
          if_else(schip_before == schip_after, 0, 1)),
-      schip_persists = if_else(cycle != 101214, NA, schip_change & CC12_330B == CC14_330B),
+      schip_persists = if_else(
+         cycle != 101214 | is.na(CC10_330B + CC12_330B + CC14_330B),
+         NA,
+         schip_change & CC12_330B == CC14_330B
+      ),
       budget_before = if_else(budget_before %nin% c(1:3), NA, budget_before),
       budget_after = if_else(budget_after %nin% c(1:3), NA, budget_after),
       budget_change = if_else(
         is.na(budget_before) | is.na(budget_after), NA,
         if_else(budget_before == budget_after, 0, 1)),
-      budget_persists = if_else(cycle != 101214, NA, budget_change & CC12_328 == CC14_328),
+      budget_persists = if_else(
+        cycle != 101214 | is.na(CC10_328 + CC12_328 + CC14_328), 
+        NA, 
+        budget_change & CC12_328 == CC14_328
+      ),
       budget_combo = budget_before * 10 + budget_after,
       budget_avoid_before = if_else(budget_avoid_before %nin% c(1:3), NA, budget_avoid_before),
       budget_avoid_after = if_else(budget_avoid_after %nin% c(1:3), NA, budget_avoid_after),
       budget_avoid_change = if_else(
         is.na(budget_avoid_before) | is.na(budget_avoid_after), NA,
         if_else(budget_avoid_before == budget_avoid_after, 0, 1)),
-      budget_avoid_persists = if_else(cycle != 101214, NA, budget_avoid_change & CC12_329 == CC14_329),
+      budget_avoid_persists = if_else(
+        cycle != 101214 | is.na(CC10_329 + CC12_329 + CC14_329), 
+        NA, 
+        budget_avoid_change & CC12_329 == CC14_329
+      ),
       budget_avoid_combo = budget_avoid_before * 10 + budget_avoid_after,
     )
   )
@@ -352,6 +374,9 @@ panel <- read_dta("CCES_Panel_Full3waves_VV_V4.dta") # n=9500
 # Build three base data frames (10-12, 12-14, 10-14)
 three_years <- panel %>% zap_labels() %>% 
   select(
+    "caseid",
+    "weight",
+    
     # Ideology and partisanship
     starts_with("ideo5_"),
     matches("pid3_1[024]"),
@@ -635,7 +660,7 @@ t.test(gay_composite_delta~new_child, data=filter_na(two_years, "gay_composite_d
 t.test(military_composite_delta~new_child, data=filter_na(two_years, "military_composite_delta")) # p = 0.5486
 t.test(immigration_composite_delta~new_child, data=filter_na(two_years, "immigration_composite_delta")) # p = 0.787
 
-# Change, absolute value: climate change, guns: climate change & climate composite persist, and oddly so does sales or inc
+# Change, absolute value: climate change, gay, guns: climate change & climate composite persist, and oddly so does sales or inc
 t.test(climate_change_delta_abs~new_child, data=filter_na(two_years, "climate_change_delta_abs")) # p = 0.0005519***
 t.test(jobs_env_delta_abs~new_child, data=filter_na(two_years, "jobs_env_delta_abs")) # p = 0.1001
 t.test(aff_action_delta_abs~new_child, data=filter_na(two_years, "aff_action_delta_abs")) # p = 0.07633
@@ -643,9 +668,9 @@ t.test(guns_delta_abs~new_child, data=filter_na(two_years, "guns_delta_abs")) # 
 t.test(tax_or_spend_delta_abs~new_child, data=filter_na(two_years, "tax_or_spend_delta_abs")) # p = 0.6814
 t.test(sales_or_inc_delta_abs~new_child, data=filter_na(two_years, "sales_or_inc_delta_abs")) # p = 0.3438
 t.test(climate_composite_delta_abs~new_child, data=filter_na(two_years, "climate_composite_delta_abs")) # p = 0.001018**
-t.test(gay_composite_delta_abs~new_child, data=filter_na(two_years, "gay_composite_delta_abs")) # p = 0.1422
-t.test(military_composite_delta_abs~new_child, data=filter_na(two_years, "military_composite_delta_abs")) # p = 0.1629
-t.test(immigration_composite_delta_abs~new_child, data=filter_na(two_years, "immigration_composite_delta_abs")) # p = 0.1416
+t.test(gay_composite_delta_abs~new_child, data=filter_na(two_years, "gay_composite_delta_abs")) # p = 0.006143**
+t.test(military_composite_delta_abs~new_child, data=filter_na(two_years, "military_composite_delta_abs")) # p = 0.6701
+t.test(immigration_composite_delta_abs~new_child, data=filter_na(two_years, "immigration_composite_delta_abs")) # p = 0.5729
 
 # Persistent change: nothing
 t.test(climate_change_persists~new_child, data=filter_na(three_years, "climate_change_persists")) # p=0.1511
@@ -683,7 +708,7 @@ t.test(gay_composite_delta~firstborn, data=filter_na(two_years, "gay_composite_d
 t.test(military_composite_delta~firstborn, data=filter_na(two_years, "military_composite_delta")) # p = 0.8931
 t.test(immigration_composite_delta~firstborn, data=filter_na(two_years, "immigration_composite_delta")) # p = 0.8848
 
-t.test(climate_change_delta_abs~firstborn, data=filter_na(two_years, "climate_change_delta_abs")) # p = 0.4946
+t.test(climate_change_delta_abs~firstborn, data=filter_na(two_years, "climate_change_delta_abs")) # p = 0.001621**
 t.test(jobs_env_delta_abs~firstborn, data=filter_na(two_years, "jobs_env_delta_abs")) # p = 0.1119
 t.test(aff_action_delta_abs~firstborn, data=filter_na(two_years, "aff_action_delta_abs")) # p = 0.1326
 t.test(guns_delta_abs~firstborn, data=filter_na(two_years, "guns_delta_abs")) # p = 0.06643
@@ -731,9 +756,9 @@ run_chisq(two_years, "new_child", "gay_marriage_change") # p=0.1347
 run_chisq(two_years, "new_child", "schip_change") # p=0.3306
 run_chisq(two_years, "new_child", "budget_change") # p=0.00280**
 run_chisq(two_years, "new_child", "budget_avoid_change") # p=0.0154*
-run_chisq(three_years, "new_child", "gay_marriage_persists") # p=0.06199
-run_chisq(three_years, "new_child", "schip_persists") # p=0.6948
-run_chisq(three_years, "new_child", "budget_persists") # p=0.32
+run_chisq(three_years, "new_child", "gay_marriage_persists") # p=0.06166
+run_chisq(three_years, "new_child", "schip_persists") # p=0.7097
+run_chisq(three_years, "new_child", "budget_persists") # p=0.3336
 run_chisq(three_years, "new_child", "budget_avoid_persists") # p=1
 run_chisq(two_years, "new_child", "gay_marriage_after") # p=0.2971
 run_chisq(two_years, "new_child", "schip_after") # p=0.8188
@@ -788,7 +813,7 @@ continuous_persists(three_years, "military_composite") # 32% vs 30%
 continuous_persists(three_years, "immigration_composite") # 50% vs 48%
  
 categorical_persists(three_years, "gay_marriage") # 10% vs 7%
-categorical_persists(three_years, "schip") # 15% vs 12%
+categorical_persists(three_years, "schip") # 7% vs 8%
 categorical_persists(three_years, "budget") # 15% vs 12%
 categorical_persists(three_years, "budget_avoid") # 16% vs 16%
 
@@ -839,7 +864,7 @@ t.test(pid_delta_abs~new_child, data=filter_na(two_years_women, "pid_delta_abs")
 # Compare new fathers to new mothers: tax vs spend, jobs vs env, aff action: nothing persists
 t.test(climate_change_delta~gender, data=filter_na(two_years_new_parents, "climate_change_delta")) # p=0.8752
 t.test(jobs_env_delta~gender, data=filter_na(two_years_new_parents, "jobs_env_delta")) # p=0.7913
-t.test(aff_action_delta~gender, data=filter_na(two_years_new_parents, "aff_action_delta")) # p=0.0800
+t.test(aff_action_delta~gender, data=filter_na(two_years_new_parents, "aff_action_delta")) # p=0.4547
 t.test(guns_delta~gender, data=filter_na(two_years_new_parents, "guns_delta")) # p=0.08586
 t.test(tax_or_spend_delta~gender, data=filter_na(two_years_new_parents, "tax_or_spend_delta")) # p=0.04358*
 t.test(sales_or_inc_delta~gender, data=filter_na(two_years_new_parents, "sales_or_inc_delta")) # p=0.4426
@@ -1009,8 +1034,8 @@ run_chisq(two_years_women, "new_child", "schip_change") # p=0.1476
 run_chisq(two_years_women, "new_child", "budget_change") # p=0.0003211***
 run_chisq(two_years_women, "new_child", "budget_avoid_change") # p=0.0006512***
 
-run_chisq(three_years_women, "gender", "budget_persists") # p < 0.00000000000000022***
-run_chisq(three_years_women, "gender", "budget_avoid_persists") # p < 0.00000000000000022***
+run_chisq(three_years_women, "new_child", "budget_persists") # p=0.3848
+run_chisq(three_years_women, "new_child", "budget_avoid_persists") # p < 0.7862
 
 # Comparing new mothers to other women on budget_change and budget_change_avoid
 two_years_women %>% group_by(new_child, budget_before) %>% summarise(count = n())
