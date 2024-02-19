@@ -175,15 +175,15 @@ def pvalue_stars(pvalue):
     return ''
 
 
-def t_tests(df, independent_suffix, dependent_label, a_value=0, b_value=1):
+def t_tests(df, issue_suffix, demographic_label, a_value=0, b_value=1):
     results = {
         'metric': [],
         'statistic': [],
         'df': [],
         'pvalue': [],
     }
-    for label in [f'{p}_{independent_suffix}' for p in CONTINUOUS_PREFIXES]:
-        result = t_test(df, label, dependent_label, a_value, b_value)
+    for label in [f'{p}_{issue_suffix}' for p in CONTINUOUS_PREFIXES]:
+        result = t_test(df, label, demographic_label, a_value, b_value)
         results['metric'].append(label)
         results['statistic'].append(result.statistic)
         results['df'].append(result.df)
@@ -197,15 +197,15 @@ def chisq(df, factor1, factor2):
     return chi2_contingency(pd.crosstab(df[factor1], df[factor2]))
 
 
-def chisqs(df, dependent_suffix, independent_label):
+def chisqs(df, issue_suffix, demographic_label):
     results = {
         'metric': [],
         'statistic': [],
         'dof': [],
         'pvalue': [],
     }
-    for label in [f'{p}_{independent_suffix}' for p in CATEGORICAL_PREFIXES]:
-        result = chisq(df, label, dependent_label)
+    for label in [f'{p}_{issue_suffix}' for p in CATEGORICAL_PREFIXES]:
+        result = chisq(df, label, demographic_label)
         results['metric'].append(label)
         results['statistic'].append(result.statistic)
         results['dof'].append(result.dof)
