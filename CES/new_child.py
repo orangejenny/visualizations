@@ -298,7 +298,7 @@ def add_continuous(df, before_pattern, prefix, lower_bound=None, upper_bound=Non
     kwargs = {
         f'{prefix}_delta': lambda x: x[f'{prefix}_after'] - x[f'{prefix}_before'],
         f'{prefix}_delta_abs': lambda x: abs(x[f'{prefix}_delta']),
-        f'{prefix}_direction': lambda x: np.where(x[f'{prefix}_delta'] > 0, 1, np.where(x[f'{prefix}_delta'] < 0, -1, 0)),
+        f'{prefix}_direction': lambda x: np.sign(x[f'{prefix}_delta']),
     }
     df = df.assign(**kwargs)
     df.loc[np.isnan(df[f'{prefix}_delta']), f'{prefix}_direction'] = np.nan # because some of the 0s should be NaN
