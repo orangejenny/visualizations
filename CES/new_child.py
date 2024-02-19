@@ -544,32 +544,14 @@ summarize_continuous(two_years, "new_child", "gay_composite")
 military = summarize_continuous(two_years, "new_child", "military_composite")
 assert ([round(v, 2) for v in military.iloc[1, 1:].values] == [1.46, 1.49, 0.02, 0.16])
 summarize_continuous(two_years, "new_child", "immigration_composite")
- 
-'''
-TODO
+
 # Non-response rates, continuous & composite issues
-non_response = two_years.loc[:, two_years.columns.str.endswith('_delta') + two_years.columns.str.endswith('_change') + two_years.columns.str.contains('new_child')]
+# Do non-response rates differ for parents and non-parents?
+total = len(two_years)
 for prefixes, suffix in ((CONTINUOUS_PREFIXES, 'delta'), (CATEGORICAL_PREFIXES, 'change')):
     for issue in prefixes:
-        non_response.loc[:, f'has_{issue}'] = np.where(np.isnan(non_response[f'{issue}_{suffix}']), 0, 1)
-#count_percentages(two_years, 'new_child', 'gay_marriage_before')
-two_years %>% mutate(has_climate_change = if_else(is.na(climate_change_delta), 0, 1)) %>% group_by(new_child, has_climate_change) %>% summarise(count = n())
-two_years %>% mutate(has_jobs_env = if_else(is.na(jobs_env_delta), 0, 1)) %>% group_by(new_child, has_jobs_env) %>% summarise(count = n())
-two_years %>% mutate(has_aff_action = if_else(is.na(aff_action_delta), 0, 1)) %>% group_by(new_child, has_aff_action) %>% summarise(count = n())
-two_years %>% mutate(has_guns = if_else(is.na(guns_delta), 0, 1)) %>% group_by(new_child, has_guns) %>% summarise(count = n())
-two_years %>% mutate(has_tax_or_spend = if_else(is.na(tax_or_spend_delta), 0, 1)) %>% group_by(new_child, has_tax_or_spend) %>% summarise(count = n())
-two_years %>% mutate(has_sales_or_inc = if_else(is.na(sales_or_inc_delta), 0, 1)) %>% group_by(new_child, has_sales_or_inc) %>% summarise(count = n())
-two_years %>% mutate(has_climate_composite = if_else(is.na(climate_composite_delta), 0, 1)) %>% group_by(new_child, has_climate_composite) %>% summarise(count = n())
-two_years %>% mutate(has_gay_composite = if_else(is.na(gay_composite_delta), 0, 1)) %>% group_by(new_child, has_gay_composite) %>% summarise(count = n())
-two_years %>% mutate(has_military_composite = if_else(is.na(military_composite_delta), 0, 1)) %>% group_by(new_child, has_military_composite) %>% summarise(count = n())
-two_years %>% mutate(has_immigration_composite = if_else(is.na(immigration_composite_delta), 0, 1)) %>% group_by(new_child, has_immigration_composite) %>% summarise(count = n())
-
-# Non-response rates, categorical issues
-two_years %>% group_by(new_child, gay_marriage_change) %>% summarise(count = n())
-two_years %>% group_by(new_child, schip_change) %>% summarise(count = n())
-two_years %>% group_by(new_child, budget_change) %>% summarise(count = n())
-two_years %>% group_by(new_child, budget_avoid_change) %>% summarise(count = n()) # highest NA responses, at 3%
-'''
+        missing = len(two_years.loc[np.isnan(two_years[f'{issue}_{suffix}']),:])
+        #print(f"Non-response for {issue}_{suffix}: {round(missing * 100 / total, 2)}%")
 
 ### Testing: categorical variables: both budget questions, but neither persists
 assert 0.8664 == round(chisq(two_years, 'new_child', 'ideo_direction').pvalue, 4)
