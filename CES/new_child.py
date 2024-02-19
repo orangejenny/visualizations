@@ -139,7 +139,7 @@ two_years = pd.concat([
 # Functions: utilities #
 ########################
 def filter_na(df, label):
-    return df.loc[np.logical_not(np.isnan(df[label])),:].copy()
+    return df.loc[pd.notna(df[label]),:].copy()
 
 def count_flippers(df, before_label, after_label, lower_bound, upper_bound):
     valid_rows = df.loc[
