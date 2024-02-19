@@ -152,10 +152,10 @@ def count_flippers(df, before_label, after_label, lower_bound, upper_bound):
     return round(len(flippers) * 100 / len(valid_rows), 1)
 
 
-def t_test(df, independent_label, dependent_label, a_value=0, b_value=1):
-    na_filtered = filter_na(df, independent_label)
-    group_a = na_filtered.loc[np.equal(na_filtered[dependent_label], a_value), independent_label]
-    group_b = na_filtered.loc[np.equal(na_filtered[dependent_label], b_value), independent_label]
+def t_test(df, issue_label, demographic_label='new_child', a_value=0, b_value=1):
+    filtered = filter_na(filter_na(df, demographic_label), issue_label)
+    group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), issue_label]
+    group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), issue_label]
     return ttest_ind(group_a, group_b, equal_var=False)
 
 
@@ -169,7 +169,7 @@ def pvalue_stars(pvalue):
     return ''
 
 
-def t_tests(df, issue_suffix, demographic_label, a_value=0, b_value=1):
+def t_tests(df, issue_suffix, demographic_label='new_child', a_value=0, b_value=1):
     results = {
         'metric': [],
         'statistic': [],
@@ -187,11 +187,11 @@ def t_tests(df, issue_suffix, demographic_label, a_value=0, b_value=1):
     return df
 
 
-def chisq(df, factor1, factor2):
+def chisq(df, factor1, factor2='new_child'):
     return chi2_contingency(pd.crosstab(df[factor1], df[factor2]))
 
 
-def chisqs(df, issue_suffix, demographic_label):
+def chisqs(df, issue_suffix, demographic_label='new_child'):
     results = {
         'metric': [],
         'statistic': [],
@@ -456,12 +456,12 @@ panel.groupby("pid7_10").count().loc[:,'weight']
 three_years.loc[np.equal(three_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'weight']
 
 ### Testing: ideological change: nothing significant
-assert 0.4108 == round(t_test(two_years, 'ideo_delta', 'new_child').pvalue, 4)
-assert 0.6008 == round(t_test(two_years, 'ideo_delta_abs', 'new_child').pvalue, 4)
+assert 0.4108 == round(t_test(two_years, 'ideo_delta').pvalue, 4)
+assert 0.6008 == round(t_test(two_years, 'ideo_delta_abs').pvalue, 4)
 
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
-assert 0.6761 == round(t_test(young_adults, 'ideo_delta', 'new_child').pvalue, 4)
-assert 0.6028 == round(t_test(young_adults, 'ideo_delta_abs', 'new_child').pvalue, 4)
+assert 0.6761 == round(t_test(young_adults, 'ideo_delta').pvalue, 4)
+assert 0.6028 == round(t_test(young_adults, 'ideo_delta_abs').pvalue, 4)
 
 ### Descriptive: ideological change
 # Average ideological change over two years: trivially liberal, moreso for non-new-parents
@@ -485,10 +485,10 @@ count_percentages(filter_na(young_adults, 'ideo_delta'), 'new_child', 'ideo_dire
 
 ### Testing: party change: nothing significant
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
-assert 0.4663 == round(t_test(young_adults, 'pid_delta', 'new_child', 0, 1).pvalue, 4)
-assert 0.6051 == round(t_test(young_adults, 'pid_delta_abs', 'new_child', 0, 1).pvalue, 4)
-assert 0.4348 == round(t_test(two_years, 'pid_delta', 'new_child', 0, 1).pvalue, 4)
-assert 0.0747 == round(t_test(two_years, 'pid_delta_abs', 'new_child', 0, 1).pvalue, 4)
+assert 0.4663 == round(t_test(young_adults, 'pid_delta').pvalue, 4)
+assert 0.6051 == round(t_test(young_adults, 'pid_delta_abs').pvalue, 4)
+assert 0.4348 == round(t_test(two_years, 'pid_delta').pvalue, 4)
+assert 0.0747 == round(t_test(two_years, 'pid_delta_abs').pvalue, 4)
  
 ### Descriptive: party change
 # Average party change over two years: bigger than ideology, but still small
@@ -503,22 +503,22 @@ summarize_continuous(filter_na(young_adults, 'pid_delta'), 'firstborn', 'pid')
 
 ### Testing: continuous & composite issues
 # "After" views: nothing
-t_tests(two_years, 'after', 'new_child')
-assert 0.9979 == round(t_test(two_years, 'climate_composite_after', 'new_child').pvalue, 4)
+t_tests(two_years, 'after')
+assert 0.9979 == round(t_test(two_years, 'climate_composite_after').pvalue, 4)
 
 # Change, incorporating direction: nothing
-t_tests(two_years, 'delta', 'new_child')
-assert 0.787 == round(t_test(two_years, 'immigration_composite_delta', 'new_child').pvalue, 4)
+t_tests(two_years, 'delta')
+assert 0.787 == round(t_test(two_years, 'immigration_composite_delta').pvalue, 4)
 
 # Change, absolute value: climate change, gay, guns: climate change & climate composite persist, and oddly so does sales or inc
-t_tests(two_years, 'delta_abs', 'new_child')
-assert 0.5486 == round(t_test(two_years, 'military_composite_delta', 'new_child').pvalue, 4)
+t_tests(two_years, 'delta_abs')
+assert 0.5486 == round(t_test(two_years, 'military_composite_delta').pvalue, 4)
 
 # Persistent change: nothing
-t_tests(three_years, 'persists', 'new_child')
+t_tests(three_years, 'persists')
 
 # Persistent absolute change: climate change, tax/spend, climate composite, gay rights composite
-t_tests(three_years, 'persists_abs', 'new_child')
+t_tests(three_years, 'persists_abs')
 
 # Switching to firstborn and looking at change: for absolute change, climate change, climate composite and gay rights composite
 t_tests(two_years, 'delta', 'firstborn')
@@ -549,11 +549,11 @@ for prefixes, suffix in ((CONTINUOUS_PREFIXES, 'delta'), (CATEGORICAL_PREFIXES, 
         #print(f"Non-response for {issue}_{suffix}: {round(missing * 100 / total, 2)}%")
 
 ### Testing: categorical variables: both budget questions, but neither persists
-assert 0.8664 == round(chisq(two_years, 'new_child', 'ideo_direction').pvalue, 4)
-assert 0.3215 == round(chisq(two_years, 'new_child', 'pid_direction').pvalue, 4)
-chisqs(two_years, 'after', 'new_child')
-chisqs(two_years, 'change', 'new_child')
-chisqs(three_years, 'persists', 'new_child')
+assert 0.8664 == round(chisq(two_years, 'ideo_direction').pvalue, 4)
+assert 0.3215 == round(chisq(two_years, 'pid_direction').pvalue, 4)
+chisqs(two_years, 'after')
+chisqs(two_years, 'change')
+chisqs(three_years, 'persists')
 
 # Descriptive statistics on categorical issues
 count_percentages(two_years, 'new_child', 'gay_marriage_before')
@@ -610,16 +610,16 @@ t_tests(two_years_new_parents, 'delta', 'gender', a_value=1, b_value=2)
 t_tests(two_years_new_parents, 'delta_abs', 'gender', a_value=1, b_value=2)
 
 # Compare new fathers to other men: tax or spend with direction...doesn't persist
-t_tests(two_years_men, 'delta', 'new_child')
-t_tests(two_years_men, 'delta_abs', 'new_child')
-t_test(three_years_men, 'new_child', 'tax_or_spend_persists')
-t_test(three_years_men, 'new_child', 'tax_or_spend_persists_abs')
+t_tests(two_years_men, 'delta')
+t_tests(two_years_men, 'delta_abs')
+t_test(three_years_men, 'tax_or_spend_persists')
+t_test(three_years_men, 'tax_or_spend_persists_abs')
 
 # Compare new mothers to other women: absolute climate, gay, guns
-t_tests(two_years_women, 'delta', 'new_child')
-t_tests(two_years_women, 'delta_abs', 'new_child')
-t_test(three_years_women, 'new_child', 'climate_change_persists_abs')
-t_test(three_years_women, 'new_child', 'guns_persists')
+t_tests(two_years_women, 'delta')
+t_tests(two_years_women, 'delta_abs')
+t_test(three_years_women, 'climate_change_persists_abs')
+t_test(three_years_women, 'guns_persists')
 
 ### Describe continuous issues
 for prefix in CONTINUOUS_PREFIXES:
@@ -636,13 +636,13 @@ summarize_continuous(two_years_women, "new_child", "climate_composite")
 summarize_continuous(two_years_women, "new_child", "gay_composite")
 
 # Mothers vs non-mothers: persists absolute value: gay composite
-t_tests(three_years_women, 'persists', 'new_child')
-t_tests(three_years_women, 'persists_abs', 'new_child')
+t_tests(three_years_women, 'persists')
+t_tests(three_years_women, 'persists_abs')
 
 ### Categorical issues
 # Compare new fathers to new mothers: both budget questions: budget persists
-assert 0.595 == round(chisq(two_years_new_parents, 'gender', 'ideo_direction').pvalue, 4)
-assert 0.1408 == round(chisq(two_years_new_parents, 'gender', 'pid_direction').pvalue, 4)
+assert 0.595 == round(chisq(two_years_new_parents, 'ideo_direction', 'gender').pvalue, 4)
+assert 0.1408 == round(chisq(two_years_new_parents, 'pid_direction', 'gender').pvalue, 4)
 chisqs(three_years_new_parents, "persists", "gender")
 
 # Comparing new fathers to new mothers on budget_change
@@ -653,15 +653,15 @@ assert (counts['caseid_x'].values == [160,  42, 122,  86]).all()
 assert (counts['percent'].values == [79.2, 20.8, 58.7, 41.3]).all()
 
 # Compare new fathers to other men: nothing
-assert 0.8416 == round(chisq(two_years_men, 'new_child', 'ideo_direction').pvalue, 4)
-assert 0.2836 == round(chisq(two_years_men, 'new_child', 'pid_direction').pvalue, 4)
-chisqs(two_years_men, 'change', 'new_child')
+assert 0.8416 == round(chisq(two_years_men, 'ideo_direction').pvalue, 4)
+assert 0.2836 == round(chisq(two_years_men, 'pid_direction').pvalue, 4)
+chisqs(two_years_men, 'change')
 
 # Compare new mothers to other women: both budget questions: budget persists
-assert 0.7833 == round(chisq(two_years_women, 'new_child', 'ideo_direction').pvalue, 4)
-assert 0.1103 == round(chisq(two_years_women, 'new_child', 'pid_direction').pvalue, 4)
-chisqs(two_years_women, 'change', 'new_child')
-chisqs(three_years_women, "persists", "new_child")
+assert 0.7833 == round(chisq(two_years_women, 'ideo_direction').pvalue, 4)
+assert 0.1103 == round(chisq(two_years_women, 'pid_direction').pvalue, 4)
+chisqs(two_years_women, 'change')
+chisqs(three_years_women, "persists")
 
 # Comparing new mothers to other women on budget_change and budget_change_avoid
 count_percentages(two_years_women, "new_child", "budget_before")
@@ -686,15 +686,15 @@ two_years_high_income = two_years.loc[np.equal(two_years['high_income'], 1),:]
 three_years_high_income = three_years.loc[np.equal(three_years['high_income'], 1),:]
 two_years_low_income = two_years.loc[np.equal(two_years['high_income'], 0),:]
 three_years_low_income = three_years.loc[np.equal(three_years['high_income'], 0),:]
-assert 0.7833 == round(chisq(two_years_women, 'new_child', 'ideo_direction').pvalue, 4)
-assert 0.1103 == round(chisq(two_years_women, 'new_child', 'pid_direction').pvalue, 4)
-chisqs(two_years_women, 'change', 'new_child')
+assert 0.7833 == round(chisq(two_years_women, 'ideo_direction').pvalue, 4)
+assert 0.1103 == round(chisq(two_years_women, 'pid_direction').pvalue, 4)
+chisqs(two_years_women, 'change')
 
 # Ideology & party: nothing
 summarize_continuous(filter_na(two_years, 'high_income'), ['new_child', 'high_income'], 'ideo')
 summarize_continuous(filter_na(two_years, 'high_income'), ['new_child', 'high_income'], 'pid')
-assert 0.517 == round(chisq(two_years_new_parents, 'high_income', 'ideo_direction').pvalue, 4)
-assert 0.5566 == round(chisq(two_years_new_parents, 'high_income', 'pid_direction').pvalue, 4)
+assert 0.517 == round(chisq(two_years_new_parents, 'ideo_direction', 'high_income').pvalue, 4)
+assert 0.5566 == round(chisq(two_years_new_parents, 'pid_direction', 'high_income').pvalue, 4)
 
 # Comparing high-income new parents with other new parents: continuous: climate change
 t_tests(two_years_new_parents, 'delta', 'high_income')
@@ -704,27 +704,27 @@ summarize_continuous(two_years_new_parents, "high_income", "climate_change")
 summarize_continuous(two_years_new_parents, "high_income", "climate_composite")
 
 # Comparing high-income new parents with other high-income people: nothing
-t_tests(two_years_high_income, 'delta', 'new_child')
-t_tests(two_years_high_income, 'delta_abs', 'new_child')
+t_tests(two_years_high_income, 'delta')
+t_tests(two_years_high_income, 'delta_abs')
 
 # Comparing low-income new parents with other low-income people: climate change, jobs env, guns
-t_tests(two_years_low_income, 'delta', 'new_child')
-t_tests(two_years_low_income, 'delta_abs', 'new_child')
+t_tests(two_years_low_income, 'delta')
+t_tests(two_years_low_income, 'delta_abs')
 
 for prefix in CONTINUOUS_PREFIXES:
     summarize_continuous(two_years, ["new_child", "high_income"], prefix)
 
-t_test(three_years_new_parents, "high_income", "climate_change_persists")
-t_test(three_years_new_parents, "high_income", "climate_change_persists_abs")
+t_test(three_years_new_parents, "climate_change_persists", "high_income")
+t_test(three_years_new_parents, "climate_change_persists_abs", "high_income")
 # TODO: T tests for climate_composite return NaN
-t_test(three_years_new_parents, "high_income", "climate_composite_persists")
-t_test(three_years_new_parents, "high_income", "climate_composite_persists_abs")
+t_test(three_years_new_parents, "climate_composite_persists", "high_income")
+t_test(three_years_new_parents, "climate_composite_persists_abs", "high_income")
 
 # Chi square tests within new parents: high_income, low_income: nothing
 chisqs(two_years_new_parents, 'change', 'high_income')
 
 # Chi square tests within high income: nothing
-chisqs(two_years_high_income, 'change', 'new_child')
+chisqs(two_years_high_income, 'change')
 
 # Chi square tests within low income: budget
-chisqs(two_years_low_income, 'change', 'new_child')
+chisqs(two_years_low_income, 'change')
