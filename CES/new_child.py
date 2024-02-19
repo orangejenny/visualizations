@@ -143,16 +143,10 @@ def filter_na(df, label):
 
 def count_flippers(df, before_label, after_label, lower_bound, upper_bound):
     valid_rows = df.loc[
-        np.logical_and(
-            np.logical_and(
-                np.greater_equal(df[before_label], lower_bound),
-                np.greater_equal(df[after_label], lower_bound),
-            ),
-            np.logical_and(
-                np.less_equal(df[before_label], upper_bound),
-                np.less_equal(df[after_label], upper_bound),
-            )
-        ), [before_label, after_label]
+        np.greater_equal(df[before_label], lower_bound) & np.greater_equal(df[after_label], lower_bound)
+        &
+        np.less_equal(df[before_label], upper_bound) & np.less_equal(df[after_label], upper_bound),
+        [before_label, after_label]
     ]
     flippers = valid_rows.loc[np.not_equal(valid_rows[before_label], valid_rows[after_label]), :]
     return round(len(flippers) * 100 / len(valid_rows), 1)
@@ -242,7 +236,7 @@ def count_percentages(df, group_by_label, metric_label):
     counts = df.loc[:,['caseid', group_by_label, metric_label]].groupby([group_by_label, metric_label], as_index=False).count() # roughly pd.crosstab
     totals = filter_na(df, metric_label).loc[:,['caseid', group_by_label]].groupby([group_by_label], as_index=False).count()
     results = counts.merge(totals, on=group_by_label)
-    results['percent'] = np.round(np.divide(np.multiply(results['caseid_x'], 100), results['caseid_y']), decimals=1)
+    results['percent'] = np.round(results['caseid_x'] * 100 / results['caseid_y'], decimals=1)
     return results
 
 
@@ -329,7 +323,7 @@ def add_continuous(df, before_pattern, prefix, lower_bound=None, upper_bound=Non
 def add_categorical(df, before_pattern, prefix, lower_bound=None, upper_bound=None, drop=True):
     df = _add_before_after(df, before_pattern, prefix)
 
-    df[f'{prefix}_change'] = np.where(np.equal(df[f'{prefix}_before'], df[f'{prefix}_after']), 0, 1)
+    df[f'{prefix}_change'] = np.where(df[f'{prefix}_before'] == df[f'{prefix}_after'], 0, 1)
     # distinguish between False and NaN
     for suffix in ('before', 'after'):
         df.loc[np.isnan(df[f'{prefix}_{suffix}']), f'{prefix}_change'] = np.nan
@@ -374,21 +368,22 @@ def add_composite_opinions(df):
         # CC10_330C is clean energy act, with 1 support, 2, oppose, and other values invalid
         # Composite is 1-5, with lower values more liberal
         df = _nan_out_of_bounds(df, f'CC{year}_330C', 1, 2)
-        df[f'climate_composite_20{year}'] = np.divide(np.add(np.multiply(df[f'CC{year}_321'], 2.5), df[f'CC{year}_330C']), 2)
+        df[f'climate_composite_20{year}'] = (df[f'CC{year}_321'] * 2.5 + df[f'CC{year}_330C']) / 2
 
+        # TODO: shouldn't one of these be flipped?
         # CC10_326 is gay marriage ban: 1 support, 2 oppose
         # CC10_330G is ending don't ask don't tell: 1 support, 2 oppose, others invalid
         df = _nan_out_of_bounds(df, f'CC{year}_330G', 1, 2)
-        df[f'gay_composite_20{year}'] = np.divide(np.add(df[f'CC{year}_326'], df[f'CC{year}_330G']), 2)
+        df[f'gay_composite_20{year}'] = (df[f'CC{year}_326'] + df[f'CC{year}_330G']) / 2
 
         # yes/no questions on military force usage
-        df[f'military_composite_20{year}'] = np.divide(np.sum(df.loc[:, df.columns.str.startswith(f'CC{year}_414_')], axis=1), 7)
+        df[f'military_composite_20{year}'] = np.sum(df.loc[:, df.columns.str.startswith(f'CC{year}_414_')], axis=1) / 7
 
     # CC10_322_1-CC10_322_7 are all yes/no immigration questions, 8 and 9 are "nothing"/"none of the above" which aren't clearly liberal or conservative
     # 2010 asked 1 2 3 4 7, 2012 asked 1 2 3 4 5 6, 2014 asked 1 2 3 4 5 6
-    df[f'immigration_composite_2010'] = np.divide(np.add(np.sum(df.loc[:, df.columns.str.contains('CC10_322_[1-4]')], axis=1), df['CC10_322_7']), 5)
-    df[f'immigration_composite_2012'] = np.divide(np.sum(df.loc[:, df.columns.str.contains('CC12_322_[1-6]')], axis=1), 6)
-    df[f'immigration_composite_2014'] = np.divide(np.sum(df.loc[:, df.columns.str.contains('CC14_322_[1-6]')], axis=1), 6)
+    df[f'immigration_composite_2010'] = (np.sum(df.loc[:, df.columns.str.contains('CC10_322_[1-4]')], axis=1) + df['CC10_322_7']) / 5
+    df[f'immigration_composite_2012'] = np.sum(df.loc[:, df.columns.str.contains('CC12_322_[1-6]')], axis=1) / 6
+    df[f'immigration_composite_2014'] = np.sum(df.loc[:, df.columns.str.contains('CC14_322_[1-6]')], axis=1) / 6
 
     df = add_continuous(df, 'climate_composite_20XX', 'climate_composite')
     df = add_continuous(df, 'gay_composite_20XX', 'gay_composite')
