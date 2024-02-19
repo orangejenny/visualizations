@@ -197,7 +197,7 @@ def chisq(df, factor1, factor2):
     return chi2_contingency(pd.crosstab(df[factor1], df[factor2]))
 
 
-def chisqs(df, independent_suffix, dependent_label, a_value=0, b_value=1):
+def chisqs(df, dependent_suffix, independent_label):
     results = {
         'metric': [],
         'statistic': [],
@@ -312,11 +312,12 @@ def add_continuous(df, before_pattern, prefix, lower_bound=None, upper_bound=Non
             ),
             x[before_pattern.replace('XX', '14')] - x[before_pattern.replace('XX', '10')], 0
         ),
-        f'{prefix}_persists_abs': lambda x: abs(x[f'{prefix}_persists']),
     }
     df = df.assign(**kwargs)
-    df.loc[np.isnan(df[f'{prefix}_delta']), f'{prefix}_persists'] = np.nan # same as above
-    df.loc[np.isnan(df[f'{prefix}_delta']), f'{prefix}_persists_abs'] = np.nan # same as above
+    df.loc[np.isnan(df[before_pattern.replace('XX', '10')]), f'{prefix}_persists'] = np.nan
+    df.loc[np.isnan(df[before_pattern.replace('XX', '12')]), f'{prefix}_persists'] = np.nan
+    df.loc[np.isnan(df[before_pattern.replace('XX', '14')]), f'{prefix}_persists'] = np.nan
+    df[f'{prefix}_persists_abs'] = np.abs(df[f'{prefix}_persists'])
 
     CONTINUOUS_PREFIXES.add(prefix)
     if drop:
@@ -631,72 +632,41 @@ summarize_continuous(filter_na(two_years, 'ideo_delta'), ['new_child', 'gender']
 t_tests(two_years_new_parents, 'delta', 'gender', a_value=1, b_value=2)
 t_tests(two_years_new_parents, 'delta_abs', 'gender', a_value=1, b_value=2)
 
-# Compare new fathers to other men: tax or spend with direction
+# Compare new fathers to other men: tax or spend with direction...doesn't persist
 t_tests(two_years_men, 'delta', 'new_child')
 t_tests(two_years_men, 'delta_abs', 'new_child')
+t_test(three_years_men, 'new_child', 'tax_or_spend_persists')
+t_test(three_years_men, 'new_child', 'tax_or_spend_persists_abs')
 
 # Compare new mothers to other women: absolute climate, gay, guns
 t_tests(two_years_women, 'delta', 'new_child')
 t_tests(two_years_women, 'delta_abs', 'new_child')
+t_test(three_years_women, 'new_child', 'climate_change_persists_abs')
+t_test(three_years_women, 'new_child', 'guns_persists')
 
 ### Describe continuous issues
 for prefix in CONTINUOUS_PREFIXES:
     summarize_continuous(two_years_new_parents, "gender", prefix)
     summarize_continuous(two_years, ["new_child", "gender"], prefix)
 
-'''
-TODO
-t.test(climate_change_persists~gender, data=filter_na(three_years_new_parents, "climate_change_persists")) # p=0.9324
-t.test(tax_or_spend_persists~gender, data=filter_na(three_years_new_parents, "tax_or_spend_persists")) # p=0.3928
-t.test(jobs_env_persists~gender, data=filter_na(three_years_new_parents, "jobs_env_persists")) # p=0.7585
-t.test(aff_action_persists~gender, data=filter_na(three_years_new_parents, "aff_action_persists")) # p=0.6927
-t.test(climate_composite_persists~gender, data=filter_na(three_years_new_parents, "climate_composite_persists")) # p=0.7354
-t.test(military_composite_persists~gender, data=filter_na(three_years_new_parents, "military_composite_persists")) # p=0.7544
-
-t.test(climate_change_persists_abs~gender, data=filter_na(three_years_new_parents, "climate_change_persists_abs")) # p=0.7848
-t.test(tax_or_spend_persists_abs~gender, data=filter_na(three_years_new_parents, "tax_or_spend_persists_abs")) # p=0.426
-t.test(jobs_env_persists_abs~gender, data=filter_na(three_years_new_parents, "jobs_env_persists_abs")) # p=0.5003
-t.test(aff_action_persists_abs~gender, data=filter_na(three_years_new_parents, "aff_action_persists_abs")) # p=0.1995
-t.test(climate_composite_persists_abs~gender, data=filter_na(three_years_new_parents, "climate_composite_persists_abs")) # p=0.7691
-t.test(military_composite_persists_abs~gender, data=filter_na(three_years_new_parents, "military_composite_persists_abs")) # p=0.7647
- 
-t.test(tax_or_spend_persists~new_child, data=filter_na(three_years_men, "tax_or_spend_persists")) # p=0.07183
-t.test(tax_or_spend_persists_abs~new_child, data=filter_na(three_years_men, "tax_or_spend_persists_abs")) # p=0.0003767
-
-t.test(climate_change_persists~high_income, data=filter_na(three_years_new_parents, "climate_change_persists")) # p=0.5825
-'''
+# New parents vs other: persistent abs: sales or inc
+t_tests(three_years_new_parents, 'persists', 'gender', a_value=1, b_value=2)
+t_tests(three_years_new_parents, 'persists_abs', 'gender', a_value=1, b_value=2)
 
 summarize_continuous(two_years_women, "new_child", "climate_change")
 summarize_continuous(two_years_women, "new_child", "guns")
 summarize_continuous(two_years_women, "new_child", "climate_composite")
 summarize_continuous(two_years_women, "new_child", "gay_composite")
 
-'''
-TODO
-t.test(climate_change_persists~new_child, data=filter_na(three_years_women, "climate_change_persists")) # p=0.2937
-t.test(climate_change_persists_abs~new_child, data=filter_na(three_years_women, "climate_change_persists_abs")) # p=0.1275
-t.test(guns_persists~new_child, data=filter_na(three_years_women, "guns_persists")) # p=0.7097
-t.test(guns_persists_abs~new_child, data=filter_na(three_years_women, "guns_persists_abs")) # p=0.4326
-t.test(climate_composite_persists~new_child, data=filter_na(three_years_women, "climate_composite_persists")) # p=0.798
-t.test(gay_composite_persists~new_child, data=filter_na(three_years_women, "gay_composite_persists")) # p=0.6172
-t.test(military_composite_persists~new_child, data=filter_na(three_years_women, "military_composite_persists")) # p=0.4658
-t.test(immigration_composite_persists~new_child, data=filter_na(three_years_women, "immigration_composite_persists")) # p=0.5404
-t.test(climate_composite_persists_abs~new_child, data=filter_na(three_years_women, "climate_composite_persists_abs")) # p=0.2395
-t.test(gay_composite_persists_abs~new_child, data=filter_na(three_years_women, "gay_composite_persists_abs")) # p=0.01103*
-t.test(military_composite_persists_abs~new_child, data=filter_na(three_years_women, "military_composite_persists_abs")) # p=0.4897
-t.test(immigration_composite_persists_abs~new_child, data=filter_na(three_years_women, "immigration_composite_persists_abs")) # p=0.6124
-'''
+# Mothers vs non-mothers: persists absolute value: gay composite
+t_tests(three_years_women, 'persists', 'new_child')
+t_tests(three_years_women, 'persists_abs', 'new_child')
 
 ### Categorical issues
 # Compare new fathers to new mothers: both budget questions: budget persists
 assert 0.595 == round(chisq(two_years_new_parents, 'gender', 'ideo_direction').pvalue, 4)
 assert 0.1408 == round(chisq(two_years_new_parents, 'gender', 'pid_direction').pvalue, 4)
-chisqs(two_years_new_parents, 'change', 'gender')
-#TODO: these are wrong becuase persists is bad
-#run_chisq(three_years_new_parents, "gender", "budget_persists") # p=0.002303**
-#run_chisq(three_years_new_parents, "gender", "budget_avoid_persists") # p=0.516
-#run_chisq(three_years_high_income, "new_child", "schip_persists") # p=0.? "Chi-squared approximation may be incorrect"
-#run_chisq(three_years_low_income, "new_child", "budget_persists") # p=0.09921
+chisqs(three_years_new_parents, "persists", "gender")
 
 # Comparing new fathers to new mothers on budget_change
 count_percentages(two_years_new_parents, "gender", "budget_before")
@@ -710,13 +680,11 @@ assert 0.8416 == round(chisq(two_years_men, 'new_child', 'ideo_direction').pvalu
 assert 0.2836 == round(chisq(two_years_men, 'new_child', 'pid_direction').pvalue, 4)
 chisqs(two_years_men, 'change', 'new_child')
 
-# Compare new mothers to other women: both budget questions: both persist
+# Compare new mothers to other women: both budget questions: budget persists
 assert 0.7833 == round(chisq(two_years_women, 'new_child', 'ideo_direction').pvalue, 4)
 assert 0.1103 == round(chisq(two_years_women, 'new_child', 'pid_direction').pvalue, 4)
 chisqs(two_years_women, 'change', 'new_child')
-# TODO: persists isn't working
-#run_chisq(three_years_women, "gender", "budget_persists") # p < 0.00000000000000022***
-#run_chisq(three_years_women, "gender", "budget_avoid_persists") # p < 0.00000000000000022***
+chisqs(three_years_women, "persists", "new_child")
 
 # Comparing new mothers to other women on budget_change and budget_change_avoid
 count_percentages(two_years_women, "new_child", "budget_before")
@@ -769,15 +737,11 @@ t_tests(two_years_low_income, 'delta_abs', 'new_child')
 for prefix in CONTINUOUS_PREFIXES:
     summarize_continuous(two_years, ["new_child", "high_income"], prefix)
 
-# TODO: persists
-#t.test(climate_change_persists~high_income, data=filter_na(three_years_new_parents, "climate_change_persists")) # p=0.5825
-#t.test(climate_change_persists_abs~high_income, data=filter_na(three_years_new_parents, "climate_change_persists_abs")) # p=0.5661
-#t.test(climate_composite_persists~high_income, data=filter_na(three_years_new_parents, "climate_composite_persists")) # p=0.6485
-#t.test(climate_composite_persists_abs~high_income, data=filter_na(three_years_new_parents, "climate_composite_persists_abs")) # p=0.7648
-
-#t.test(climate_change_persists_abs~new_child, data=filter_na(three_years_low_income, "climate_change_persists_abs")) # p=0.05492
-#t.test(climate_composite_persists_abs~new_child, data=filter_na(three_years_low_income, "climate_composite_persists_abs")) # p=0.1125
-#t.test(jobs_env_persists_abs~new_child, data=filter_na(three_years_low_income, "jobs_env_persists_abs")) # p=0.4577
+t_test(three_years_new_parents, "high_income", "climate_change_persists")
+t_test(three_years_new_parents, "high_income", "climate_change_persists_abs")
+# TODO: T tests for climate_composite return NaN
+t_test(three_years_new_parents, "high_income", "climate_composite_persists")
+t_test(three_years_new_parents, "high_income", "climate_composite_persists_abs")
 
 # Chi square tests within new parents: high_income, low_income: nothing
 chisqs(two_years_new_parents, 'change', 'high_income')
