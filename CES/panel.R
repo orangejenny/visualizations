@@ -1034,8 +1034,8 @@ run_chisq(two_years_women, "new_child", "schip_change") # p=0.1476
 run_chisq(two_years_women, "new_child", "budget_change") # p=0.0003211***
 run_chisq(two_years_women, "new_child", "budget_avoid_change") # p=0.0006512***
 
-run_chisq(three_years_women, "gender", "budget_persists") # p < 0.00000000000000022***
-run_chisq(three_years_women, "gender", "budget_avoid_persists") # p < 0.00000000000000022***
+run_chisq(three_years_women, "new_child", "budget_persists") # p=0.3848
+run_chisq(three_years_women, "new_child", "budget_avoid_persists") # p < 0.7862
 
 # Comparing new mothers to other women on budget_change and budget_change_avoid
 two_years_women %>% group_by(new_child, budget_before) %>% summarise(count = n())
