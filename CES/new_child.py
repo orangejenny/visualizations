@@ -63,10 +63,18 @@ three_years = three_years.assign(
 )
 
 # Recode a few columns to streamline later calculations
+# TODO: Verify thaat all invalid vlues are NAed out
 for year in (10, 12, 14):
     # Recode guns to be continuous (swapping 2 and 3 so that "no change" is in the middle of "less strict" and "more strict")
     label = f'CC{year}_320'
     three_years.loc[:, label] = np.where(three_years[label] == 2, 3, np.where(three_years[label] == 3, 2, np.where(three_years[label] == 1, 1, np.nan)))
+
+    # Recode don't ask don't tell, swapping so that 1 is the more conservative value, to match gay marriage ban question
+    three_years[f'CC{year}_330G'] = np.where(
+        three_years[f'CC{year}_330G'] == 1,
+        2,
+        np.where(three_years[f'CC{year}_330G'] == 2, 1, np.nan)
+    )
 
     # Replace NA with 0 for child18num columns - seems this question was skipped if child18_{year} was No
     label = f'child18num_{year}'
@@ -292,6 +300,7 @@ def add_continuous(df, before_pattern, prefix, lower_bound=None, upper_bound=Non
     kwargs = {
         f'{prefix}_delta': lambda x: x[f'{prefix}_after'] - x[f'{prefix}_before'],
         f'{prefix}_delta_abs': lambda x: abs(x[f'{prefix}_delta']),
+        f'{prefix}_delta_sq': lambda x: x[f'{prefix}_delta'] * x[f'{prefix}_delta'],
         f'{prefix}_direction': lambda x: np.sign(x[f'{prefix}_delta']),
     }
     df = df.assign(**kwargs)
@@ -370,7 +379,6 @@ def add_composite_opinions(df):
         df = _nan_out_of_bounds(df, f'CC{year}_330C', 1, 2)
         df[f'climate_composite_20{year}'] = (df[f'CC{year}_321'] * 2.5 + df[f'CC{year}_330C']) / 2
 
-        # TODO: shouldn't one of these be flipped?
         # CC10_326 is gay marriage ban: 1 support, 2 oppose
         # CC10_330G is ending don't ask don't tell: 1 support, 2 oppose, others invalid
         df = _nan_out_of_bounds(df, f'CC{year}_330G', 1, 2)
@@ -378,6 +386,9 @@ def add_composite_opinions(df):
 
         # yes/no questions on military force usage
         df[f'military_composite_20{year}'] = np.sum(df.loc[:, df.columns.str.startswith(f'CC{year}_414_')], axis=1) / 7
+
+        # Ideology composite that combines ideo and pid
+        df[f'ideo_composite_20{year}'] = (df[f'ideo5_{year}'] * 5 + 2.5 * df[f'pid7_{year}']) / 7 / 2  # 5-point composite scale
 
     # CC10_322_1-CC10_322_7 are all yes/no immigration questions, 8 and 9 are "nothing"/"none of the above" which aren't clearly liberal or conservative
     # 2010 asked 1 2 3 4 7, 2012 asked 1 2 3 4 5 6, 2014 asked 1 2 3 4 5 6
@@ -387,6 +398,7 @@ def add_composite_opinions(df):
 
     df = add_continuous(df, 'climate_composite_20XX', 'climate_composite')
     df = add_continuous(df, 'gay_composite_20XX', 'gay_composite')
+    df = add_continuous(df, 'ideo_composite_20XX', 'ideo_composite')
     df = add_continuous(df, 'military_composite_20XX', 'military_composite')
     df = add_continuous(df, 'immigration_composite_20XX', 'immigration_composite')
 
@@ -458,10 +470,14 @@ three_years.loc[np.equal(three_years['new_child'], 1),:].groupby("pid7_10").coun
 ### Testing: ideological change: nothing significant
 assert 0.4108 == round(t_test(two_years, 'ideo_delta').pvalue, 4)
 assert 0.6008 == round(t_test(two_years, 'ideo_delta_abs').pvalue, 4)
+assert 0.7221 == round(t_test(two_years, 'ideo_composite_delta').pvalue, 4)
+assert 0.0143 == round(t_test(two_years, 'ideo_composite_delta_abs').pvalue, 4)
 
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
 assert 0.6761 == round(t_test(young_adults, 'ideo_delta').pvalue, 4)
 assert 0.6028 == round(t_test(young_adults, 'ideo_delta_abs').pvalue, 4)
+assert 0.1845 == round(t_test(young_adults, 'ideo_composite_delta').pvalue, 4)
+assert 0.3203 == round(t_test(young_adults, 'ideo_composite_delta_abs').pvalue, 4)
 
 ### Descriptive: ideological change
 # Average ideological change over two years: trivially liberal, moreso for non-new-parents
@@ -512,6 +528,7 @@ assert 0.787 == round(t_test(two_years, 'immigration_composite_delta').pvalue, 4
 
 # Change, absolute value: climate change, gay, guns: climate change & climate composite persist, and oddly so does sales or inc
 t_tests(two_years, 'delta_abs')
+t_tests(two_years, 'delta_sq')
 assert 0.5486 == round(t_test(two_years, 'military_composite_delta').pvalue, 4)
 
 # Persistent change: nothing
@@ -524,6 +541,7 @@ t_tests(three_years, 'persists_abs')
 t_tests(two_years, 'delta', 'firstborn')
 assert 0.4092 == round(t_test(two_years, 'jobs_env_delta', 'firstborn').pvalue, 4)
 t_tests(two_years, 'delta_abs', 'firstborn')
+t_tests(two_years, 'delta_sq', 'firstborn')
 assert 0.1119 == round(t_test(two_years, 'jobs_env_delta_abs', 'firstborn').pvalue, 4)
 
 # Summary of continuous & composite issues
