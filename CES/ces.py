@@ -4,6 +4,8 @@ import pandas as pd
 from parents_politics_panel import ParentsPoliticsPanel
 
 class CESPanel(ParentsPoliticsPanel):
+    waves = [10, 12, 14]
+
     def _load_panel(cls):
         return pd.read_stata("~/Documents/visualizations/midterm/CCES_Panel_Full3waves_VV_V4.dta", convert_categoricals=False)  # n=9500
 
@@ -79,7 +81,7 @@ class CESPanel(ParentsPoliticsPanel):
     def _recode_issues(self, all_waves):
         # Recode a few columns to streamline later calculations
         # TODO: Verify that all invalid vlues are NAed out
-        for year in (10, 12, 14):
+        for year in self.waves:
             # Recode guns to be continuous (swapping 2 and 3 so that "no change" is in the middle of "less strict" and "more strict")
             label = f'CC{year}_320'
             all_waves.loc[:, label] = np.where(all_waves[label] == 2, 3, np.where(all_waves[label] == 3, 2, np.where(all_waves[label] == 1, 1, np.nan)))
@@ -165,7 +167,7 @@ class CESPanel(ParentsPoliticsPanel):
                 np.where(x.cycle == 1214, x.child18num_12 == 0, x.child18num_10 == 0)
             )
         )
-        return df.drop([f'child18num_{year}' for year in [10, 12, 14]], axis=1)
+        return df.drop([f'child18num_{year}' for year in self.waves], axis=1)
 
     def _add_all_continuous(self, df):
         df = self._add_continuous(df, 'ideo5_XX', 'ideo', 1, 5)
@@ -186,7 +188,7 @@ class CESPanel(ParentsPoliticsPanel):
         return df
 
     def _add_all_composite(self, df):
-        for year in (10, 12, 14):
+        for year in self.waves:
             # TODO: add in the jobs/environment question to this composite?
             # CC10_321 is climate change: 1-5 with 1 liberal
             # CC10_330C is clean energy act, with 1 support, 2, oppose, and other values invalid

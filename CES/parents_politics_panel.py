@@ -6,6 +6,8 @@ from scipy.stats import chi2_contingency, ttest_ind
 
 
 class ParentsPoliticsPanel():
+    waves = []
+
     def __init__(self):
         self.CONTINUOUS_PREFIXES = set()
         self.CATEGORICAL_PREFIXES = set()
