@@ -17,17 +17,6 @@ two_years = ces_data.get_paired_waves()
 def filter_na(df, label):
     return df.loc[pd.notna(df[label]),:].copy()
 
-def count_flippers(df, before_label, after_label, lower_bound, upper_bound):
-    valid_rows = df.loc[
-        np.greater_equal(df[before_label], lower_bound) & np.greater_equal(df[after_label], lower_bound)
-        &
-        np.less_equal(df[before_label], upper_bound) & np.less_equal(df[after_label], upper_bound),
-        [before_label, after_label]
-    ]
-    flippers = valid_rows.loc[np.not_equal(valid_rows[before_label], valid_rows[after_label]), :]
-    return round(len(flippers) * 100 / len(valid_rows), 1)
-
-
 def t_test(df, issue_label, demographic_label='new_child', a_value=0, b_value=1):
     filtered = filter_na(filter_na(df, demographic_label), issue_label)
     group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), issue_label]
@@ -134,15 +123,15 @@ assert (counts.loc[:, 'caseid'] == [9271, 229]).all()
 
 ### Exploratory: How often do people change ideology/party between two waves?
 # For pid3, 0.8%, too coarse to be useful
-assert 0.8 == count_flippers(three_years, "pid3_10", "pid3_12", 1, 2)
+assert 0.8 == ces_data.count_flippers("pid3_10", "pid3_12", 1, 2)
 
 # For pid7, 20-25% each 2 years
-assert 20.9 == count_flippers(three_years, "pid7_10", "pid7_12", 1, 7)
-assert 18.9 == count_flippers(three_years, "pid7_12", "pid7_14", 1, 7)
-assert 25.2 == count_flippers(three_years, "pid7_10", "pid7_14", 1, 7)
-assert 24.9 == count_flippers(three_years, "ideo5_10", "ideo5_12", 1, 5)
-assert 20.1 == count_flippers(three_years, "ideo5_12", "ideo5_14", 1, 5)
-assert 27.8 == count_flippers(three_years, "ideo5_10", "ideo5_14", 1, 5)
+assert 20.9 == ces_data.count_flippers("pid7_10", "pid7_12", 1, 7)
+assert 18.9 == ces_data.count_flippers("pid7_12", "pid7_14", 1, 7)
+assert 25.2 == ces_data.count_flippers("pid7_10", "pid7_14", 1, 7)
+assert 24.9 == ces_data.count_flippers("ideo5_10", "ideo5_12", 1, 5)
+assert 20.1 == ces_data.count_flippers("ideo5_12", "ideo5_14", 1, 5)
+assert 27.8 == ces_data.count_flippers("ideo5_10", "ideo5_14", 1, 5)
 
 ### Exploratory: Ideology distribution across panel: roughly normal, skewing conservative
 panel.groupby("ideo5_10").count().loc[:,'weight']

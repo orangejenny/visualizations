@@ -58,6 +58,16 @@ class ParentsPoliticsData():
     def get_paired_waves(self):
         return self.paired_waves
 
+    def count_flippers(self, before_label, after_label, lower_bound, upper_bound):
+        valid_rows = self.all_waves.loc[
+            np.greater_equal(self.all_waves[before_label], lower_bound) & np.greater_equal(self.all_waves[after_label], lower_bound)
+            &
+            np.less_equal(self.all_waves[before_label], upper_bound) & np.less_equal(self.all_waves[after_label], upper_bound),
+            [before_label, after_label]
+        ]
+        flippers = valid_rows.loc[np.not_equal(valid_rows[before_label], valid_rows[after_label]), :]
+        return round(len(flippers) * 100 / len(valid_rows), 1)
+
     @classmethod
     def nan_out_of_bounds(cls, df, label, lower_bound=None, upper_bound=None):
         if lower_bound is None or upper_bound is None:
@@ -73,3 +83,4 @@ class ParentsPoliticsData():
         df.drop(['lower_bound', 'upper_bound'], axis=1)
 
         return df
+
