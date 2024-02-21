@@ -6,9 +6,6 @@ from scipy.stats import chi2_contingency, ttest_ind
 
 from ces import CESData
 
-CONTINUOUS_PREFIXES = set()
-CATEGORICAL_PREFIXES = set()
-
 ces_data = CESData()
 panel = ces_data.get_panel()
 three_years = ces_data.get_all_waves()
@@ -55,7 +52,7 @@ def t_tests(df, issue_suffix, demographic_label='new_child', a_value=0, b_value=
         'df': [],
         'pvalue': [],
     }
-    for label in [f'{p}_{issue_suffix}' for p in CONTINUOUS_PREFIXES]:
+    for label in [f'{p}_{issue_suffix}' for p in ces_data.CONTINUOUS_PREFIXES]:
         result = t_test(df, label, demographic_label, a_value, b_value)
         results['metric'].append(label)
         results['statistic'].append(result.statistic)
@@ -77,7 +74,7 @@ def chisqs(df, issue_suffix, demographic_label='new_child'):
         'dof': [],
         'pvalue': [],
     }
-    for label in [f'{p}_{issue_suffix}' for p in CATEGORICAL_PREFIXES]:
+    for label in [f'{p}_{issue_suffix}' for p in ces_data.CATEGORICAL_PREFIXES]:
         result = chisq(df, label, demographic_label)
         results['metric'].append(label)
         results['statistic'].append(result.statistic)
@@ -118,188 +115,6 @@ def count_percentages(df, group_by_label, metric_label):
     results['percent'] = np.round(results['caseid_x'] * 100 / results['caseid_y'], decimals=1)
     return results
 
-
-###################
-# Functions: data #
-###################
-def add_parenting(df):
-    df = df.assign(
-        new_child=lambda x:np.where(x.cycle == 1214, x.child18num_12 < x.child18num_14, x.child18num_10 < x.child18num_12),
-        firstborn=lambda x:np.where(
-            x.new_child == False, False,
-            np.where(x.cycle == 1214, x.child18num_12 == 0, x.child18num_10 == 0)
-        )
-    )
-    return df.drop([f'child18num_{year}' for year in [10, 12, 14]], axis=1)
-
-
-def _nan_out_of_bounds(df, label, lower_bound=None, upper_bound=None):
-    if lower_bound is None or upper_bound is None:
-        return df
-
-    df = df.assign(lower_bound=lower_bound, upper_bound=upper_bound)
-
-    df.loc[np.logical_or(
-        np.less(df[label], df.lower_bound),
-        np.greater(df[label], df.upper_bound)
-    ), label] = np.nan
-
-    df.drop(['lower_bound', 'upper_bound'], axis=1)
-
-    return df
-
-
-def _add_before_after(df, before_pattern, prefix, lower_bound=None, upper_bound=None):
-    kwargs = {
-        f'{prefix}_before': np.where(df.cycle == 1214, df[before_pattern.replace('XX', '12')], df[before_pattern.replace('XX', '10')]),
-        f'{prefix}_after': np.where(df.cycle == 1214, df[before_pattern.replace('XX', '14')], df[before_pattern.replace('XX', '12')]),
-    }
-    df = df.assign(**kwargs)
-    df = _nan_out_of_bounds(df, f'{prefix}_before', lower_bound, upper_bound)
-    df = _nan_out_of_bounds(df, f'{prefix}_after', lower_bound, upper_bound)
-    return df
-
-
-def _drop_pattern(df, pattern):
-    for year in (10, 12, 14):
-        df.pop(pattern.replace('XX', str(year)))
-
-
-def add_continuous(df, before_pattern, prefix, lower_bound=None, upper_bound=None, drop=True):
-    df = _add_before_after(df, before_pattern, prefix, lower_bound, upper_bound)
-
-    kwargs = {
-        f'{prefix}_delta': lambda x: x[f'{prefix}_after'] - x[f'{prefix}_before'],
-        f'{prefix}_delta_abs': lambda x: abs(x[f'{prefix}_delta']),
-        f'{prefix}_delta_sq': lambda x: x[f'{prefix}_delta'] * x[f'{prefix}_delta'],
-        f'{prefix}_direction': lambda x: np.sign(x[f'{prefix}_delta']),
-    }
-    df = df.assign(**kwargs)
-    df.loc[np.isnan(df[f'{prefix}_delta']), f'{prefix}_direction'] = np.nan # because some of the 0s should be NaN
-
-    # Only relevant in three_years
-    kwargs = {
-        f'{prefix}_persists': lambda x: np.where(
-            np.logical_and(
-                x[f'{prefix}_delta'] != 0,
-                np.logical_not(x[f'{prefix}_delta'] * (x[before_pattern.replace('XX', '14')] - x[before_pattern.replace('XX', '12')]) < 0)
-            ),
-            x[before_pattern.replace('XX', '14')] - x[before_pattern.replace('XX', '10')], 0
-        ),
-    }
-    df = df.assign(**kwargs)
-    df.loc[np.isnan(df[before_pattern.replace('XX', '10')]), f'{prefix}_persists'] = np.nan
-    df.loc[np.isnan(df[before_pattern.replace('XX', '12')]), f'{prefix}_persists'] = np.nan
-    df.loc[np.isnan(df[before_pattern.replace('XX', '14')]), f'{prefix}_persists'] = np.nan
-    df[f'{prefix}_persists_abs'] = np.abs(df[f'{prefix}_persists'])
-
-    CONTINUOUS_PREFIXES.add(prefix)
-    if drop:
-        _drop_pattern(df, before_pattern)
-
-    return df
-
-
-def add_categorical(df, before_pattern, prefix, lower_bound=None, upper_bound=None, drop=True):
-    df = _add_before_after(df, before_pattern, prefix)
-
-    df[f'{prefix}_change'] = np.where(df[f'{prefix}_before'] == df[f'{prefix}_after'], 0, 1)
-    # distinguish between False and NaN
-    for suffix in ('before', 'after'):
-        df.loc[np.isnan(df[f'{prefix}_{suffix}']), f'{prefix}_change'] = np.nan
-
-    df[f'{prefix}_persists'] = np.where(np.logical_and(
-        df[before_pattern.replace('XX', '10')] != df[before_pattern.replace('XX', '12')], # change in 2010 vs 2012
-        df[before_pattern.replace('XX', '12')] == df[before_pattern.replace('XX', '14')]  # kept 2012 value in 2014
-    ), 1, 0)
-    df.loc[np.isnan(df[before_pattern.replace('XX', '10')]), f'{prefix}_persists'] = np.nan
-    df.loc[np.isnan(df[before_pattern.replace('XX', '12')]), f'{prefix}_persists'] = np.nan
-    df.loc[np.isnan(df[before_pattern.replace('XX', '14')]), f'{prefix}_persists'] = np.nan
-    df[f'{prefix}_persists_abs'] = np.abs(df[f'{prefix}_persists'])
-
-    CATEGORICAL_PREFIXES.add(prefix)
-    if drop:
-        _drop_pattern(df, before_pattern)
-
-    return df
-
-
-def add_continuous_opinions(df):
-    df = add_continuous(df, 'CCXX_321', 'climate_change', 1, 5, drop=False)
-    df = add_continuous(df, 'CCXX_325', 'jobs_env', 1, 5)
-    df = add_continuous(df, 'CCXX_327', 'aff_action', 1, 4)
-    df = add_continuous(df, 'CCXX_320', 'guns', 1, 3)
-    df = add_continuous(df, 'CCXX_415r', 'tax_or_spend', 0, 100)
-    df = add_continuous(df, 'CCXX_416r', 'sales_or_inc', 0, 100)
-    return df
-
-
-def add_categorical_opinions(df):
-    df = add_categorical(df, 'CCXX_326', 'gay_marriage', 1, 2, drop=False)
-    df = add_categorical(df, 'CCXX_330B', 'schip', 1, 2)
-    df = add_categorical(df, 'CCXX_328', 'budget', 1, 3)
-    df = add_categorical(df, 'CCXX_329', 'budget_avoid', 1, 3)
-    return df
-
-def add_composite_opinions(df):
-    for year in (10, 12, 14):
-        # TODO: add in the jobs/environment question to this composite?
-        # CC10_321 is climate change: 1-5 with 1 liberal
-        # CC10_330C is clean energy act, with 1 support, 2, oppose, and other values invalid
-        # Composite is 1-5, with lower values more liberal
-        df = _nan_out_of_bounds(df, f'CC{year}_330C', 1, 2)
-        df[f'climate_composite_20{year}'] = (df[f'CC{year}_321'] * 2.5 + df[f'CC{year}_330C']) / 2
-
-        # CC10_326 is gay marriage ban: 1 support, 2 oppose
-        # CC10_330G is ending don't ask don't tell: 1 support, 2 oppose, others invalid
-        df = _nan_out_of_bounds(df, f'CC{year}_330G', 1, 2)
-        df[f'gay_composite_20{year}'] = (df[f'CC{year}_326'] + df[f'CC{year}_330G']) / 2
-
-        # yes/no questions on military force usage
-        df[f'military_composite_20{year}'] = np.sum(df.loc[:, df.columns.str.startswith(f'CC{year}_414_')], axis=1) / 7
-
-        # Ideology composite that combines ideo and pid
-        df[f'ideo_composite_20{year}'] = (df[f'ideo5_{year}'] * 5 + 2.5 * df[f'pid7_{year}']) / 7 / 2  # 5-point composite scale
-
-    # CC10_322_1-CC10_322_7 are all yes/no immigration questions, 8 and 9 are "nothing"/"none of the above" which aren't clearly liberal or conservative
-    # 2010 asked 1 2 3 4 7, 2012 asked 1 2 3 4 5 6, 2014 asked 1 2 3 4 5 6
-    df[f'immigration_composite_2010'] = (np.sum(df.loc[:, df.columns.str.contains('CC10_322_[1-4]')], axis=1) + df['CC10_322_7']) / 5
-    df[f'immigration_composite_2012'] = np.sum(df.loc[:, df.columns.str.contains('CC12_322_[1-6]')], axis=1) / 6
-    df[f'immigration_composite_2014'] = np.sum(df.loc[:, df.columns.str.contains('CC14_322_[1-6]')], axis=1) / 6
-
-    df = add_continuous(df, 'climate_composite_20XX', 'climate_composite')
-    df = add_continuous(df, 'gay_composite_20XX', 'gay_composite')
-    df = add_continuous(df, 'ideo_composite_20XX', 'ideo_composite')
-    df = add_continuous(df, 'military_composite_20XX', 'military_composite')
-    df = add_continuous(df, 'immigration_composite_20XX', 'immigration_composite')
-
-    return df
-
-
-##################
-# Transform data #
-##################
-three_years = add_parenting(three_years)
-two_years = add_parenting(two_years)
-
-three_years = add_continuous(three_years, 'ideo5_XX', 'ideo', 1, 5, drop=False)
-two_years = add_continuous(two_years, 'ideo5_XX', 'ideo', 1, 5, drop=False)
-
-three_years = add_continuous(three_years, 'pid7_XX', 'pid', 1, 7, drop=False)
-two_years = add_continuous(two_years, 'pid7_XX', 'pid', 1, 7, drop=False)
-
-three_years = add_continuous_opinions(three_years)
-two_years = add_continuous_opinions(two_years)
-
-three_years = add_categorical_opinions(three_years)
-two_years = add_categorical_opinions(two_years)
-
-three_years = add_composite_opinions(three_years)
-two_years = add_composite_opinions(two_years)
-
-# De-fragment frames
-two_years = two_years.copy()
-three_years = three_years.copy()
 
 ##########################
 # Analysis: Demographics #
@@ -432,7 +247,7 @@ summarize_continuous(two_years, "new_child", "immigration_composite")
 # Non-response rates, continuous & composite issues
 # Do non-response rates differ for parents and non-parents?
 total = len(two_years)
-for prefixes, suffix in ((CONTINUOUS_PREFIXES, 'delta'), (CATEGORICAL_PREFIXES, 'change')):
+for prefixes, suffix in ((ces_data.CONTINUOUS_PREFIXES, 'delta'), (ces_data.CATEGORICAL_PREFIXES, 'change')):
     for issue in prefixes:
         missing = len(two_years.loc[np.isnan(two_years[f'{issue}_{suffix}']),:])
         #print(f"Non-response for {issue}_{suffix}: {round(missing * 100 / total, 2)}%")
@@ -511,7 +326,7 @@ t_test(three_years_women, 'climate_change_persists_abs')
 t_test(three_years_women, 'guns_persists')
 
 ### Describe continuous issues
-for prefix in CONTINUOUS_PREFIXES:
+for prefix in ces_data.CONTINUOUS_PREFIXES:
     summarize_continuous(two_years_new_parents, "gender", prefix)
     summarize_continuous(two_years, ["new_child", "gender"], prefix)
 
@@ -600,7 +415,7 @@ t_tests(two_years_high_income, 'delta_abs')
 t_tests(two_years_low_income, 'delta')
 t_tests(two_years_low_income, 'delta_abs')
 
-for prefix in CONTINUOUS_PREFIXES:
+for prefix in ces_data.CONTINUOUS_PREFIXES:
     summarize_continuous(two_years, ["new_child", "high_income"], prefix)
 
 t_test(three_years_new_parents, "climate_change_persists", "high_income")
