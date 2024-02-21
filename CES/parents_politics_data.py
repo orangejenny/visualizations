@@ -51,6 +51,7 @@ class ParentsPoliticsData():
     def _add_all_composite(self, df):
         raise NotImplementedError()
 
+    ### Data accessors
     # panel contains all original data
     def get_panel(self):
         return self.panel
@@ -63,6 +64,7 @@ class ParentsPoliticsData():
     def get_paired_waves(self):
         return self.paired_waves
 
+    ### Analysis functions
     def count_flippers(self, before_label, after_label, lower_bound, upper_bound):
         valid_rows = self.all_waves.loc[
             np.greater_equal(self.all_waves[before_label], lower_bound) & np.greater_equal(self.all_waves[after_label], lower_bound)
@@ -142,3 +144,31 @@ class ParentsPoliticsData():
         df = DataFrame.from_dict(results)
         df.sort_values('metric', inplace=True)
         return df
+
+    ### Summary functions
+    def summarize_continuous(self, df, group_by_labels, issue):
+        if type(group_by_labels) == type(''):
+            group_by_labels = [group_by_labels]
+        return df.loc[
+            :,
+            group_by_labels + [f'{issue}_before', f'{issue}_after', f'{issue}_delta', f'{issue}_delta_abs']
+        ].groupby(group_by_labels, as_index=False).mean()
+
+    def continuous_persists(self, issue):
+        flags = self.filter_na(self.all_waves, f'{issue}_persists')
+        flags[f'{issue}_persistence_flag'] = np.bool_(flags[f'{issue}_persists'])
+        flags.groupby(['new_child', f'{issue}_persistence_flag']).count()
+        return self.count_percentages(flags, 'new_child', f'{issue}_persistence_flag')
+
+    def categorical_persists(self, issue):
+        flags = self.filter_na(self.all_waves, f'{issue}_persists')
+        flags[f'{issue}_persistence_flag'] = np.bool_(flags[f'{issue}_persists'])
+        flags.groupby(['new_child', f'{issue}_persistence_flag']).count()
+        return self.count_percentages(self.filter_na(self.all_waves, f'{issue}_persists'), 'new_child', f'{issue}_persists')
+
+    def count_percentages(self, df, group_by_label, metric_label):
+        counts = df.loc[:,['caseid', group_by_label, metric_label]].groupby([group_by_label, metric_label], as_index=False).count() # roughly pd.crosstab
+        totals = self.filter_na(df, metric_label).loc[:,['caseid', group_by_label]].groupby([group_by_label], as_index=False).count()
+        results = counts.merge(totals, on=group_by_label)
+        results['percent'] = np.round(results['caseid_x'] * 100 / results['caseid_y'], decimals=1)
+        return results

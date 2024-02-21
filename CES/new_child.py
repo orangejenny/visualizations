@@ -7,40 +7,6 @@ panel = ces_data.get_panel()
 three_years = ces_data.get_all_waves()
 two_years = ces_data.get_paired_waves()
 
-########################
-# Functions: utilities #
-########################
-def summarize_continuous(df, group_by_labels, issue):
-    if type(group_by_labels) == type(''):
-        group_by_labels = [group_by_labels]
-    return df.loc[
-        :,
-        group_by_labels + [f'{issue}_before', f'{issue}_after', f'{issue}_delta', f'{issue}_delta_abs']
-    ].groupby(group_by_labels, as_index=False).mean()
-
-
-def continuous_persists(df, issue):
-    flags = ces_data.filter_na(df, f'{issue}_persists')
-    flags[f'{issue}_persistence_flag'] = np.bool_(flags[f'{issue}_persists'])
-    flags.groupby(['new_child', f'{issue}_persistence_flag']).count()
-    return count_percentages(flags, 'new_child', f'{issue}_persistence_flag')
-
-
-def categorical_persists(df, issue):
-    flags = ces_data.filter_na(df, f'{issue}_persists')
-    flags[f'{issue}_persistence_flag'] = np.bool_(flags[f'{issue}_persists'])
-    flags.groupby(['new_child', f'{issue}_persistence_flag']).count()
-    return count_percentages(ces_data.filter_na(df, f'{issue}_persists'), 'new_child', f'{issue}_persists')
-
-
-def count_percentages(df, group_by_label, metric_label):
-    counts = df.loc[:,['caseid', group_by_label, metric_label]].groupby([group_by_label, metric_label], as_index=False).count() # roughly pd.crosstab
-    totals = ces_data.filter_na(df, metric_label).loc[:,['caseid', group_by_label]].groupby([group_by_label], as_index=False).count()
-    results = counts.merge(totals, on=group_by_label)
-    results['percent'] = np.round(results['caseid_x'] * 100 / results['caseid_y'], decimals=1)
-    return results
-
-
 ##########################
 # Analysis: Demographics #
 ##########################
@@ -92,23 +58,23 @@ assert 0.3203 == round(ces_data.t_test(young_adults, 'ideo_composite_delta_abs')
 
 ### Descriptive: ideological change
 # Average ideological change over two years: trivially liberal, moreso for non-new-parents
-summarize_continuous(ces_data.filter_na(two_years, 'ideo_delta'), 'new_child', 'ideo')
+ces_data.summarize_continuous(ces_data.filter_na(two_years, 'ideo_delta'), 'new_child', 'ideo')
 
 # Counts of liberal/conservative movement, ignoring magnitude
 # New parents: 12% more liberal, 11% more conservative
 # Non-new-parents: 12% more liberal, 10% more conservative
-count_percentages(ces_data.filter_na(two_years, 'ideo_delta'), 'new_child', 'ideo_direction')
+ces_data.count_percentages(ces_data.filter_na(two_years, 'ideo_delta'), 'new_child', 'ideo_direction')
 
 # Using firstborn instead of new_child is still trivial, but new parents more conservative
-summarize_continuous(ces_data.filter_na(two_years, 'ideo_delta'), 'firstborn', 'ideo')
+ces_data.summarize_continuous(ces_data.filter_na(two_years, 'ideo_delta'), 'firstborn', 'ideo')
 
 # Younger adults look about the same as the whole cohort, trivially more liberal
-summarize_continuous(ces_data.filter_na(young_adults, 'ideo_delta'), 'new_child', 'ideo')
+ces_data.summarize_continuous(ces_data.filter_na(young_adults, 'ideo_delta'), 'new_child', 'ideo')
 
 # Counts of liberal/conservative movement, ignoring magnitude, for younger adults
 # New parents: 20% more liberal, 9% more conservative
 # Non-new-parents: 14% more liberal, 10% more conservative
-count_percentages(ces_data.filter_na(young_adults, 'ideo_delta'), 'new_child', 'ideo_direction')
+ces_data.count_percentages(ces_data.filter_na(young_adults, 'ideo_delta'), 'new_child', 'ideo_direction')
 
 ### Testing: party change: nothing significant
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
@@ -120,9 +86,9 @@ assert 0.0747 == round(ces_data.t_test(two_years, 'pid_delta_abs').pvalue, 4)
 ### Descriptive: party change
 # Average party change over two years: bigger than ideology, but still small
 # Vaguely interesting that it's a bigger change. Could just be that it's a bigger scale.
-summarize_continuous(ces_data.filter_na(two_years, 'pid_delta'), 'new_child', 'pid')
-summarize_continuous(ces_data.filter_na(two_years, 'pid_delta'), 'firstborn', 'pid')
-summarize_continuous(ces_data.filter_na(young_adults, 'pid_delta'), 'firstborn', 'pid')
+ces_data.summarize_continuous(ces_data.filter_na(two_years, 'pid_delta'), 'new_child', 'pid')
+ces_data.summarize_continuous(ces_data.filter_na(two_years, 'pid_delta'), 'firstborn', 'pid')
+ces_data.summarize_continuous(ces_data.filter_na(young_adults, 'pid_delta'), 'firstborn', 'pid')
 
 ####################
 # Analysis: Issues #
@@ -156,18 +122,18 @@ ces_data.t_tests(two_years, 'delta_sq', 'firstborn')
 assert 0.1119 == round(ces_data.t_test(two_years, 'jobs_env_delta_abs', 'firstborn').pvalue, 4)
 
 # Summary of continuous & composite issues
-summarize_continuous(two_years, "new_child", "climate_change")
-summarize_continuous(two_years, "new_child", "jobs_env")
-summarize_continuous(two_years, "new_child", "aff_action")
-guns = summarize_continuous(two_years, "new_child", "guns")
+ces_data.summarize_continuous(two_years, "new_child", "climate_change")
+ces_data.summarize_continuous(two_years, "new_child", "jobs_env")
+ces_data.summarize_continuous(two_years, "new_child", "aff_action")
+guns = ces_data.summarize_continuous(two_years, "new_child", "guns")
 assert ([round(v, 2) for v in guns.iloc[1, 1:].values] == [1.78, 1.72, -0.06, 0.29])
-summarize_continuous(two_years, "new_child", "tax_or_spend")
-summarize_continuous(two_years, "new_child", "sales_or_inc")
-summarize_continuous(two_years, "new_child", "climate_composite")
-summarize_continuous(two_years, "new_child", "gay_composite")
-military = summarize_continuous(two_years, "new_child", "military_composite")
+ces_data.summarize_continuous(two_years, "new_child", "tax_or_spend")
+ces_data.summarize_continuous(two_years, "new_child", "sales_or_inc")
+ces_data.summarize_continuous(two_years, "new_child", "climate_composite")
+ces_data.summarize_continuous(two_years, "new_child", "gay_composite")
+military = ces_data.summarize_continuous(two_years, "new_child", "military_composite")
 assert ([round(v, 2) for v in military.iloc[1, 1:].values] == [1.46, 1.49, 0.02, 0.16])
-summarize_continuous(two_years, "new_child", "immigration_composite")
+ces_data.summarize_continuous(two_years, "new_child", "immigration_composite")
 
 # Non-response rates, continuous & composite issues
 # Do non-response rates differ for parents and non-parents?
@@ -185,39 +151,39 @@ ces_data.chisqs(two_years, 'change')
 ces_data.chisqs(three_years, 'persists')
 
 # Descriptive statistics on categorical issues
-count_percentages(two_years, 'new_child', 'gay_marriage_before')
-after_counts = count_percentages(two_years, 'new_child', 'gay_marriage_after')
+ces_data.count_percentages(two_years, 'new_child', 'gay_marriage_before')
+after_counts = ces_data.count_percentages(two_years, 'new_child', 'gay_marriage_after')
 assert (after_counts.loc[np.equal(after_counts['new_child'], True), 'percent'].values == [39.4, 60.6]).all()
 
-count_percentages(two_years, 'new_child', 'schip_before')
-count_percentages(two_years, 'new_child', 'schip_after')
+ces_data.count_percentages(two_years, 'new_child', 'schip_before')
+ces_data.count_percentages(two_years, 'new_child', 'schip_after')
 
-count_percentages(two_years, 'new_child', 'budget_before')
-count_percentages(two_years, 'new_child', 'budget_after')
+ces_data.count_percentages(two_years, 'new_child', 'budget_before')
+ces_data.count_percentages(two_years, 'new_child', 'budget_after')
 
-count_percentages(two_years, 'new_child', 'budget_avoid_before')
-after_counts = count_percentages(two_years, 'new_child', 'budget_avoid_after')
+ces_data.count_percentages(two_years, 'new_child', 'budget_avoid_before')
+after_counts = ces_data.count_percentages(two_years, 'new_child', 'budget_avoid_after')
 assert (after_counts.loc[np.equal(after_counts['new_child'], True), 'percent'].values == [20, 35.4, 44.6]).all()
 
 
 # Persistence: how common is persistent change?
 # Of the new parents who changed, how many keep that change?
 # New parents often slightly more likely to experience persistent change than others
-continuous_persists(three_years, "climate_change") # 25% vs 18%
-continuous_persists(three_years, "jobs_env") # 23% vs 23%
-continuous_persists(three_years, "aff_action") # 16% vs 16%
-continuous_persists(three_years, "guns") # 16% vs 14%
-continuous_persists(three_years, "tax_or_spend") # 29% vs 35%
-continuous_persists(three_years, "sales_or_inc") # 39% vs 36%
-continuous_persists(three_years, "climate_composite") # 30% vs 21%
-continuous_persists(three_years, "gay_composite") # 17% vs 11%
-continuous_persists(three_years, "military_composite") # 32% vs 30%
-continuous_persists(three_years, "immigration_composite") # 50% vs 48%
+ces_data.continuous_persists("climate_change") # 25% vs 18%
+ces_data.continuous_persists("jobs_env") # 23% vs 23%
+ces_data.continuous_persists("aff_action") # 16% vs 16%
+ces_data.continuous_persists("guns") # 16% vs 14%
+ces_data.continuous_persists("tax_or_spend") # 29% vs 35%
+ces_data.continuous_persists("sales_or_inc") # 39% vs 36%
+ces_data.continuous_persists("climate_composite") # 30% vs 21%
+ces_data.continuous_persists("gay_composite") # 17% vs 11%
+ces_data.continuous_persists("military_composite") # 32% vs 30%
+ces_data.continuous_persists("immigration_composite") # 50% vs 48%
  
-categorical_persists(three_years, "gay_marriage") # 10% vs 7%
-categorical_persists(three_years, "schip") # 15% vs 12%
-categorical_persists(three_years, "budget") # 15% vs 12%
-categorical_persists(three_years, "budget_avoid") # 16% vs 16%
+ces_data.categorical_persists("gay_marriage") # 10% vs 7%
+ces_data.categorical_persists("schip") # 15% vs 12%
+ces_data.categorical_persists("budget") # 15% vs 12%
+ces_data.categorical_persists("budget_avoid") # 16% vs 16%
 
 ####################
 # Analysis: Gender #
@@ -230,8 +196,8 @@ two_years_women = two_years.loc[np.equal(two_years['gender'], 2),:]
 three_years_women = three_years.loc[np.equal(three_years['gender'], 2),:]
 
 ### Ideology/party description
-summarize_continuous(ces_data.filter_na(two_years, 'ideo_delta'), ['new_child', 'gender'], 'ideo')
-summarize_continuous(ces_data.filter_na(two_years, 'ideo_delta'), ['new_child', 'gender'], 'pid')
+ces_data.summarize_continuous(ces_data.filter_na(two_years, 'ideo_delta'), ['new_child', 'gender'], 'ideo')
+ces_data.summarize_continuous(ces_data.filter_na(two_years, 'ideo_delta'), ['new_child', 'gender'], 'pid')
 
 ### Ideology/party + continuous issues
 # Compare new fathers to new mothers: tax vs spend; absolute aff action, jobs env,, climate composite, military composite
@@ -252,17 +218,17 @@ ces_data.t_test(three_years_women, 'guns_persists')
 
 ### Describe continuous issues
 for prefix in ces_data.CONTINUOUS_PREFIXES:
-    summarize_continuous(two_years_new_parents, "gender", prefix)
-    summarize_continuous(two_years, ["new_child", "gender"], prefix)
+    ces_data.summarize_continuous(two_years_new_parents, "gender", prefix)
+    ces_data.summarize_continuous(two_years, ["new_child", "gender"], prefix)
 
 # New parents vs other: persistent abs: sales or inc
 ces_data.t_tests(three_years_new_parents, 'persists', 'gender', a_value=1, b_value=2)
 ces_data.t_tests(three_years_new_parents, 'persists_abs', 'gender', a_value=1, b_value=2)
 
-summarize_continuous(two_years_women, "new_child", "climate_change")
-summarize_continuous(two_years_women, "new_child", "guns")
-summarize_continuous(two_years_women, "new_child", "climate_composite")
-summarize_continuous(two_years_women, "new_child", "gay_composite")
+ces_data.summarize_continuous(two_years_women, "new_child", "climate_change")
+ces_data.summarize_continuous(two_years_women, "new_child", "guns")
+ces_data.summarize_continuous(two_years_women, "new_child", "climate_composite")
+ces_data.summarize_continuous(two_years_women, "new_child", "gay_composite")
 
 # Mothers vs non-mothers: persists absolute value: gay composite
 ces_data.t_tests(three_years_women, 'persists')
@@ -275,9 +241,9 @@ assert 0.1408 == round(ces_data.chisq(two_years_new_parents, 'pid_direction', 'g
 ces_data.chisqs(three_years_new_parents, "persists", "gender")
 
 # Comparing new fathers to new mothers on budget_change
-count_percentages(two_years_new_parents, "gender", "budget_before")
-count_percentages(two_years_new_parents, "gender", "budget_after")
-counts = count_percentages(two_years_new_parents, "gender", "budget_change")
+ces_data.count_percentages(two_years_new_parents, "gender", "budget_before")
+ces_data.count_percentages(two_years_new_parents, "gender", "budget_after")
+counts = ces_data.count_percentages(two_years_new_parents, "gender", "budget_change")
 assert (counts['caseid_x'].values == [160,  42, 122,  86]).all()
 assert (counts['percent'].values == [79.2, 20.8, 58.7, 41.3]).all()
 
@@ -293,10 +259,10 @@ ces_data.chisqs(two_years_women, 'change')
 ces_data.chisqs(three_years_women, "persists")
 
 # Comparing new mothers to other women on budget_change and budget_change_avoid
-count_percentages(two_years_women, "new_child", "budget_before")
-count_percentages(two_years_women, "new_child", "budget_after")
-count_percentages(two_years_women, "new_child", "budget_avoid_before")
-count_percentages(two_years_women, "new_child", "budget_avoid_after")
+ces_data.count_percentages(two_years_women, "new_child", "budget_before")
+ces_data.count_percentages(two_years_women, "new_child", "budget_after")
+ces_data.count_percentages(two_years_women, "new_child", "budget_avoid_before")
+ces_data.count_percentages(two_years_women, "new_child", "budget_avoid_after")
 
 
 ####################
@@ -320,8 +286,8 @@ assert 0.1103 == round(ces_data.chisq(two_years_women, 'pid_direction').pvalue, 
 ces_data.chisqs(two_years_women, 'change')
 
 # Ideology & party: nothing
-summarize_continuous(ces_data.filter_na(two_years, 'high_income'), ['new_child', 'high_income'], 'ideo')
-summarize_continuous(ces_data.filter_na(two_years, 'high_income'), ['new_child', 'high_income'], 'pid')
+ces_data.summarize_continuous(ces_data.filter_na(two_years, 'high_income'), ['new_child', 'high_income'], 'ideo')
+ces_data.summarize_continuous(ces_data.filter_na(two_years, 'high_income'), ['new_child', 'high_income'], 'pid')
 assert 0.517 == round(ces_data.chisq(two_years_new_parents, 'ideo_direction', 'high_income').pvalue, 4)
 assert 0.5566 == round(ces_data.chisq(two_years_new_parents, 'pid_direction', 'high_income').pvalue, 4)
 
@@ -329,8 +295,8 @@ assert 0.5566 == round(ces_data.chisq(two_years_new_parents, 'pid_direction', 'h
 ces_data.t_tests(two_years_new_parents, 'delta', 'high_income')
 ces_data.t_tests(two_years_new_parents, 'delta_abs', 'high_income')
 
-summarize_continuous(two_years_new_parents, "high_income", "climate_change")
-summarize_continuous(two_years_new_parents, "high_income", "climate_composite")
+ces_data.summarize_continuous(two_years_new_parents, "high_income", "climate_change")
+ces_data.summarize_continuous(two_years_new_parents, "high_income", "climate_composite")
 
 # Comparing high-income new parents with other high-income people: nothing
 ces_data.t_tests(two_years_high_income, 'delta')
@@ -341,7 +307,7 @@ ces_data.t_tests(two_years_low_income, 'delta')
 ces_data.t_tests(two_years_low_income, 'delta_abs')
 
 for prefix in ces_data.CONTINUOUS_PREFIXES:
-    summarize_continuous(two_years, ["new_child", "high_income"], prefix)
+    ces_data.summarize_continuous(two_years, ["new_child", "high_income"], prefix)
 
 ces_data.t_test(three_years_new_parents, "climate_change_persists", "high_income")
 ces_data.t_test(three_years_new_parents, "climate_change_persists_abs", "high_income")
