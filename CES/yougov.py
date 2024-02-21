@@ -10,6 +10,3 @@ class YouGovPanel(ParentsPoliticsPanel):
 
     def _build_all_waves(self, panel):
         return panel
-
-    def _build_paired_waves(self, all_waves):
-        return all_waves

@@ -11,10 +11,10 @@ two_years = ces.get_paired_waves()
 # Analysis: Demographics #
 ##########################
 
-# In two cycles: 420 with new child, 18580 without
+# In paired waves: 420 with new child, 18580 without
 counts = two_years.groupby('new_child', as_index=False).count()
 
-# In three cycles: 229 with new child in 2012, 9271 without
+# In all waves: 229 with new child in 2012, 9271 without
 counts = three_years.groupby('new_child', as_index=False).count()
 
 ############################

@@ -8,6 +8,14 @@ from scipy.stats import chi2_contingency, ttest_ind
 class ParentsPoliticsPanel():
     waves = []
 
+    @property
+    def start_waves(self):
+        return self.waves[:-1]
+
+    @property
+    def end_waves(self):
+        return self.waves[1:]
+
     def __init__(self):
         self.CONTINUOUS_PREFIXES = set()
         self.CATEGORICAL_PREFIXES = set()
@@ -38,8 +46,13 @@ class ParentsPoliticsPanel():
     def _build_all_waves(self, panel):
         raise NotImplementedError()
 
-    def _build_paired_waves(self, panel):
-        raise NotImplementedError()
+    def _build_paired_waves(self, all_waves):
+        return pd.concat([
+            all_waves.assign(
+                start_wave=w,
+                end_wave=self.end_waves[i],
+            ) for i, w in enumerate(self.start_waves)
+        ])
 
     def _add_parenting(self, df):
         raise NotImplementedError()
