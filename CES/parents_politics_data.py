@@ -1,4 +1,9 @@
 import numpy as np
+import pandas as pd
+
+from pandas import DataFrame
+from scipy.stats import chi2_contingency, ttest_ind
+
 
 class ParentsPoliticsData():
     def __init__(self):
@@ -68,8 +73,7 @@ class ParentsPoliticsData():
         flippers = valid_rows.loc[np.not_equal(valid_rows[before_label], valid_rows[after_label]), :]
         return round(len(flippers) * 100 / len(valid_rows), 1)
 
-    @classmethod
-    def nan_out_of_bounds(cls, df, label, lower_bound=None, upper_bound=None):
+    def nan_out_of_bounds(self, df, label, lower_bound=None, upper_bound=None):
         if lower_bound is None or upper_bound is None:
             return df
 
@@ -84,3 +88,57 @@ class ParentsPoliticsData():
 
         return df
 
+    def pvalue_stars(self, pvalue):
+        if pvalue < 0.001:
+            return '***'
+        if pvalue < 0.01:
+            return '**'
+        if pvalue < 0.05:
+            return '*'
+        return ''
+
+    def t_test(self, df, issue_label, demographic_label='new_child', a_value=0, b_value=1):
+        filtered = self.filter_na(self.filter_na(df, demographic_label), issue_label)
+        group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), issue_label]
+        group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), issue_label]
+        return ttest_ind(group_a, group_b, equal_var=False)
+
+    def filter_na(self, df, label):
+        return df.loc[pd.notna(df[label]),:].copy()
+
+    def t_tests(self, df, issue_suffix, demographic_label='new_child', a_value=0, b_value=1):
+        results = {
+            'metric': [],
+            'statistic': [],
+            'df': [],
+            'pvalue': [],
+        }
+        for label in [f'{p}_{issue_suffix}' for p in self.CONTINUOUS_PREFIXES]:
+            result = self.t_test(df, label, demographic_label, a_value, b_value)
+            results['metric'].append(label)
+            results['statistic'].append(result.statistic)
+            results['df'].append(result.df)
+            results['pvalue'].append(str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue))
+        df = DataFrame.from_dict(results)
+        df.sort_values('metric', inplace=True)
+        return df
+
+    def chisq(self, df, factor1, factor2='new_child'):
+        return chi2_contingency(pd.crosstab(df[factor1], df[factor2]))
+
+    def chisqs(self, df, issue_suffix, demographic_label='new_child'):
+        results = {
+            'metric': [],
+            'statistic': [],
+            'dof': [],
+            'pvalue': [],
+        }
+        for label in [f'{p}_{issue_suffix}' for p in self.CATEGORICAL_PREFIXES]:
+            result = self.chisq(df, label, demographic_label)
+            results['metric'].append(label)
+            results['statistic'].append(result.statistic)
+            results['dof'].append(result.dof)
+            results['pvalue'].append(str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue))
+        df = DataFrame.from_dict(results)
+        df.sort_values('metric', inplace=True)
+        return df
