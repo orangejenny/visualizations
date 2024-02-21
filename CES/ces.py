@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
 
-from parents_politics_data import ParentsPoliticsData
+from parents_politics_panel import ParentsPoliticsPanel
 
-class CESData(ParentsPoliticsData):
+class CESPanel(ParentsPoliticsPanel):
     def _load_panel(cls):
         return pd.read_stata("~/Documents/visualizations/midterm/CCES_Panel_Full3waves_VV_V4.dta", convert_categoricals=False)  # n=9500
 

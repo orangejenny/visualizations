@@ -1,8 +1,8 @@
 import pandas as pd
 
-from parents_politics_data import ParentsPoliticsData
+from parents_politics_panel import ParentsPoliticsPanel
 
-class YouGovData(ParentsPoliticsData):
+class YouGovPanel(ParentsPoliticsPanel):
     def _load_panel(cls):
         return pd.read_csv("~/Downloads/VOTER Panel Data Files/voter_panel.csv", encoding="latin_1")
 

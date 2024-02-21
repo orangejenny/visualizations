@@ -3,13 +3,13 @@
 import numpy as np
 import unittest
 
-from ces import CESData
+from ces import CESPanel
 
-class TestCESData(unittest.TestCase):
+class TestCESPanel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.data = CESData()
+        cls.data = CESPanel()
 
     def test_parenting_counts(self):
         counts = self.data.get_paired_waves().groupby('new_child', as_index=False).count()
