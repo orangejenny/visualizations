@@ -1,21 +1,24 @@
 import numpy as np
 
 from ces import CESPanel
+from yougov import YouGovPanel
 
 ces = CESPanel()
 panel = ces.get_panel()
 three_years = ces.get_all_waves()
 two_years = ces.get_paired_waves()
 
+yougov = YouGovPanel()
+
 ##########################
 # Analysis: Demographics #
 ##########################
 
 # In paired waves: 420 with new child, 18580 without
-counts = two_years.groupby('new_child', as_index=False).count()
+counts = ces.get_paired_waves().groupby('new_child', as_index=False).count()
 
 # In all waves: 229 with new child in 2012, 9271 without
-counts = three_years.groupby('new_child', as_index=False).count()
+counts = ces.get_all_waves().groupby('new_child', as_index=False).count()
 
 ############################
 # Analysis: Ideology/Party #
@@ -218,25 +221,17 @@ ces.t_tests(three_years_women, 'persists_abs')
 
 ### Categorical issues
 # Compare new fathers to new mothers: both budget questions: budget persists
-assert 0.595 == round(ces.chisq(two_years_new_parents, 'ideo_direction', 'gender').pvalue, 4)
-assert 0.1408 == round(ces.chisq(two_years_new_parents, 'pid_direction', 'gender').pvalue, 4)
 ces.chisqs(three_years_new_parents, "persists", "gender")
 
 # Comparing new fathers to new mothers on budget_change
 ces.count_percentages(two_years_new_parents, "gender", "budget_before")
 ces.count_percentages(two_years_new_parents, "gender", "budget_after")
-counts = ces.count_percentages(two_years_new_parents, "gender", "budget_change")
-assert (counts['caseid_x'].values == [160,  42, 122,  86]).all()
-assert (counts['percent'].values == [79.2, 20.8, 58.7, 41.3]).all()
+ces.count_percentages(two_years_new_parents, "gender", "budget_change")
 
 # Compare new fathers to other men: nothing
-assert 0.8416 == round(ces.chisq(two_years_men, 'ideo_direction').pvalue, 4)
-assert 0.2836 == round(ces.chisq(two_years_men, 'pid_direction').pvalue, 4)
 ces.chisqs(two_years_men, 'change')
 
 # Compare new mothers to other women: both budget questions: budget persists
-assert 0.7833 == round(ces.chisq(two_years_women, 'ideo_direction').pvalue, 4)
-assert 0.1103 == round(ces.chisq(two_years_women, 'pid_direction').pvalue, 4)
 ces.chisqs(two_years_women, 'change')
 ces.chisqs(three_years_women, "persists")
 

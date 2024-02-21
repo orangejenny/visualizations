@@ -9,61 +9,59 @@ class CESPanel(ParentsPoliticsPanel):
     def _load_panel(cls):
         return pd.read_stata("~/Documents/visualizations/midterm/CCES_Panel_Full3waves_VV_V4.dta", convert_categoricals=False)  # n=9500
 
-    def _build_all_waves(self, panel):
-        all_waves = self._trim_columns_from_panel(panel)
-        all_waves = all_waves.assign(start_wave=10, end_wave=14)
+    def _build_all_waves(self, all_waves):
         all_waves = self._add_age(all_waves)
         all_waves = self._recode_issues(all_waves)
         all_waves = self._consolidate_demographics(all_waves)
         all_waves = self._add_income_brackets(all_waves)
         return all_waves.copy()
 
-    def _trim_columns_from_panel(self, panel):
+    def _trimmed_panel(self):
         # Drop most columns
-        return panel.loc[
+        return self.panel.loc[
             :,
-            panel.columns.str.contains('caseid') +
-            panel.columns.str.contains('weight') +   # TODO
+            self.panel.columns.str.contains('caseid') +
+            self.panel.columns.str.contains('weight') +   # TODO
 
             # Ideology and partisanship
-            panel.columns.str.startswith('ideo5_') + 
-            panel.columns.str.contains('^pid3_1[024]', regex=True) +
-            panel.columns.str.startswith('pid7_') + 
+            self.panel.columns.str.startswith('ideo5_') + 
+            self.panel.columns.str.contains('^pid3_1[024]', regex=True) +
+            self.panel.columns.str.startswith('pid7_') + 
 
             # Policy issues: categorical
-            panel.columns.str.contains("CC1[024]_320", regex=True) + # gun control (1-3 more strict, less strict, same)
-            panel.columns.str.contains("CC1[024]_326", regex=True) + # gay marriage (1/2 no/yes): note issue was very active during this time, with Obergefell in 2015
-            panel.columns.str.contains("CC1[024]_328", regex=True) + # budget (1 cut defense, 2 cut domestic, 3 raise taxes)
-            panel.columns.str.contains("CC1[024]_329", regex=True) + # budget move to avoid (1 cut defense, 2 cut domestic, 3 raise taxes)
-            panel.columns.str.contains("CC1[024]_330B", regex=True) + # SCHIP (1 renew, 2 expire)
+            self.panel.columns.str.contains("CC1[024]_320", regex=True) + # gun control (1-3 more strict, less strict, same)
+            self.panel.columns.str.contains("CC1[024]_326", regex=True) + # gay marriage (1/2 no/yes): note issue was very active during this time, with Obergefell in 2015
+            self.panel.columns.str.contains("CC1[024]_328", regex=True) + # budget (1 cut defense, 2 cut domestic, 3 raise taxes)
+            self.panel.columns.str.contains("CC1[024]_329", regex=True) + # budget move to avoid (1 cut defense, 2 cut domestic, 3 raise taxes)
+            self.panel.columns.str.contains("CC1[024]_330B", regex=True) + # SCHIP (1 renew, 2 expire)
 
             # Policy issues: continuous
-            panel.columns.str.contains("CC1[024]_321", regex=True) + # climate change (1-5 real to not real)
-            panel.columns.str.contains("CC1[024]_325", regex=True) + # job vs environment (1-5 favor environment to favor jobs)
-            panel.columns.str.contains("CC1[024]_327", regex=True) + # affirmative action (1-4 support to oppose)
-            panel.columns.str.contains("CC1[024]_415r", regex=True) + # taxes vs spending (examples given are of domestic spending) (0 to 100)
-            panel.columns.str.contains("CC1[024]_416r", regex=True) + # raise sales vs income tax (0 to 100)
+            self.panel.columns.str.contains("CC1[024]_321", regex=True) + # climate change (1-5 real to not real)
+            self.panel.columns.str.contains("CC1[024]_325", regex=True) + # job vs environment (1-5 favor environment to favor jobs)
+            self.panel.columns.str.contains("CC1[024]_327", regex=True) + # affirmative action (1-4 support to oppose)
+            self.panel.columns.str.contains("CC1[024]_415r", regex=True) + # taxes vs spending (examples given are of domestic spending) (0 to 100)
+            self.panel.columns.str.contains("CC1[024]_416r", regex=True) + # raise sales vs income tax (0 to 100)
 
             # Policy issues: additional issues for composites
-            panel.columns.str.contains("CC1[024]_330C", regex=True) + # clean energy act (1/2 support/oppose, discard other values)
-            panel.columns.str.contains("CC1[024]_330G", regex=True) + # end don't ask don't tell (1/2 support/oppose, discard other values)
-            panel.columns.str.contains("CC1[024]_322_[1-7]", regex=True) + # immigration policies (1/2 support/oppose)
-            panel.columns.str.contains("CC1[024]_414_[1-7]", regex=True) + # use of military force for various purposes (1/2 yes/no)
+            self.panel.columns.str.contains("CC1[024]_330C", regex=True) + # clean energy act (1/2 support/oppose, discard other values)
+            self.panel.columns.str.contains("CC1[024]_330G", regex=True) + # end don't ask don't tell (1/2 support/oppose, discard other values)
+            self.panel.columns.str.contains("CC1[024]_322_[1-7]", regex=True) + # immigration policies (1/2 support/oppose)
+            self.panel.columns.str.contains("CC1[024]_414_[1-7]", regex=True) + # use of military force for various purposes (1/2 yes/no)
 
             # Parenthood
-            panel.columns.str.startswith("gender_") +
-            panel.columns.str.startswith("child18_") +
-            panel.columns.str.startswith("child18num_") +
+            self.panel.columns.str.startswith("gender_") +
+            self.panel.columns.str.startswith("child18_") +
+            self.panel.columns.str.startswith("child18num_") +
 
             # Demographics for controls/filters
-            panel.columns.str.startswith("birthyr_") +
-            panel.columns.str.startswith("faminc_") +
-            panel.columns.str.startswith("investor_") + # 1/2 yes/no
-            panel.columns.str.startswith("newsint_") + # Limit to 1-4, 1 is "high"
-            panel.columns.str.startswith("race_") + # Limit to 1-8, categorical
-            panel.columns.str.startswith("educ_") + # Limit to 1-6, categorical
-            panel.columns.str.startswith("marstat_") + # Limit to 1-6, categorical
-            panel.columns.str.startswith("pew_religimp_") # Limit to 1-4, 1 is "very important"
+            self.panel.columns.str.startswith("birthyr_") +
+            self.panel.columns.str.startswith("faminc_") +
+            self.panel.columns.str.startswith("investor_") + # 1/2 yes/no
+            self.panel.columns.str.startswith("newsint_") + # Limit to 1-4, 1 is "high"
+            self.panel.columns.str.startswith("race_") + # Limit to 1-8, categorical
+            self.panel.columns.str.startswith("educ_") + # Limit to 1-6, categorical
+            self.panel.columns.str.startswith("marstat_") + # Limit to 1-6, categorical
+            self.panel.columns.str.startswith("pew_religimp_") # Limit to 1-4, 1 is "very important"
         ].copy()
 
     def _add_age(self, all_waves):
@@ -138,20 +136,46 @@ class CESPanel(ParentsPoliticsPanel):
 
     def _add_parenting(self, df):
         df = df.assign(
-            new_child=lambda x:np.select(
+            # Combination of parent yes/no question and number of children question, being cautious of invalid values
+            new_child=lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
-                [x[f'child18num_{w}'] < x[f'child18num_{self.waves[i + 1]}'] for i, w in enumerate(self.start_waves)],
-            ),  # TODO: error if default is assigned?
-            firstborn=lambda x:np.where(
-                x.new_child == False,
-                False,  # TODO: should this be NA?
-                np.select(
-                    [x.start_wave == w for w in self.start_waves],
-                    [x[f'child18num_{w}'] == 0 for w in self.start_waves],
-                )
+                [np.where(
+                    # child18_start is NA or child18_next is NA,
+                    np.logical_or(
+                        np.logical_and(x[f'child18_{w}'] != 1, x[f'child18_{w}'] != 2),
+                        np.logical_and(x[f'child18_{self.waves[i + 1]}'] != 1, x[f'child18_{self.waves[i + 1]}'] != 2),
+                    ),
+                    np.nan,
+                    np.where(
+                        x[f'child18_{w}'] == 2,  # child18_start is no
+                        np.where(
+                            x[f'child18_{self.waves[i + 1]}'] == 1,  # child18_next is yes
+                            1,
+                            0
+                        ),
+                        np.where(   # child18_start is yes
+                            # child18num_start or child18num_next is invalid
+                            np.logical_or(
+                                np.logical_or(pd.isna(x[f'child18num_{w}']), pd.isna(x[f'child18num_{self.waves[i + 1]}'])),
+                                np.logical_or(x[f'child18num_{w}'] > 20, x[f'child18num_{self.waves[i + 1]}'] > 20),
+                            ),
+                            np.nan,
+                            np.where(
+                                x[f'child18num_{w}'] < x[f'child18num_{self.waves[i + 1]}'],
+                                1,
+                                0
+                            )
+                        )
+                    )
+                ) for i, w in enumerate(self.start_waves)],
             )
         )
-        return df.drop([f'child18num_{year}' for year in self.waves], axis=1)
+        df = df.loc[pd.notna(df['new_child']),:].copy() # remove any rows where parenthood cannot be determined
+        df = df.assign(firstborn=lambda x: np.select(   # TODO: What's the n here?
+            [x.start_wave == w for w in self.start_waves],
+            [np.where(np.logical_and(x.new_child == 1, x[f'child18_{w}'] == 2), 1, 0) for i, w in enumerate(self.start_waves)],
+        ))
+        return df
 
     def _add_all_continuous(self, df):
         df = self._add_continuous(df, 'ideo5_XX', 'ideo', 1, 5)
