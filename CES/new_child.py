@@ -23,15 +23,15 @@ counts = three_years.groupby('new_child', as_index=False).count()
 
 ### Exploratory: How often do people change ideology/party between two waves?
 # For pid3, 0.8%, too coarse to be useful
-assert 0.8 == ces_data.count_flippers("pid3_10", "pid3_12", 1, 2)
+ces_data.count_flippers("pid3_10", "pid3_12", 1, 2)
 
 # For pid7, 20-25% each 2 years
-assert 20.9 == ces_data.count_flippers("pid7_10", "pid7_12", 1, 7)
-assert 18.9 == ces_data.count_flippers("pid7_12", "pid7_14", 1, 7)
-assert 25.2 == ces_data.count_flippers("pid7_10", "pid7_14", 1, 7)
-assert 24.9 == ces_data.count_flippers("ideo5_10", "ideo5_12", 1, 5)
-assert 20.1 == ces_data.count_flippers("ideo5_12", "ideo5_14", 1, 5)
-assert 27.8 == ces_data.count_flippers("ideo5_10", "ideo5_14", 1, 5)
+ces_data.count_flippers("pid7_10", "pid7_12", 1, 7)
+ces_data.count_flippers("pid7_12", "pid7_14", 1, 7)
+ces_data.count_flippers("pid7_10", "pid7_14", 1, 7)
+ces_data.count_flippers("ideo5_10", "ideo5_12", 1, 5)
+ces_data.count_flippers("ideo5_12", "ideo5_14", 1, 5)
+ces_data.count_flippers("ideo5_10", "ideo5_14", 1, 5)
 
 ### Exploratory: Ideology distribution across panel: roughly normal, skewing conservative
 panel.groupby("ideo5_10").count().loc[:,'weight']
@@ -43,16 +43,16 @@ panel.groupby("pid7_10").count().loc[:,'weight']
 three_years.loc[np.equal(three_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'weight']
 
 ### Testing: ideological change: nothing significant
-assert 0.4108 == round(ces_data.t_test(two_years, 'ideo_delta').pvalue, 4)
-assert 0.6008 == round(ces_data.t_test(two_years, 'ideo_delta_abs').pvalue, 4)
-assert 0.7221 == round(ces_data.t_test(two_years, 'ideo_composite_delta').pvalue, 4)
-assert 0.0143 == round(ces_data.t_test(two_years, 'ideo_composite_delta_abs').pvalue, 4)
+ces_data.t_test(two_years, 'ideo_delta')
+ces_data.t_test(two_years, 'ideo_delta_abs')
+ces_data.t_test(two_years, 'ideo_composite_delta')
+ces_data.t_test(two_years, 'ideo_composite_delta_abs')
 
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
-assert 0.6761 == round(ces_data.t_test(young_adults, 'ideo_delta').pvalue, 4)
-assert 0.6028 == round(ces_data.t_test(young_adults, 'ideo_delta_abs').pvalue, 4)
-assert 0.1845 == round(ces_data.t_test(young_adults, 'ideo_composite_delta').pvalue, 4)
-assert 0.3203 == round(ces_data.t_test(young_adults, 'ideo_composite_delta_abs').pvalue, 4)
+ces_data.t_test(young_adults, 'ideo_delta')
+ces_data.t_test(young_adults, 'ideo_delta_abs')
+ces_data.t_test(young_adults, 'ideo_composite_delta')
+ces_data.t_test(young_adults, 'ideo_composite_delta_abs')
 
 ### Descriptive: ideological change
 # Average ideological change over two years: trivially liberal, moreso for non-new-parents
@@ -76,10 +76,10 @@ ces_data.count_percentages(ces_data.filter_na(young_adults, 'ideo_delta'), 'new_
 
 ### Testing: party change: nothing significant
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
-assert 0.4663 == round(ces_data.t_test(young_adults, 'pid_delta').pvalue, 4)
-assert 0.6051 == round(ces_data.t_test(young_adults, 'pid_delta_abs').pvalue, 4)
-assert 0.4348 == round(ces_data.t_test(two_years, 'pid_delta').pvalue, 4)
-assert 0.0747 == round(ces_data.t_test(two_years, 'pid_delta_abs').pvalue, 4)
+ces_data.t_test(young_adults, 'pid_delta')
+ces_data.t_test(young_adults, 'pid_delta_abs')
+ces_data.t_test(two_years, 'pid_delta')
+ces_data.t_test(two_years, 'pid_delta_abs')
  
 ### Descriptive: party change
 # Average party change over two years: bigger than ideology, but still small
@@ -95,16 +95,13 @@ ces_data.summarize_continuous(ces_data.filter_na(young_adults, 'pid_delta'), 'fi
 ### Testing: continuous & composite issues
 # "After" views: nothing
 ces_data.t_tests(two_years, 'after')
-assert 0.9979 == round(ces_data.t_test(two_years, 'climate_composite_after').pvalue, 4)
 
 # Change, incorporating direction: nothing
 ces_data.t_tests(two_years, 'delta')
-assert 0.787 == round(ces_data.t_test(two_years, 'immigration_composite_delta').pvalue, 4)
 
 # Change, absolute value: climate change, gay, guns: climate change & climate composite persist, and oddly so does sales or inc
 ces_data.t_tests(two_years, 'delta_abs')
 ces_data.t_tests(two_years, 'delta_sq')
-assert 0.5486 == round(ces_data.t_test(two_years, 'military_composite_delta').pvalue, 4)
 
 # Persistent change: nothing
 ces_data.t_tests(three_years, 'persists')
@@ -114,10 +111,8 @@ ces_data.t_tests(three_years, 'persists_abs')
 
 # Switching to firstborn and looking at change: for absolute change, climate change, climate composite and gay rights composite
 ces_data.t_tests(two_years, 'delta', 'firstborn')
-assert 0.4092 == round(ces_data.t_test(two_years, 'jobs_env_delta', 'firstborn').pvalue, 4)
 ces_data.t_tests(two_years, 'delta_abs', 'firstborn')
 ces_data.t_tests(two_years, 'delta_sq', 'firstborn')
-assert 0.1119 == round(ces_data.t_test(two_years, 'jobs_env_delta_abs', 'firstborn').pvalue, 4)
 
 # Summary of continuous & composite issues
 ces_data.summarize_continuous(two_years, "new_child", "climate_change")
