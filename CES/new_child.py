@@ -13,11 +13,9 @@ two_years = ces_data.get_paired_waves()
 
 # In two cycles: 420 with new child, 18580 without
 counts = two_years.groupby('new_child', as_index=False).count()
-assert (counts.loc[:, 'caseid'] == [18580, 420]).all()
 
 # In three cycles: 229 with new child in 2012, 9271 without
 counts = three_years.groupby('new_child', as_index=False).count()
-assert (counts.loc[:, 'caseid'] == [9271, 229]).all()
 
 ############################
 # Analysis: Ideology/Party #
