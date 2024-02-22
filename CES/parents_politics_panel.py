@@ -21,7 +21,14 @@ class ParentsPoliticsPanel():
         self.CATEGORICAL_PREFIXES = set()
 
         self.panel = self._load_panel()
-        self.all_waves = self._build_all_waves(self.panel)
+        self.all_waves = self.panel.copy()
+
+        self.all_waves = self._trimmed_panel()
+        if not len(self.waves):
+            raise Exception("Must contain at least one wave")
+        self.all_waves = self.all_waves.assign(start_wave=self.waves[0], end_wave=self.waves[-1])
+
+        self.all_waves = self._build_all_waves(self.all_waves)
         self.paired_waves = self._build_paired_waves(self.all_waves)
 
         self.all_waves = self._add_parenting(self.all_waves)
@@ -41,6 +48,9 @@ class ParentsPoliticsPanel():
         self.paired_waves = self.paired_waves.copy()
 
     def _load_panel(self):
+        raise NotImplementedError()
+
+    def _trimmed_panel(self):
         raise NotImplementedError()
 
     def _build_all_waves(self, panel):

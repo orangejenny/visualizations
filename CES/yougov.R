@@ -4,6 +4,7 @@ data <- read_csv("~/Downloads/VOTER Panel Data Files/voter_panel.csv")
 
 data %>% select(starts_with("household_children")) # household_children_2017, household_children_2016, household_children_2011
 
+# These aren't counts, they're yes/no questions, there are also household_child_num questions
 data %>% filter(household_children_2017 > household_children_2016) # 86 rows
 data %>% filter(household_children_2016 > household_children_2011) # 601 rows
 data %>% filter(household_children_2017 > household_children_2011) # 479 rows, which is comparable to CES
