@@ -32,7 +32,9 @@ class ParentsPoliticsPanel():
         self.paired_waves = self._build_paired_waves(self.all_waves)
 
         self.all_waves = self._add_parenting(self.all_waves)
+        self.all_waves = self.all_waves.astype({'new_child': 'int32', 'firstborn': 'int32'})
         self.paired_waves = self._add_parenting(self.paired_waves)
+        self.paired_waves = self.paired_waves.astype({'new_child': 'int32', 'firstborn': 'int32'})
 
         self.all_waves = self._add_all_continuous(self.all_waves)
         self.paired_waves = self._add_all_continuous(self.paired_waves)

@@ -1,24 +1,34 @@
+import logging
 import numpy as np
 
+from argparse import ArgumentParser
 from ces import CESPanel
+from datetime import datetime
 from yougov import YouGovPanel
+
+
+def log_info(data, description=''):
+    logging.info(f"\n{description}\n{data}\n")
+
+
+logging.basicConfig(filename='new_child.log', filemode='w', encoding='utf-8', level=logging.INFO)
+log_info(f"Run {datetime.now()}")
 
 ces = CESPanel()
 panel = ces.get_panel()
 three_years = ces.get_all_waves()
 two_years = ces.get_paired_waves()
 
-yougov = YouGovPanel()
-
+log_info('''
 ##########################
 # Analysis: Demographics #
-##########################
+##########################''')
 
-# In paired waves: 420 with new child, 18580 without
-counts = ces.get_paired_waves().groupby('new_child', as_index=False).count()
+counts = ces.get_paired_waves().groupby('new_child', as_index=False).count().rename(columns={'caseid': 'total'})
+log_info(counts.loc[:,['new_child', 'total']], "Total number of new parents and non-new-parents in sample (paired waves)")
 
-# In all waves: 229 with new child in 2012, 9271 without
-counts = ces.get_all_waves().groupby('new_child', as_index=False).count()
+counts = ces.get_all_waves().groupby('new_child', as_index=False).count().rename(columns={'caseid': 'total'})
+log_info(counts.loc[:,['new_child', 'total']], "Total number of new parents and non-new-parents in sample (all waves)")
 
 ############################
 # Analysis: Ideology/Party #
