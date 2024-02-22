@@ -8,7 +8,10 @@ from yougov import YouGovPanel
 
 
 def log_info(data, description=''):
-    logging.info(f"\n{description}\n{data}\n")
+    data = str(data)
+    if description:
+        data = "\n" + description + "\n" + data
+    logging.info(data + "\n")
 
 
 logging.basicConfig(filename='new_child.log', filemode='w', encoding='utf-8', level=logging.INFO)
@@ -19,10 +22,11 @@ panel = ces.get_panel()
 three_years = ces.get_all_waves()
 two_years = ces.get_paired_waves()
 
+
 log_info('''
-##########################
-# Analysis: Demographics #
-##########################''')
+#########################
+# Analysis: Exploratory #
+#########################''')
 
 counts = ces.get_paired_waves().groupby('new_child', as_index=False).count().rename(columns={'caseid': 'total'})
 log_info(counts.loc[:,['new_child', 'total']], "Total number of new parents and non-new-parents in sample (paired waves)")
@@ -30,30 +34,37 @@ log_info(counts.loc[:,['new_child', 'total']], "Total number of new parents and 
 counts = ces.get_all_waves().groupby('new_child', as_index=False).count().rename(columns={'caseid': 'total'})
 log_info(counts.loc[:,['new_child', 'total']], "Total number of new parents and non-new-parents in sample (all waves)")
 
-############################
-# Analysis: Ideology/Party #
-############################
+# Ideology distribution across panel: roughly normal, skewing conservative
+log_info(panel.groupby("ideo5_10").count().loc[:,'weight'], "Overall distribution of ideo5_10")
 
-### Exploratory: How often do people change ideology/party between two waves?
-# For pid3, 0.8%, too coarse to be useful
-ces.count_flippers("pid3_10", "pid3_12", 1, 2)
+# Party distribution across panel: not normal, but U-shaped, with more strong Democrats but similar total Dem/Rep
+log_info(panel.groupby("pid7_10").count().loc[:,'weight'],  "Overall distribution of pid7_10")
+
+# Party distribution among parents: still U-shaped, a little more liberal, also looks like more moderates
+log_info(three_years.loc[np.equal(three_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'weight'], "Distribution of pid7_10 among new parents")
+
+
+log_info('''
+##########################################################################################
+# Analysis: Count flippers: How often do people change ideology/party between two waves? #
+##########################################################################################''')
+
+def log_flippers(prefix, start_wave, end_wave, lower_bound, upper_bound):
+    log_info(f"Percentage of {prefix} changing from 20{start_wave} to 20{end_wave}: "
+             + str(ces.count_flippers(f"{prefix}_{start_wave}", f"{prefix}_{end_wave}", lower_bound, upper_bound)))  # 0.8%, too coarse to be useful
+
+log_flippers("pid3", 10, 12, 1, 3)  # 8.9%, fairly coarse
 
 # For pid7, 20-25% each 2 years
-ces.count_flippers("pid7_10", "pid7_12", 1, 7)
-ces.count_flippers("pid7_12", "pid7_14", 1, 7)
-ces.count_flippers("pid7_10", "pid7_14", 1, 7)
-ces.count_flippers("ideo5_10", "ideo5_12", 1, 5)
-ces.count_flippers("ideo5_12", "ideo5_14", 1, 5)
-ces.count_flippers("ideo5_10", "ideo5_14", 1, 5)
+log_flippers("pid7", 10, 12, 1, 7)
+log_flippers("pid7", 12, 14, 1, 7)
+log_flippers("ideo5", 10, 12, 1, 5)
+log_flippers("ideo5", 12, 14, 1, 5)
+log_flippers("ideo5", 10, 14, 1, 5)
 
-### Exploratory: Ideology distribution across panel: roughly normal, skewing conservative
-panel.groupby("ideo5_10").count().loc[:,'weight']
 
-### Exploratory: Party distribution across panel
-# Not normal, but U-shaped, with more strong Democrats but similar total Dem/Rep
-panel.groupby("pid7_10").count().loc[:,'weight']
-# Parents are still U-shaped, a little more liberal, also looks like more moderates
-three_years.loc[np.equal(three_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'weight']
+
+
 
 ### Testing: ideological change: nothing significant
 ces.t_test(two_years, 'ideo_delta')
