@@ -255,21 +255,21 @@ class CESPanel(ParentsPoliticsPanel):
         })
         df.loc[np.isnan(df[f'{prefix}_delta']), f'{prefix}_direction'] = np.nan # because some of the 0s should be NaN
 
-        # Only relevant in all_waves
         df = df.assign(**{
             f'{prefix}_persists': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves],
+                [x.start_wave == w for w in self.start_waves[:-1]],
                 [np.where(np.logical_and(
                     x[f'{prefix}_delta'] != 0, # change in start vs end
                     # change from start to final is either zero or the same direction as delta
                     x[f'{prefix}_delta'] * (x[before_pattern.replace('XX', str(self.end_waves[-1]))] - x[before_pattern.replace('XX', str(self.end_waves[i]))]) >= 0
                 ),
                 x[before_pattern.replace('XX', str(self.end_waves[-1]))] - x[before_pattern.replace('XX', str(w))],
-                0) for i, w in enumerate(self.start_waves)]
+                0) for i, w in enumerate(self.start_waves[:-1])]
             )
         })
         for wave in self.waves:
-            df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{prefix}_persists'] = np.nan
+            df.loc[df['start_wave'] == self.start_waves[-1], f'{prefix}_persists'] = np.nan  # Can't calculate when there are only two waves
+            df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{prefix}_persists'] = np.nan  # Can't calculate unless all waves are available
         df[f'{prefix}_persists_abs'] = np.abs(df[f'{prefix}_persists'])
 
         self.CONTINUOUS_PREFIXES.add(prefix)
@@ -284,7 +284,6 @@ class CESPanel(ParentsPoliticsPanel):
         for suffix in ('before', 'after'):
             df.loc[np.isnan(df[f'{prefix}_{suffix}']), f'{prefix}_change'] = np.nan
 
-        # Only relevant in all_waves
         df = df.assign(**{f'{prefix}_persists': lambda x: np.select(
             [x.start_wave == w for w in self.start_waves],
             [np.where(np.logical_and(
@@ -293,8 +292,8 @@ class CESPanel(ParentsPoliticsPanel):
             ), 1, 0) for i, w in enumerate(self.start_waves)]
         )})
         for wave in self.waves:
-            df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{prefix}_persists'] = np.nan
-        df[f'{prefix}_persists_abs'] = np.abs(df[f'{prefix}_persists'])
+            df.loc[df['start_wave'] == self.start_waves[-1], f'{prefix}_persists'] = np.nan  # Can't calculate when there are only two waves
+            df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{prefix}_persists'] = np.nan  # Can't calulate unless all waves are available
 
         self.CATEGORICAL_PREFIXES.add(prefix)
 

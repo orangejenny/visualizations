@@ -79,7 +79,7 @@ log_info(ces.all_t_test_pvalues(ces.paired_waves, demographic_label="firstborn")
 log_info(ces.all_chisq_pvalues(ces.paired_waves, demographic_label="firstborn"), "Chi square p values, all paired data, firstborn")
 
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
-log_info(ces.all_t_test_pvalues(young_adults), "T test p values, respondents under 30 years old")
+#log_info(ces.all_t_test_pvalues(young_adults), "T test p values, respondents under 30 years old")   # TODO: RuntimeWarning: invalid value encountered in scalar multiply
 log_info(ces.all_chisq_pvalues(young_adults), "Chi square p values, respondents under 30 years old")
 
 
