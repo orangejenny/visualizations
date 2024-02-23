@@ -9,13 +9,16 @@ class CESPanel(ParentsPoliticsPanel):
     def _load_panel(cls):
         return pd.read_stata("~/Documents/visualizations/midterm/CCES_Panel_Full3waves_VV_V4.dta", convert_categoricals=False)  # n=9500
 
-    def _build_paired_waves(self, all_waves):
-        all_waves = self._add_age(all_waves)
-        all_waves = self._recode_issues(all_waves)
-        all_waves = self._consolidate_demographics(all_waves)
-        all_waves = self._add_income_brackets(all_waves)
+    def _build_paired_waves(self, df):
+        if not len(self.waves):
+            raise Exception("Must contain at least one wave")
+        df = df.assign(start_wave=self.waves[0], end_wave=self.waves[-1])
+        df = self._add_age(df)
+        df = self._recode_issues(df)
+        df = self._consolidate_demographics(df)
+        df = self._add_income_brackets(df)
         return pd.concat([
-            all_waves.assign(
+            df.assign(
                 start_wave=w,
                 end_wave=self.end_waves[i],
             ) for i, w in enumerate(self.start_waves)

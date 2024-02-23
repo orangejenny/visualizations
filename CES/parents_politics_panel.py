@@ -21,31 +21,16 @@ class ParentsPoliticsPanel():
         self.CATEGORICAL_PREFIXES = set()
 
         self.panel = self._load_panel()
-        self.all_waves = self.panel.copy()
+        self.paired_waves = self._build_paired_waves(self._trimmed_panel())
 
-        self.all_waves = self._trimmed_panel()
-        if not len(self.waves):
-            raise Exception("Must contain at least one wave")
-        self.all_waves = self.all_waves.assign(start_wave=self.waves[0], end_wave=self.waves[-1])
-
-        self.paired_waves = self._build_paired_waves(self.all_waves)
-
-        self.all_waves = self._add_parenting(self.all_waves)
-        self.all_waves = self.all_waves.astype({'new_child': 'int32', 'firstborn': 'int32'})
         self.paired_waves = self._add_parenting(self.paired_waves)
         self.paired_waves = self.paired_waves.astype({'new_child': 'int32', 'firstborn': 'int32'})
 
-        self.all_waves = self._add_all_continuous(self.all_waves)
         self.paired_waves = self._add_all_continuous(self.paired_waves)
-
-        self.all_waves = self._add_all_categorical(self.all_waves)
         self.paired_waves = self._add_all_categorical(self.paired_waves)
-
-        self.all_waves = self._add_all_composite(self.all_waves)
         self.paired_waves = self._add_all_composite(self.paired_waves)
 
         # De-fragment frames
-        self.all_waves = self.all_waves.copy()
         self.paired_waves = self.paired_waves.copy()
 
     def _load_panel(self):
@@ -54,7 +39,7 @@ class ParentsPoliticsPanel():
     def _trimmed_panel(self):
         raise NotImplementedError()
 
-    def _build_paired_waves(self, all_waves):
+    def _build_paired_waves(self, df):
         raise NotImplementedError()
 
     def _add_parenting(self, df):
