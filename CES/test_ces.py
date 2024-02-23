@@ -16,9 +16,6 @@ class TestCESPanel(unittest.TestCase):
         counts = self.data.get_paired_waves().groupby('new_child', as_index=False).count()
         self.assertListEqual(counts.loc[:, 'caseid'].to_list(), [18499, 436])
 
-        counts = self.data.get_all_waves().groupby('new_child', as_index=False).count()
-        self.assertListEqual(counts.loc[:, 'caseid'].to_list(), [9227, 239])
-
     def test_flippers(self):
         self.assertEqual(25.2, self.data.count_flippers("pid7_10", "pid7_14", 1, 7))
         self.assertEqual(24.9, self.data.count_flippers("ideo5_10", "ideo5_12", 1, 5))

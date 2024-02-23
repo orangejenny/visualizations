@@ -19,7 +19,6 @@ log_info(f"Run {datetime.now()}")
 
 ces = CESPanel()
 panel = ces.get_panel()
-three_years = ces.get_all_waves()
 two_years = ces.get_paired_waves()
 
 
@@ -31,13 +30,15 @@ log_info('''
 counts = ces.get_paired_waves().groupby('new_child', as_index=False).count().rename(columns={'caseid': 'total'})
 log_info(counts.loc[:,['new_child', 'total']], "Total number of new parents and non-new-parents in sample (paired waves)")
 
-counts = ces.get_all_waves().groupby('new_child', as_index=False).count().rename(columns={'caseid': 'total'})
+# TODO: Should this be looking at the whole panel, at people who became a parent in any wave?
+counts = ces.get_paired_waves().groupby('new_child', as_index=False).count().rename(columns={'caseid': 'total'})
 log_info(counts.loc[:,['new_child', 'total']], "Total number of new parents and non-new-parents in sample (all waves)")
 
 counts = ces.get_paired_waves().groupby('firstborn', as_index=False).count().rename(columns={'caseid': 'total'})
 log_info(counts.loc[:,['firstborn', 'total']], "Total number of new first-time parents and others in sample (paired waves)")
 
-counts = ces.get_all_waves().groupby('firstborn', as_index=False).count().rename(columns={'caseid': 'total'})
+# TODO: Should this be looking at the whole panel, at people who became a parent in any wave?
+counts = ces.get_paired_waves().groupby('firstborn', as_index=False).count().rename(columns={'caseid': 'total'})
 log_info(counts.loc[:,['firstborn', 'total']], "Total number of new first-time parents and others in sample (all waves)")
 
 # Ideology distribution across panel: roughly normal, skewing conservative
@@ -47,7 +48,8 @@ log_info(panel.groupby("ideo5_10").count().loc[:,'weight'], "Overall distributio
 log_info(panel.groupby("pid7_10").count().loc[:,'weight'],  "Overall distribution of pid7_10")
 
 # Party distribution among parents: still U-shaped, a little more liberal, also looks like more moderates
-log_info(three_years.loc[np.equal(three_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'weight'], "Distribution of pid7_10 among new parents")
+# TODO: Should this be looking at the whole panel, at people who became a parent in any wave?
+log_info(two_years.loc[np.equal(two_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'weight'], "Distribution of pid7_10 among new parents")
 
 log_info('''
 ##########################################################################################
@@ -235,10 +237,11 @@ ces.count_percentages(two_years_women, "new_child", "budget_avoid_after")
 panel.loc[:, ['caseid', 'faminc_14']].groupby("faminc_14").count()
 
 # Exploratory: what does the income distribution look like for new parents?
-three_years.loc[np.equal(three_years['new_child'], 1),['income', 'new_child', 'caseid']].groupby('income').count()
-three_years.loc[:,['new_child', 'income_quintile', 'caseid']].groupby(['new_child', 'income_quintile']).count()
-three_years.loc[:,['high_income', 'caseid']].groupby('high_income').count()
-three_years.loc[:,['low_income', 'caseid']].groupby('low_income').count()
+# TODO: Should this be looking at the whole panel, at people who became a parent in any wave?
+two_years.loc[np.equal(two_years['new_child'], 1),['income', 'new_child', 'caseid']].groupby('income').count()
+two_years.loc[:,['new_child', 'income_quintile', 'caseid']].groupby(['new_child', 'income_quintile']).count()
+two_years.loc[:,['high_income', 'caseid']].groupby('high_income').count()
+two_years.loc[:,['low_income', 'caseid']].groupby('low_income').count()
 
 two_years_high_income = two_years.loc[np.equal(two_years['high_income'], 1),:]
 two_years_low_income = two_years.loc[np.equal(two_years['high_income'], 0),:]
