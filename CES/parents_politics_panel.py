@@ -93,10 +93,10 @@ class ParentsPoliticsPanel():
 
     ### Analysis functions
     def count_flippers(self, before_label, after_label, lower_bound, upper_bound):
-        valid_rows = self.all_waves.loc[
-            np.greater_equal(self.all_waves[before_label], lower_bound) & np.greater_equal(self.all_waves[after_label], lower_bound)
+        valid_rows = self.panel.loc[
+            np.greater_equal(self.panel[before_label], lower_bound) & np.greater_equal(self.panel[after_label], lower_bound)
             &
-            np.less_equal(self.all_waves[before_label], upper_bound) & np.less_equal(self.all_waves[after_label], upper_bound),
+            np.less_equal(self.panel[before_label], upper_bound) & np.less_equal(self.panel[after_label], upper_bound),
             [before_label, after_label]
         ]
         flippers = valid_rows.loc[np.not_equal(valid_rows[before_label], valid_rows[after_label]), :]
@@ -204,16 +204,16 @@ class ParentsPoliticsPanel():
         ].groupby(group_by_labels, as_index=False).mean()
 
     def continuous_persists(self, issue):
-        flags = self.filter_na(self.all_waves, f'{issue}_persists')
+        flags = self.filter_na(self.paired_waves, f'{issue}_persists')
         flags[f'{issue}_persistence_flag'] = np.bool_(flags[f'{issue}_persists'])
         flags.groupby(['new_child', f'{issue}_persistence_flag']).count()
         return self.count_percentages(flags, 'new_child', f'{issue}_persistence_flag')
 
     def categorical_persists(self, issue):
-        flags = self.filter_na(self.all_waves, f'{issue}_persists')
+        flags = self.filter_na(self.paired_waves, f'{issue}_persists')
         flags[f'{issue}_persistence_flag'] = np.bool_(flags[f'{issue}_persists'])
         flags.groupby(['new_child', f'{issue}_persistence_flag']).count()
-        return self.count_percentages(self.filter_na(self.all_waves, f'{issue}_persists'), 'new_child', f'{issue}_persists')
+        return self.count_percentages(self.filter_na(self.paired_waves, f'{issue}_persists'), 'new_child', f'{issue}_persists')
 
     def count_percentages(self, df, group_by_label, metric_label):
         counts = df.loc[:,['caseid', group_by_label, metric_label]].groupby([group_by_label, metric_label], as_index=False).count() # roughly pd.crosstab

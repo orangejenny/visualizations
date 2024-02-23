@@ -163,11 +163,8 @@ ces.categorical_persists("budget_avoid") # 16% vs 16%
 # Analysis: Gender #
 ####################
 two_years_new_parents = two_years.loc[np.equal(two_years['new_child'], 1),:]
-three_years_new_parents = three_years.loc[np.equal(three_years['new_child'], 1),:]
 two_years_men = two_years.loc[np.equal(two_years['gender'], 1),:]
-three_years_men = three_years.loc[np.equal(three_years['gender'], 1),:]
 two_years_women = two_years.loc[np.equal(two_years['gender'], 2),:]
-three_years_women = three_years.loc[np.equal(three_years['gender'], 2),:]
 
 ### Ideology/party description
 ces.summarize_continuous(ces.filter_na(two_years, 'ideo_delta'), ['new_child', 'gender'], 'ideo')
@@ -181,14 +178,14 @@ ces.t_tests(two_years_new_parents, 'delta_abs', 'gender', a_value=1, b_value=2)
 # Compare new fathers to other men: tax or spend with direction...doesn't persist
 ces.t_tests(two_years_men, 'delta')
 ces.t_tests(two_years_men, 'delta_abs')
-ces.t_test(three_years_men, 'tax_or_spend_persists')
-ces.t_test(three_years_men, 'tax_or_spend_persists_abs')
+ces.t_test(two_years_men, 'tax_or_spend_persists')
+ces.t_test(two_years_men, 'tax_or_spend_persists_abs')
 
 # Compare new mothers to other women: absolute climate, gay, guns
 ces.t_tests(two_years_women, 'delta')
 ces.t_tests(two_years_women, 'delta_abs')
-ces.t_test(three_years_women, 'climate_change_persists_abs')
-ces.t_test(three_years_women, 'guns_persists')
+ces.t_test(two_years_women, 'climate_change_persists_abs')
+ces.t_test(two_years_women, 'guns_persists')
 
 ### Describe continuous issues
 for prefix in ces.CONTINUOUS_PREFIXES:
@@ -196,8 +193,8 @@ for prefix in ces.CONTINUOUS_PREFIXES:
     ces.summarize_continuous(two_years, ["new_child", "gender"], prefix)
 
 # New parents vs other: persistent abs: sales or inc
-ces.t_tests(three_years_new_parents, 'persists', 'gender', a_value=1, b_value=2)
-ces.t_tests(three_years_new_parents, 'persists_abs', 'gender', a_value=1, b_value=2)
+ces.t_tests(two_years_new_parents, 'persists', 'gender', a_value=1, b_value=2)
+ces.t_tests(two_years_new_parents, 'persists_abs', 'gender', a_value=1, b_value=2)
 
 ces.summarize_continuous(two_years_women, "new_child", "climate_change")
 ces.summarize_continuous(two_years_women, "new_child", "guns")
@@ -205,12 +202,12 @@ ces.summarize_continuous(two_years_women, "new_child", "climate_composite")
 ces.summarize_continuous(two_years_women, "new_child", "gay_composite")
 
 # Mothers vs non-mothers: persists absolute value: gay composite
-ces.t_tests(three_years_women, 'persists')
-ces.t_tests(three_years_women, 'persists_abs')
+ces.t_tests(two_years_women, 'persists')
+ces.t_tests(two_years_women, 'persists_abs')
 
 ### Categorical issues
 # Compare new fathers to new mothers: both budget questions: budget persists
-ces.chisqs(three_years_new_parents, "persists", "gender")
+ces.chisqs(two_years_new_parents, "persists", "gender")
 
 # Comparing new fathers to new mothers on budget_change
 ces.count_percentages(two_years_new_parents, "gender", "budget_before")
@@ -222,7 +219,7 @@ ces.chisqs(two_years_men, 'change')
 
 # Compare new mothers to other women: both budget questions: budget persists
 ces.chisqs(two_years_women, 'change')
-ces.chisqs(three_years_women, "persists")
+ces.chisqs(two_years_women, "persists")
 
 # Comparing new mothers to other women on budget_change and budget_change_avoid
 ces.count_percentages(two_years_women, "new_child", "budget_before")
@@ -244,9 +241,7 @@ three_years.loc[:,['high_income', 'caseid']].groupby('high_income').count()
 three_years.loc[:,['low_income', 'caseid']].groupby('low_income').count()
 
 two_years_high_income = two_years.loc[np.equal(two_years['high_income'], 1),:]
-three_years_high_income = three_years.loc[np.equal(three_years['high_income'], 1),:]
 two_years_low_income = two_years.loc[np.equal(two_years['high_income'], 0),:]
-three_years_low_income = three_years.loc[np.equal(three_years['high_income'], 0),:]
 ces.chisqs(two_years_women, 'change')
 
 # Ideology & party: nothing
@@ -271,11 +266,10 @@ ces.t_tests(two_years_low_income, 'delta_abs')
 for prefix in ces.CONTINUOUS_PREFIXES:
     ces.summarize_continuous(two_years, ["new_child", "high_income"], prefix)
 
-ces.t_test(three_years_new_parents, "climate_change_persists", "high_income")
-ces.t_test(three_years_new_parents, "climate_change_persists_abs", "high_income")
-# TODO: T tests for climate_composite return NaN
-ces.t_test(three_years_new_parents, "climate_composite_persists", "high_income")
-ces.t_test(three_years_new_parents, "climate_composite_persists_abs", "high_income")
+ces.t_test(two_years_new_parents, "climate_change_persists", "high_income")
+ces.t_test(two_years_new_parents, "climate_change_persists_abs", "high_income")
+ces.t_test(two_years_new_parents, "climate_composite_persists", "high_income")
+ces.t_test(two_years_new_parents, "climate_composite_persists_abs", "high_income")
 
 # Chi square tests within new parents: high_income, low_income: nothing
 ces.chisqs(two_years_new_parents, 'change', 'high_income')
