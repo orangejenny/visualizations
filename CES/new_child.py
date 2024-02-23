@@ -80,6 +80,9 @@ log_info(ces.all_chisq_pvalues(ces.paired_waves), "Chi square p values, all pair
 log_info(ces.all_t_test_pvalues(ces.paired_waves, demographic_label="firstborn"), "T test p values, all paired data, firstborn")
 log_info(ces.all_chisq_pvalues(ces.paired_waves, demographic_label="firstborn"), "Chi square p values, all paired data, firstborn")
 
+log_info(ces.summarize_all_continuous(two_years, 'new_child'), "Summary of continuous issues, all paired data")
+log_info(ces.summarize_all_continuous(two_years, 'firstborn'), "Summary of continuous issues, all paired data, firstborn child versus all others")
+
 log_info('''
 #################
 # Analysis: Age #
@@ -88,6 +91,8 @@ log_info('''
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
 #log_info(ces.all_t_test_pvalues(young_adults), "T test p values, respondents under 30 years old")   # TODO: RuntimeWarning: invalid value encountered in scalar multiply
 log_info(ces.all_chisq_pvalues(young_adults), "Chi square p values, respondents under 30 years old")
+
+log_info(ces.summarize_all_continuous(young_adults, 'new_child'), "Summary of continuous issues, respondents under 30 years old")
 
 log_info('''
 ####################
@@ -106,6 +111,8 @@ log_info(ces.all_chisq_pvalues(two_years_women), "Chi square p values, new fathe
 log_info(ces.all_t_test_pvalues(two_years_new_parents, demographic_label='gender', a_value=1, b_value=2), "T test p values, new fathers versus new mothers")
 log_info(ces.all_chisq_pvalues(two_years_new_parents, demographic_label='gender'), "Chi square p values, new fathers versus new mothers")
 
+log_info(ces.summarize_all_continuous(two_years, ['new_child', 'gender']), "Summary of continuous issues by new_child and gender")
+
 log_info('''
 ####################
 # Analysis: Income #
@@ -122,45 +129,18 @@ log_info(ces.all_chisq_pvalues(two_years_top_20), "Chi square p values, top 20% 
 log_info(ces.all_t_test_pvalues(two_years_new_parents, demographic_label='high_income'), "T test p values, top 20% new parents versus bottom 80% new parents")
 log_info(ces.all_chisq_pvalues(two_years_new_parents, demographic_label='high_income'), "Chi square p values, top 20% new parents versus bottom 80% new parents")
 
-#exit(0)
+log_info(ces.summarize_all_continuous(two_years, ['new_child', 'high_income']), "Summary of continuous issues by new_child and income")
 
-### Descriptive: ideological change
-# Average ideological change over two years: trivially liberal, moreso for non-new-parents
-ces.summarize_continuous(ces.filter_na(two_years, 'ideo_delta'), 'new_child', 'ideo')
 
 # Counts of liberal/conservative movement, ignoring magnitude
 # New parents: 12% more liberal, 11% more conservative
 # Non-new-parents: 12% more liberal, 10% more conservative
 ces.count_percentages(ces.filter_na(two_years, 'ideo_delta'), 'new_child', 'ideo_direction')
 
-# Using firstborn instead of new_child is still trivial, but new parents more conservative
-ces.summarize_continuous(ces.filter_na(two_years, 'ideo_delta'), 'firstborn', 'ideo')
-
-# Younger adults look about the same as the whole cohort, trivially more liberal
-ces.summarize_continuous(ces.filter_na(young_adults, 'ideo_delta'), 'new_child', 'ideo')
-
 # Counts of liberal/conservative movement, ignoring magnitude, for younger adults
 # New parents: 20% more liberal, 9% more conservative
 # Non-new-parents: 14% more liberal, 10% more conservative
 ces.count_percentages(ces.filter_na(young_adults, 'ideo_delta'), 'new_child', 'ideo_direction')
-
-### Descriptive: party change
-# Average party change over two years: bigger than ideology, but still small
-# Vaguely interesting that it's a bigger change. Could just be that it's a bigger scale.
-ces.summarize_continuous(ces.filter_na(two_years, 'pid_delta'), 'new_child', 'pid')
-ces.summarize_continuous(ces.filter_na(two_years, 'pid_delta'), 'firstborn', 'pid')
-ces.summarize_continuous(ces.filter_na(young_adults, 'pid_delta'), 'firstborn', 'pid')
-
-
-# Summary of continuous & composite issues
-ces.summarize_continuous(two_years, "new_child", "climate_change")
-ces.summarize_continuous(two_years, "new_child", "jobs_env")
-ces.summarize_continuous(two_years, "new_child", "aff_action")
-ces.summarize_continuous(two_years, "new_child", "tax_or_spend")
-ces.summarize_continuous(two_years, "new_child", "sales_or_inc")
-ces.summarize_continuous(two_years, "new_child", "climate_composite")
-ces.summarize_continuous(two_years, "new_child", "gay_composite")
-ces.summarize_continuous(two_years, "new_child", "immigration_composite")
 
 # Non-response rates, continuous & composite issues
 # Do non-response rates differ for parents and non-parents?
@@ -200,21 +180,7 @@ ces.categorical_persists("schip") # 15% vs 12%
 ces.categorical_persists("budget") # 15% vs 12%
 ces.categorical_persists("budget_avoid") # 16% vs 16%
 
-### Ideology/party description
-ces.summarize_continuous(ces.filter_na(two_years, 'ideo_delta'), ['new_child', 'gender'], 'ideo')
-ces.summarize_continuous(ces.filter_na(two_years, 'ideo_delta'), ['new_child', 'gender'], 'pid')
-
 ### Ideology/party + continuous issues
-
-### Describe continuous issues
-for prefix in ces.CONTINUOUS_PREFIXES:
-    ces.summarize_continuous(two_years_new_parents, "gender", prefix)
-    ces.summarize_continuous(two_years, ["new_child", "gender"], prefix)
-
-ces.summarize_continuous(two_years_women, "new_child", "climate_change")
-ces.summarize_continuous(two_years_women, "new_child", "guns")
-ces.summarize_continuous(two_years_women, "new_child", "climate_composite")
-ces.summarize_continuous(two_years_women, "new_child", "gay_composite")
 
 # Comparing new fathers to new mothers on budget_change
 ces.count_percentages(two_years_new_parents, "gender", "budget_before")
@@ -236,13 +202,3 @@ two_years.loc[np.equal(two_years['new_child'], 1),['income', 'new_child', 'casei
 two_years.loc[:,['new_child', 'income_quintile', 'caseid']].groupby(['new_child', 'income_quintile']).count()
 two_years.loc[:,['high_income', 'caseid']].groupby('high_income').count()
 two_years.loc[:,['low_income', 'caseid']].groupby('low_income').count()
-
-# Ideology & party: nothing
-ces.summarize_continuous(ces.filter_na(two_years, 'high_income'), ['new_child', 'high_income'], 'ideo')
-ces.summarize_continuous(ces.filter_na(two_years, 'high_income'), ['new_child', 'high_income'], 'pid')
-
-ces.summarize_continuous(two_years_new_parents, "high_income", "climate_change")
-ces.summarize_continuous(two_years_new_parents, "high_income", "climate_composite")
-
-for prefix in ces.CONTINUOUS_PREFIXES:
-    ces.summarize_continuous(two_years, ["new_child", "high_income"], prefix)

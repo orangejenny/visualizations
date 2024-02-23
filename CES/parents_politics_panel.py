@@ -6,6 +6,8 @@ from scipy.stats import chi2_contingency, ttest_ind
 
 
 class ParentsPoliticsPanel():
+    CONTINUOUS_METRICS = ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']
+    CATEGORICAL_METRICS = ['before', 'after', 'change', 'persists']
     waves = []
 
     @property
@@ -108,12 +110,10 @@ class ParentsPoliticsPanel():
         return df.loc[pd.notna(df[label]),:].copy()
 
     def all_chisq_pvalues(self, df, **test_kwargs):
-        metrics = ['before', 'after', 'change', 'persists']
-        return self._all_test_pvalues(df, self.CATEGORICAL_PREFIXES, metrics, self.chisqs, **test_kwargs)
+        return self._all_test_pvalues(df, self.CATEGORICAL_PREFIXES, self.CATEGORICAL_METRICS, self.chisqs, **test_kwargs)
 
     def all_t_test_pvalues(self, df, **test_kwargs):
-        metrics = ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']
-        return self._all_test_pvalues(df, self.CONTINUOUS_PREFIXES, metrics, self.t_tests, **test_kwargs)
+        return self._all_test_pvalues(df, self.CONTINUOUS_PREFIXES, self.CONTINUOUS_METRICS, self.t_tests, **test_kwargs)
 
     def _all_test_pvalues(self, df, issues, metrics, test, **test_kwargs):
         issues = list(issues)
@@ -167,12 +167,25 @@ class ParentsPoliticsPanel():
         return df
 
     ### Summary functions
+    def summarize_all_continuous(self, df, group_by_labels):
+        if type(group_by_labels) == type(''):
+            group_by_labels = [group_by_labels]
+        all_issues = pd.DataFrame({k: [] for k in ['issue'] + group_by_labels + self.CONTINUOUS_METRICS})
+        for prefix in sorted(self.CONTINUOUS_PREFIXES):
+            # TODO: also filter_na for columns in group_by_labels?
+            issue_summary = self.summarize_continuous(self.filter_na(df, f'{prefix}_delta'), group_by_labels, prefix)
+            issue_summary['issue'] = prefix
+            issue_summary.rename(columns={f'{prefix}_{m}': m for m in self.CONTINUOUS_METRICS}, inplace=True)
+            all_issues = pd.concat([all_issues, issue_summary])
+        return all_issues
+
+
     def summarize_continuous(self, df, group_by_labels, issue):
         if type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
         return df.loc[
             :,
-            group_by_labels + [f'{issue}_before', f'{issue}_after', f'{issue}_delta', f'{issue}_delta_abs']
+            group_by_labels + [f'{issue}_{m}' for m in self.CONTINUOUS_METRICS]
         ].groupby(group_by_labels, as_index=False).mean()
 
     def continuous_persists(self, issue):

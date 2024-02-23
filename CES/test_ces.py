@@ -103,9 +103,9 @@ class TestCESPanel(unittest.TestCase):
     def test_summarize_continuous(self):
         data = self.data.get_paired_waves()
         guns = self.data.summarize_continuous(data, "new_child", "guns")
-        self.assertListEqual([round(v, 2) for v in guns.iloc[1, 1:].values], [1.77, 1.72, -0.06, 0.3])
+        self.assertListEqual([round(v, 2) for v in guns.iloc[1, 1:].values], [1.77, 1.72, -0.06, 0.3, -0.09, 0.19])
         military = self.data.summarize_continuous(data, "new_child", "military_composite")
-        self.assertListEqual([round(v, 2) for v in military.iloc[1, 1:].values], [1.46, 1.49, 0.03, 0.16])
+        self.assertListEqual([round(v, 2) for v in military.iloc[1, 1:].values], [1.46, 1.49, 0.03, 0.16, 0.04, 0.1])
 
     def test_count_percentages(self):
         data = self.data.get_paired_waves()
