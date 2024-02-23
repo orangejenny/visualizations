@@ -135,14 +135,22 @@ class ParentsPoliticsPanel():
     def filter_na(self, df, label):
         return df.loc[pd.notna(df[label]),:].copy()
 
-    def all_t_test_pvalues(self, df, issue_suffixes, demographic_label='new_child', a_value=0, b_value=1):
-        sorted_issues = list(self.CONTINUOUS_PREFIXES)
-        sorted_issues.sort()
-        all_results = pd.DataFrame(data={'issue': sorted_issues})
-        for suffix in issue_suffixes:
-            issue_results = self.t_tests(df, suffix, demographic_label='new_child', a_value=0, b_value=1)
+    def all_chisq_pvalues(self, df, **test_kwargs):
+        metrics = ['before', 'after', 'change', 'persists']
+        return self._all_test_pvalues(df, self.CATEGORICAL_PREFIXES, metrics, self.chisqs, **test_kwargs)
+
+    def all_t_test_pvalues(self, df, **test_kwargs):
+        metrics = ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']
+        return self._all_test_pvalues(df, self.CONTINUOUS_PREFIXES, metrics, self.t_tests, **test_kwargs)
+
+    def _all_test_pvalues(self, df, issues, metrics, test, **test_kwargs):
+        issues = list(issues)
+        issues.sort()
+        all_results = pd.DataFrame(data={'issue': issues})
+        for metric in metrics:
+            issue_results = test(df, metric, **test_kwargs)
             all_results = all_results.merge(issue_results.loc[:,['issue', 'pvalue']], on='issue')
-            all_results.rename(columns={'pvalue': suffix}, inplace=True)
+            all_results.rename(columns={'pvalue': metric}, inplace=True)
         return all_results
 
     def t_tests(self, df, issue_suffix, demographic_label='new_child', a_value=0, b_value=1):
@@ -173,9 +181,11 @@ class ParentsPoliticsPanel():
             'statistic': [],
             'dof': [],
             'pvalue': [],
+            'issue': [],
         }
-        for label in [f'{p}_{issue_suffix}' for p in self.CATEGORICAL_PREFIXES]:
+        for prefix, label in [(p, f'{p}_{issue_suffix}') for p in self.CATEGORICAL_PREFIXES]:
             result = self.chisq(df, label, demographic_label)
+            results['issue'].append(prefix)
             results['metric'].append(label)
             results['statistic'].append(result.statistic)
             results['dof'].append(result.dof)

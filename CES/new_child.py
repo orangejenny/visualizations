@@ -34,6 +34,12 @@ log_info(counts.loc[:,['new_child', 'total']], "Total number of new parents and 
 counts = ces.get_all_waves().groupby('new_child', as_index=False).count().rename(columns={'caseid': 'total'})
 log_info(counts.loc[:,['new_child', 'total']], "Total number of new parents and non-new-parents in sample (all waves)")
 
+counts = ces.get_paired_waves().groupby('firstborn', as_index=False).count().rename(columns={'caseid': 'total'})
+log_info(counts.loc[:,['firstborn', 'total']], "Total number of new first-time parents and others in sample (paired waves)")
+
+counts = ces.get_all_waves().groupby('firstborn', as_index=False).count().rename(columns={'caseid': 'total'})
+log_info(counts.loc[:,['firstborn', 'total']], "Total number of new first-time parents and others in sample (all waves)")
+
 # Ideology distribution across panel: roughly normal, skewing conservative
 log_info(panel.groupby("ideo5_10").count().loc[:,'weight'], "Overall distribution of ideo5_10")
 
@@ -66,17 +72,16 @@ log_info('''
 # Analysis: Attitudes #
 #######################''')
 
-log_info(ces.all_t_test_pvalues(ces.paired_waves, ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']),
-         "P values for all continuous issues metrics")
+log_info(ces.all_t_test_pvalues(ces.paired_waves), "T test p values, all paired data")
+log_info(ces.all_chisq_pvalues(ces.paired_waves), "Chi square p values, all paired data")
 
+log_info(ces.all_t_test_pvalues(ces.paired_waves, demographic_label="firstborn"), "T test p values, all paired data, firstborn")
+log_info(ces.all_chisq_pvalues(ces.paired_waves, demographic_label="firstborn"), "Chi square p values, all paired data, firstborn")
 
-
-# TODO: add for subsets of data
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
-ces.t_test(young_adults, 'ideo_delta')
-ces.t_test(young_adults, 'ideo_delta_abs')
-ces.t_test(young_adults, 'ideo_composite_delta')
-ces.t_test(young_adults, 'ideo_composite_delta_abs')
+log_info(ces.all_t_test_pvalues(young_adults), "T test p values, respondents under 30 years old")
+log_info(ces.all_chisq_pvalues(young_adults), "Chi square p values, respondents under 30 years old")
+
 
 ### Descriptive: ideological change
 # Average ideological change over two years: trivially liberal, moreso for non-new-parents
@@ -98,13 +103,6 @@ ces.summarize_continuous(ces.filter_na(young_adults, 'ideo_delta'), 'new_child',
 # Non-new-parents: 14% more liberal, 10% more conservative
 ces.count_percentages(ces.filter_na(young_adults, 'ideo_delta'), 'new_child', 'ideo_direction')
 
-### Testing: party change: nothing significant
-young_adults = two_years.loc[np.less(two_years['age'], 30),:]
-ces.t_test(young_adults, 'pid_delta')
-ces.t_test(young_adults, 'pid_delta_abs')
-ces.t_test(two_years, 'pid_delta')
-ces.t_test(two_years, 'pid_delta_abs')
- 
 ### Descriptive: party change
 # Average party change over two years: bigger than ideology, but still small
 # Vaguely interesting that it's a bigger change. Could just be that it's a bigger scale.
@@ -112,11 +110,6 @@ ces.summarize_continuous(ces.filter_na(two_years, 'pid_delta'), 'new_child', 'pi
 ces.summarize_continuous(ces.filter_na(two_years, 'pid_delta'), 'firstborn', 'pid')
 ces.summarize_continuous(ces.filter_na(young_adults, 'pid_delta'), 'firstborn', 'pid')
 
-
-# Switching to firstborn and looking at change: for absolute change, climate change, climate composite and gay rights composite
-ces.t_tests(two_years, 'delta', 'firstborn')
-ces.t_tests(two_years, 'delta_abs', 'firstborn')
-ces.t_tests(two_years, 'delta_sq', 'firstborn')
 
 # Summary of continuous & composite issues
 ces.summarize_continuous(two_years, "new_child", "climate_change")
@@ -135,11 +128,6 @@ for prefixes, suffix in ((ces.CONTINUOUS_PREFIXES, 'delta'), (ces.CATEGORICAL_PR
     for issue in prefixes:
         missing = len(two_years.loc[np.isnan(two_years[f'{issue}_{suffix}']),:])
         #print(f"Non-response for {issue}_{suffix}: {round(missing * 100 / total, 2)}%")
-
-### Testing: categorical variables: both budget questions, but neither persists
-ces.chisqs(two_years, 'after')
-ces.chisqs(two_years, 'change')
-ces.chisqs(three_years, 'persists')
 
 # Descriptive statistics on categorical issues
 ces.count_percentages(two_years, 'new_child', 'gay_marriage_before')

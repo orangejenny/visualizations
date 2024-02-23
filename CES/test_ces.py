@@ -90,6 +90,19 @@ class TestCESPanel(unittest.TestCase):
         _test_chiqsq(0.7973, data, 'ideo_direction')
         _test_chiqsq(0.1096, data, 'pid_direction')
 
+    def test_chisqs(self):
+        results = self.data.chisqs(self.data.get_paired_waves(), 'change')
+
+        schip = {
+            k: list(v.values())[0]  # v will have a single value
+            for k, v in results.loc[results['issue'] == 'schip',:].to_dict().items()
+        }
+        self.assertEqual(schip['issue'], 'schip')
+        self.assertEqual(schip['metric'], 'schip_change')
+        self.assertEqual(round(float(schip['statistic']), 3), 0.821)
+        self.assertEqual(round(float(schip['dof']), 1), 1)
+        self.assertEqual(round(float(schip['pvalue']), 4), 0.3649)
+
     def test_summarize_continuous(self):
         data = self.data.get_paired_waves()
         guns = self.data.summarize_continuous(data, "new_child", "guns")
