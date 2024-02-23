@@ -28,7 +28,6 @@ class ParentsPoliticsPanel():
             raise Exception("Must contain at least one wave")
         self.all_waves = self.all_waves.assign(start_wave=self.waves[0], end_wave=self.waves[-1])
 
-        self.all_waves = self._build_all_waves(self.all_waves)
         self.paired_waves = self._build_paired_waves(self.all_waves)
 
         self.all_waves = self._add_parenting(self.all_waves)
@@ -55,16 +54,8 @@ class ParentsPoliticsPanel():
     def _trimmed_panel(self):
         raise NotImplementedError()
 
-    def _build_all_waves(self, panel):
-        raise NotImplementedError()
-
     def _build_paired_waves(self, all_waves):
-        return pd.concat([
-            all_waves.assign(
-                start_wave=w,
-                end_wave=self.end_waves[i],
-            ) for i, w in enumerate(self.start_waves)
-        ])
+        raise NotImplementedError()
 
     def _add_parenting(self, df):
         raise NotImplementedError()

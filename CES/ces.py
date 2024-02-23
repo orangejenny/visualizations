@@ -9,12 +9,17 @@ class CESPanel(ParentsPoliticsPanel):
     def _load_panel(cls):
         return pd.read_stata("~/Documents/visualizations/midterm/CCES_Panel_Full3waves_VV_V4.dta", convert_categoricals=False)  # n=9500
 
-    def _build_all_waves(self, all_waves):
+    def _build_paired_waves(self, all_waves):
         all_waves = self._add_age(all_waves)
         all_waves = self._recode_issues(all_waves)
         all_waves = self._consolidate_demographics(all_waves)
         all_waves = self._add_income_brackets(all_waves)
-        return all_waves.copy()
+        return pd.concat([
+            all_waves.assign(
+                start_wave=w,
+                end_wave=self.end_waves[i],
+            ) for i, w in enumerate(self.start_waves)
+        ])
 
     def _trimmed_panel(self):
         # Drop most columns
@@ -64,53 +69,53 @@ class CESPanel(ParentsPoliticsPanel):
             self.panel.columns.str.startswith("pew_religimp_") # Limit to 1-4, 1 is "very important"
         ].copy()
 
-    def _add_age(self, all_waves):
-        return all_waves.assign(age=lambda x: 2010 - x.birthyr_10)
+    def _add_age(self, df):
+        return df.assign(age=lambda x: 2010 - x.birthyr_10)
 
-    def _recode_issues(self, all_waves):
+    def _recode_issues(self, df):
         # Recode a few columns to streamline later calculations
         # TODO: Verify that all invalid vlues are NAed out
         for year in self.waves:
             # Recode guns to be continuous (swapping 2 and 3 so that "no change" is in the middle of "less strict" and "more strict")
             label = f'CC{year}_320'
-            all_waves.loc[:, label] = np.where(all_waves[label] == 2, 3, np.where(all_waves[label] == 3, 2, np.where(all_waves[label] == 1, 1, np.nan)))
+            df.loc[:, label] = np.where(df[label] == 2, 3, np.where(df[label] == 3, 2, np.where(df[label] == 1, 1, np.nan)))
 
             # Recode don't ask don't tell, swapping so that 1 is the more conservative value, to match gay marriage ban question
-            all_waves[f'CC{year}_330G'] = np.where(
-                all_waves[f'CC{year}_330G'] == 1,
+            df[f'CC{year}_330G'] = np.where(
+                df[f'CC{year}_330G'] == 1,
                 2,
-                np.where(all_waves[f'CC{year}_330G'] == 2, 1, np.nan)
+                np.where(df[f'CC{year}_330G'] == 2, 1, np.nan)
             )
 
             # Replace NA with 0 for child18num columns - seems this question was skipped if child18_{year} was No
             label = f'child18num_{year}'
-            all_waves.loc[np.isnan(all_waves[label]), label] = 0
+            df.loc[np.isnan(df[label]), label] = 0
 
             # CC10_414_1-CC10_414_6 are all usage of military for for different reasons: 1 yes, 2 no
             # CC10_414_7 is a "none of the above" for the previous six: 1 yes, 2 no
-            all_waves[f'CC{year}_414_7'] = np.where(all_waves[f'CC{year}_414_7'] == 1, 2, 1)
+            df[f'CC{year}_414_7'] = np.where(df[f'CC{year}_414_7'] == 1, 2, 1)
 
             # Flip the 2 yes/no immigration questions that are opposite polarity of the other 5
             # For 1,7, 1 is more liberal and 2 is more conservative
             # For 2,3,4,5,6, 1 is more conservative and 2 is more liberal
-            all_waves[f'CC{year}_322_1'] = np.where(all_waves[f'CC{year}_322_1'] == 1, 2, 1)
+            df[f'CC{year}_322_1'] = np.where(df[f'CC{year}_322_1'] == 1, 2, 1)
             if year == 10:  # only asked in 2010
-                all_waves[f'CC{year}_322_7'] = np.where(all_waves[f'CC{year}_322_7'] == 1, 2, np.where(all_waves[f'CC{year}_322_7'] == 2, 1, np.nan))
-        return all_waves
+                df[f'CC{year}_322_7'] = np.where(df[f'CC{year}_322_7'] == 1, 2, np.where(df[f'CC{year}_322_7'] == 2, 1, np.nan))
+        return df
 
     # Consolidate demographics, arbitrarily using later data if there are differences
-    def _consolidate_demographics(self, all_waves):
+    def _consolidate_demographics(self, df):
         for demo in ('gender', 'race', 'investor', 'newsint', 'educ', 'marstat', 'pew_religimp'):
             old_labels = [f'{demo}_{wave}' for wave in self.waves]
-            all_waves[demo] = all_waves[old_labels].bfill(axis=1).iloc[:, 0]
-            all_waves.drop(old_labels, axis=1, inplace=True)
-        return all_waves
+            df[demo] = df[old_labels].bfill(axis=1).iloc[:, 0]
+            df.drop(old_labels, axis=1, inplace=True)
+        return df
 
-    def _add_income_brackets(self, all_waves):
+    def _add_income_brackets(self, df):
         # Income: Start with faminc_14 because the buckets vary by year, and the 2014 buckets are more granular
         # Income brackets are approximate, since incomes are given in ranges.
-        all_waves = all_waves.rename(columns={'faminc_14': 'income'})
-        all_waves = all_waves.assign(
+        df = df.rename(columns={'faminc_14': 'income'})
+        df = df.assign(
             income_quintile=lambda x:np.select(
                 [
                     # note the 10 response could go into either 4th or 5th quintile
@@ -132,7 +137,7 @@ class CESPanel(ParentsPoliticsPanel):
                 default=np.nan
             ),
         )
-        return all_waves
+        return df
 
     def _add_parenting(self, df):
         df = df.assign(

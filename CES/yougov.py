@@ -14,9 +14,6 @@ class YouGovPanel(ParentsPoliticsPanel):
     def _trimmed_panel(self):
         return self.panel.copy()
 
-    def _build_all_waves(self, panel):
-        return panel
-
     def _add_parenting(self, df):
         return df
 
