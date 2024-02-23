@@ -80,10 +80,29 @@ log_info(ces.all_chisq_pvalues(ces.paired_waves), "Chi square p values, all pair
 log_info(ces.all_t_test_pvalues(ces.paired_waves, demographic_label="firstborn"), "T test p values, all paired data, firstborn")
 log_info(ces.all_chisq_pvalues(ces.paired_waves, demographic_label="firstborn"), "Chi square p values, all paired data, firstborn")
 
+log_info('''
+#################
+# Analysis: Age #
+#################''')
+
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
 #log_info(ces.all_t_test_pvalues(young_adults), "T test p values, respondents under 30 years old")   # TODO: RuntimeWarning: invalid value encountered in scalar multiply
 log_info(ces.all_chisq_pvalues(young_adults), "Chi square p values, respondents under 30 years old")
 
+log_info('''
+####################
+# Analysis: Gender #
+####################''')
+two_years_new_parents = two_years.loc[np.equal(two_years['new_child'], 1),:]
+two_years_men = two_years.loc[np.equal(two_years['gender'], 1),:]
+two_years_women = two_years.loc[np.equal(two_years['gender'], 2),:]
+
+log_info('''
+####################
+# Analysis: Income #
+####################''')
+
+#exit(0)
 
 ### Descriptive: ideological change
 # Average ideological change over two years: trivially liberal, moreso for non-new-parents
@@ -164,9 +183,6 @@ ces.categorical_persists("budget_avoid") # 16% vs 16%
 ####################
 # Analysis: Gender #
 ####################
-two_years_new_parents = two_years.loc[np.equal(two_years['new_child'], 1),:]
-two_years_men = two_years.loc[np.equal(two_years['gender'], 1),:]
-two_years_women = two_years.loc[np.equal(two_years['gender'], 2),:]
 
 ### Ideology/party description
 ces.summarize_continuous(ces.filter_na(two_years, 'ideo_delta'), ['new_child', 'gender'], 'ideo')
@@ -230,9 +246,6 @@ ces.count_percentages(two_years_women, "new_child", "budget_avoid_before")
 ces.count_percentages(two_years_women, "new_child", "budget_avoid_after")
 
 
-####################
-# Analysis: Income #
-####################
 # Exploratory: what does the income distribution look like across the panel?
 panel.loc[:, ['caseid', 'faminc_14']].groupby("faminc_14").count()
 
