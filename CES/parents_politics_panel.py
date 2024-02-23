@@ -135,15 +135,27 @@ class ParentsPoliticsPanel():
     def filter_na(self, df, label):
         return df.loc[pd.notna(df[label]),:].copy()
 
+    def all_t_test_pvalues(self, df, issue_suffixes, demographic_label='new_child', a_value=0, b_value=1):
+        sorted_issues = list(self.CONTINUOUS_PREFIXES)
+        sorted_issues.sort()
+        all_results = pd.DataFrame(data={'issue': sorted_issues})
+        for suffix in issue_suffixes:
+            issue_results = self.t_tests(df, suffix, demographic_label='new_child', a_value=0, b_value=1)
+            all_results = all_results.merge(issue_results.loc[:,['issue', 'pvalue']], on='issue')
+            all_results.rename(columns={'pvalue': suffix}, inplace=True)
+        return all_results
+
     def t_tests(self, df, issue_suffix, demographic_label='new_child', a_value=0, b_value=1):
         results = {
             'metric': [],
             'statistic': [],
             'df': [],
             'pvalue': [],
+            'issue': [],
         }
-        for label in [f'{p}_{issue_suffix}' for p in self.CONTINUOUS_PREFIXES]:
+        for prefix, label in [(p, f'{p}_{issue_suffix}') for p in self.CONTINUOUS_PREFIXES]:
             result = self.t_test(df, label, demographic_label, a_value, b_value)
+            results['issue'].append(prefix)
             results['metric'].append(label)
             results['statistic'].append(result.statistic)
             results['df'].append(result.df)

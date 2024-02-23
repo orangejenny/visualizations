@@ -43,7 +43,6 @@ log_info(panel.groupby("pid7_10").count().loc[:,'weight'],  "Overall distributio
 # Party distribution among parents: still U-shaped, a little more liberal, also looks like more moderates
 log_info(three_years.loc[np.equal(three_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'weight'], "Distribution of pid7_10 among new parents")
 
-
 log_info('''
 ##########################################################################################
 # Analysis: Count flippers: How often do people change ideology/party between two waves? #
@@ -62,16 +61,17 @@ log_flippers("ideo5", 10, 12, 1, 5)
 log_flippers("ideo5", 12, 14, 1, 5)
 log_flippers("ideo5", 10, 14, 1, 5)
 
+log_info('''
+#######################
+# Analysis: Attitudes #
+#######################''')
+
+log_info(ces.all_t_test_pvalues(ces.paired_waves, ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']),
+         "P values for all continuous issues metrics")
 
 
 
-
-### Testing: ideological change: nothing significant
-ces.t_test(two_years, 'ideo_delta')
-ces.t_test(two_years, 'ideo_delta_abs')
-ces.t_test(two_years, 'ideo_composite_delta')
-ces.t_test(two_years, 'ideo_composite_delta_abs')
-
+# TODO: add for subsets of data
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
 ces.t_test(young_adults, 'ideo_delta')
 ces.t_test(young_adults, 'ideo_delta_abs')
@@ -112,26 +112,6 @@ ces.summarize_continuous(ces.filter_na(two_years, 'pid_delta'), 'new_child', 'pi
 ces.summarize_continuous(ces.filter_na(two_years, 'pid_delta'), 'firstborn', 'pid')
 ces.summarize_continuous(ces.filter_na(young_adults, 'pid_delta'), 'firstborn', 'pid')
 
-####################
-# Analysis: Issues #
-####################
-
-### Testing: continuous & composite issues
-# "After" views: nothing
-ces.t_tests(two_years, 'after')
-
-# Change, incorporating direction: nothing
-ces.t_tests(two_years, 'delta')
-
-# Change, absolute value: climate change, gay, guns: climate change & climate composite persist, and oddly so does sales or inc
-ces.t_tests(two_years, 'delta_abs')
-ces.t_tests(two_years, 'delta_sq')
-
-# Persistent change: nothing
-ces.t_tests(three_years, 'persists')
-
-# Persistent absolute change: climate change, tax/spend, climate composite, gay rights composite
-ces.t_tests(three_years, 'persists_abs')
 
 # Switching to firstborn and looking at change: for absolute change, climate change, climate composite and gay rights composite
 ces.t_tests(two_years, 'delta', 'firstborn')

@@ -45,6 +45,29 @@ class TestCESPanel(unittest.TestCase):
         _test_t_test(0.6686, data, 'jobs_env_delta', 'firstborn')
         _test_t_test(0.4053, data, 'jobs_env_delta_abs', 'firstborn')
 
+    def test_t_tests(self):
+        results = self.data.t_tests(self.data.get_paired_waves(), 'delta')
+
+        aff_action = {
+            k: list(v.values())[0]  # v will have a single value
+            for k, v in results.loc[results['issue'] == 'aff_action',:].to_dict().items()
+        }
+        self.assertEqual(aff_action['issue'], 'aff_action')
+        self.assertEqual(aff_action['metric'], 'aff_action_delta')
+        self.assertEqual(round(float(aff_action['statistic']), 3), -0.09)
+        self.assertEqual(round(float(aff_action['df']), 1), 444.5)
+        self.assertEqual(round(float(aff_action['pvalue']), 4), 0.9283)
+
+        pid = {
+            k: list(v.values())[0]
+            for k, v in results.loc[results['issue'] == 'pid',:].to_dict().items()
+        }
+        self.assertEqual(pid['issue'], 'pid')
+        self.assertEqual(pid['metric'], 'pid_delta')
+        self.assertEqual(round(float(pid['statistic']), 3), -0.799)
+        self.assertEqual(round(float(pid['df']), 1), 435.8)
+        self.assertEqual(round(float(pid['pvalue']), 4), 0.4249)
+
     def test_chisq(self):
         def _test_chiqsq(expected, data, label, demographic='new_child'):
             self._test_pvalue(expected, self.data.chisq(data, label, demographic))
