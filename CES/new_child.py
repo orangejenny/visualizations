@@ -97,10 +97,30 @@ two_years_new_parents = two_years.loc[np.equal(two_years['new_child'], 1),:]
 two_years_men = two_years.loc[np.equal(two_years['gender'], 1),:]
 two_years_women = two_years.loc[np.equal(two_years['gender'], 2),:]
 
+log_info(ces.all_t_test_pvalues(two_years_men), "T test p values, new fathers versus other men")
+log_info(ces.all_chisq_pvalues(two_years_men), "Chi square p values, new fathers versus other men")
+
+log_info(ces.all_t_test_pvalues(two_years_women), "T test p values, new fathers versus other women")
+log_info(ces.all_chisq_pvalues(two_years_women), "Chi square p values, new fathers versus other women")
+
+log_info(ces.all_t_test_pvalues(two_years_new_parents, demographic_label='gender', a_value=1, b_value=2), "T test p values, new fathers versus new mothers")
+log_info(ces.all_chisq_pvalues(two_years_new_parents, demographic_label='gender'), "Chi square p values, new fathers versus new mothers")
+
 log_info('''
 ####################
 # Analysis: Income #
 ####################''')
+two_years_bottom_80 = two_years.loc[np.equal(two_years['high_income'], 0),:]  # "not high", not necessarily low
+two_years_top_20 = two_years.loc[np.equal(two_years['high_income'], 1),:]
+
+log_info(ces.all_t_test_pvalues(two_years_bottom_80), "T test p values, bottom 80% new parents versus other bottom 80% respondents")
+log_info(ces.all_chisq_pvalues(two_years_bottom_80), "Chi square p values, bottom 80% new parents versus other bottom 80% respondents")
+
+log_info(ces.all_t_test_pvalues(two_years_top_20), "T test p values, top 20% new parents versus other top 20% respondents")
+log_info(ces.all_chisq_pvalues(two_years_top_20), "Chi square p values, top 20% new parents versus other top 20% respondents")
+
+log_info(ces.all_t_test_pvalues(two_years_new_parents, demographic_label='high_income'), "T test p values, top 20% new parents versus bottom 80% new parents")
+log_info(ces.all_chisq_pvalues(two_years_new_parents, demographic_label='high_income'), "Chi square p values, top 20% new parents versus bottom 80% new parents")
 
 #exit(0)
 
@@ -180,71 +200,32 @@ ces.categorical_persists("schip") # 15% vs 12%
 ces.categorical_persists("budget") # 15% vs 12%
 ces.categorical_persists("budget_avoid") # 16% vs 16%
 
-####################
-# Analysis: Gender #
-####################
-
 ### Ideology/party description
 ces.summarize_continuous(ces.filter_na(two_years, 'ideo_delta'), ['new_child', 'gender'], 'ideo')
 ces.summarize_continuous(ces.filter_na(two_years, 'ideo_delta'), ['new_child', 'gender'], 'pid')
 
 ### Ideology/party + continuous issues
-# Compare new fathers to new mothers: tax vs spend; absolute aff action, jobs env,, climate composite, military composite
-ces.t_tests(two_years_new_parents, 'delta', 'gender', a_value=1, b_value=2)
-ces.t_tests(two_years_new_parents, 'delta_abs', 'gender', a_value=1, b_value=2)
-
-# Compare new fathers to other men: tax or spend with direction...doesn't persist
-ces.t_tests(two_years_men, 'delta')
-ces.t_tests(two_years_men, 'delta_abs')
-ces.t_test(two_years_men, 'tax_or_spend_persists')
-ces.t_test(two_years_men, 'tax_or_spend_persists_abs')
-
-# Compare new mothers to other women: absolute climate, gay, guns
-ces.t_tests(two_years_women, 'delta')
-ces.t_tests(two_years_women, 'delta_abs')
-ces.t_test(two_years_women, 'climate_change_persists_abs')
-ces.t_test(two_years_women, 'guns_persists')
 
 ### Describe continuous issues
 for prefix in ces.CONTINUOUS_PREFIXES:
     ces.summarize_continuous(two_years_new_parents, "gender", prefix)
     ces.summarize_continuous(two_years, ["new_child", "gender"], prefix)
 
-# New parents vs other: persistent abs: sales or inc
-ces.t_tests(two_years_new_parents, 'persists', 'gender', a_value=1, b_value=2)
-ces.t_tests(two_years_new_parents, 'persists_abs', 'gender', a_value=1, b_value=2)
-
 ces.summarize_continuous(two_years_women, "new_child", "climate_change")
 ces.summarize_continuous(two_years_women, "new_child", "guns")
 ces.summarize_continuous(two_years_women, "new_child", "climate_composite")
 ces.summarize_continuous(two_years_women, "new_child", "gay_composite")
-
-# Mothers vs non-mothers: persists absolute value: gay composite
-ces.t_tests(two_years_women, 'persists')
-ces.t_tests(two_years_women, 'persists_abs')
-
-### Categorical issues
-# Compare new fathers to new mothers: both budget questions: budget persists
-ces.chisqs(two_years_new_parents, "persists", "gender")
 
 # Comparing new fathers to new mothers on budget_change
 ces.count_percentages(two_years_new_parents, "gender", "budget_before")
 ces.count_percentages(two_years_new_parents, "gender", "budget_after")
 ces.count_percentages(two_years_new_parents, "gender", "budget_change")
 
-# Compare new fathers to other men: nothing
-ces.chisqs(two_years_men, 'change')
-
-# Compare new mothers to other women: both budget questions: budget persists
-ces.chisqs(two_years_women, 'change')
-ces.chisqs(two_years_women, "persists")
-
 # Comparing new mothers to other women on budget_change and budget_change_avoid
 ces.count_percentages(two_years_women, "new_child", "budget_before")
 ces.count_percentages(two_years_women, "new_child", "budget_after")
 ces.count_percentages(two_years_women, "new_child", "budget_avoid_before")
 ces.count_percentages(two_years_women, "new_child", "budget_avoid_after")
-
 
 # Exploratory: what does the income distribution look like across the panel?
 panel.loc[:, ['caseid', 'faminc_14']].groupby("faminc_14").count()
@@ -256,42 +237,12 @@ two_years.loc[:,['new_child', 'income_quintile', 'caseid']].groupby(['new_child'
 two_years.loc[:,['high_income', 'caseid']].groupby('high_income').count()
 two_years.loc[:,['low_income', 'caseid']].groupby('low_income').count()
 
-two_years_high_income = two_years.loc[np.equal(two_years['high_income'], 1),:]
-two_years_low_income = two_years.loc[np.equal(two_years['high_income'], 0),:]
-ces.chisqs(two_years_women, 'change')
-
 # Ideology & party: nothing
 ces.summarize_continuous(ces.filter_na(two_years, 'high_income'), ['new_child', 'high_income'], 'ideo')
 ces.summarize_continuous(ces.filter_na(two_years, 'high_income'), ['new_child', 'high_income'], 'pid')
 
-# Comparing high-income new parents with other new parents: continuous: climate change
-ces.t_tests(two_years_new_parents, 'delta', 'high_income')
-ces.t_tests(two_years_new_parents, 'delta_abs', 'high_income')
-
 ces.summarize_continuous(two_years_new_parents, "high_income", "climate_change")
 ces.summarize_continuous(two_years_new_parents, "high_income", "climate_composite")
 
-# Comparing high-income new parents with other high-income people: nothing
-ces.t_tests(two_years_high_income, 'delta')
-ces.t_tests(two_years_high_income, 'delta_abs')
-
-# Comparing low-income new parents with other low-income people: climate change, jobs env, guns
-ces.t_tests(two_years_low_income, 'delta')
-ces.t_tests(two_years_low_income, 'delta_abs')
-
 for prefix in ces.CONTINUOUS_PREFIXES:
     ces.summarize_continuous(two_years, ["new_child", "high_income"], prefix)
-
-ces.t_test(two_years_new_parents, "climate_change_persists", "high_income")
-ces.t_test(two_years_new_parents, "climate_change_persists_abs", "high_income")
-ces.t_test(two_years_new_parents, "climate_composite_persists", "high_income")
-ces.t_test(two_years_new_parents, "climate_composite_persists_abs", "high_income")
-
-# Chi square tests within new parents: high_income, low_income: nothing
-ces.chisqs(two_years_new_parents, 'change', 'high_income')
-
-# Chi square tests within high income: nothing
-ces.chisqs(two_years_high_income, 'change')
-
-# Chi square tests within low income: budget
-ces.chisqs(two_years_low_income, 'change')
