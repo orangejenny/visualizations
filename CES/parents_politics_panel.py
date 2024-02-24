@@ -126,7 +126,7 @@ class ParentsPoliticsPanel():
             all_results.rename(columns={'pvalue': metric}, inplace=True)
         return all_results
 
-    def t_tests(self, df, issue_suffix, demographic_label='new_child', a_value=0, b_value=1):
+    def t_tests(self, df, metric, demographic_label='new_child', a_value=0, b_value=1):
         results = {
             'metric': [],
             'statistic': [],
@@ -135,7 +135,7 @@ class ParentsPoliticsPanel():
             'issue': [],
         }
         for issue in self.CONTINUOUS_ISSUES:
-            label = f'{issue}_{issue_suffix}'
+            label = f'{issue}_{metric}'
             result = self.t_test(df, label, demographic_label, a_value, b_value)
             results['issue'].append(issue)
             results['metric'].append(label)
@@ -149,7 +149,7 @@ class ParentsPoliticsPanel():
     def chisq(self, df, factor1, factor2='new_child'):
         return chi2_contingency(pd.crosstab(df[factor1], df[factor2]))
 
-    def chisqs(self, df, issue_suffix, demographic_label='new_child'):
+    def chisqs(self, df, metric, demographic_label='new_child'):
         results = {
             'metric': [],
             'statistic': [],
@@ -158,7 +158,7 @@ class ParentsPoliticsPanel():
             'issue': [],
         }
         for issue in self.CATEGORICAL_ISSUES:
-            label = f'{issue}_{issue_suffix}'
+            label = f'{issue}_{metric}'
             result = self.chisq(df, label, demographic_label)
             results['issue'].append(issue)
             results['metric'].append(label)

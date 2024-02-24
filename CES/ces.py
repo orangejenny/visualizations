@@ -289,8 +289,8 @@ class CESPanel(ParentsPoliticsPanel):
 
         df[f'{issue}_change'] = np.where(df[f'{issue}_before'] == df[f'{issue}_after'], 0, 1)
         # distinguish between False and NaN
-        for suffix in ('before', 'after'):
-            df.loc[np.isnan(df[f'{issue}_{suffix}']), f'{issue}_change'] = np.nan
+        for metric in ('before', 'after'):
+            df.loc[np.isnan(df[f'{issue}_{metric}']), f'{issue}_change'] = np.nan
 
         df = df.assign(**{f'{issue}_persists': lambda x: np.select(
             [x.start_wave == w for w in self.start_waves],
