@@ -215,9 +215,20 @@ class ParentsPoliticsPanel():
         flags.groupby(['new_child', f'{issue}_persistence_flag']).count()
         return self.count_percentages(self.filter_na(self.paired_waves, f'{issue}_persists'), 'new_child', f'{issue}_persists')
 
+    def summarize_all_categorical(self, df, group_by_label, metric):
+        all_issues = pd.DataFrame({k: [] for k in ['issue', group_by_label, metric, 'count', 'total', 'percent']})
+        for issue in sorted(self.CATEGORICAL_PREFIXES):
+            issue_summary = self.count_percentages(df, group_by_label, f'{issue}_{metric}')
+            issue_summary['issue'] = issue
+            issue_summary.rename(columns={f'{issue}_{metric}': metric}, inplace=True)
+            all_issues = pd.concat([all_issues, issue_summary])
+        return all_issues
+
     def count_percentages(self, df, group_by_label, metric_label):
         counts = df.loc[:,['caseid', group_by_label, metric_label]].groupby([group_by_label, metric_label], as_index=False).count() # roughly pd.crosstab
+        # TODO: also filter_na for group_by_label?
         totals = self.filter_na(df, metric_label).loc[:,['caseid', group_by_label]].groupby([group_by_label], as_index=False).count()
         results = counts.merge(totals, on=group_by_label)
         results['percent'] = np.round(results['caseid_x'] * 100 / results['caseid_y'], decimals=1)
+        results.rename(columns={'caseid_x': 'count', 'caseid_y': 'total'}, inplace=True)
         return results

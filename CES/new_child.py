@@ -89,6 +89,31 @@ log_info(ces.all_chisq_pvalues(ces.paired_waves, demographic_label="firstborn"),
 log_info(ces.summarize_all_continuous(two_years, 'new_child'), "Summary of continuous issues, all paired data")
 log_info(ces.summarize_all_continuous(two_years, 'firstborn'), "Summary of continuous issues, all paired data, firstborn child versus all others")
 
+log_info(ces.summarize_all_categorical(two_years, 'new_child', 'before'), "Summary of categorical 'before' responses, all paired data")
+log_info(ces.summarize_all_categorical(two_years, 'new_child', 'after'), "Summary of categorical 'after' responses, all paired data")
+log_info(ces.summarize_all_categorical(two_years, 'new_child', 'change'), "Summary of categorical responses changing between waves, all paired data")
+log_info(ces.summarize_all_categorical(two_years, 'new_child', 'persists'), "Summary of categorical responses that change and persist, all 2010/2012 data")
+
+# (not logged) Persistence: how common is persistent change?
+# Of the new parents who changed, how many keep that change?
+# New parents often slightly more likely to experience persistent change than others
+ces.continuous_persists("climate_change") # 25% vs 18%
+ces.continuous_persists("jobs_env") # 23% vs 23%
+ces.continuous_persists("aff_action") # 16% vs 16%
+ces.continuous_persists("guns") # 16% vs 14%
+ces.continuous_persists("tax_or_spend") # 29% vs 35%
+ces.continuous_persists("sales_or_inc") # 39% vs 36%
+ces.continuous_persists("climate_composite") # 30% vs 21%
+ces.continuous_persists("gay_composite") # 17% vs 11%
+ces.continuous_persists("military_composite") # 32% vs 30%
+ces.continuous_persists("immigration_composite") # 50% vs 48%
+
+ces.categorical_persists("gay_marriage") # 10% vs 7%
+ces.categorical_persists("schip") # 15% vs 12%
+ces.categorical_persists("budget") # 15% vs 12%
+ces.categorical_persists("budget_avoid") # 16% vs 16%
+
+
 log_info('''
 #################
 # Analysis: Age #
@@ -118,6 +143,21 @@ log_info(ces.all_t_test_pvalues(two_years_new_parents, demographic_label='gender
 log_info(ces.all_chisq_pvalues(two_years_new_parents, demographic_label='gender'), "Chi square p values, new fathers versus new mothers")
 
 log_info(ces.summarize_all_continuous(two_years, ['new_child', 'gender']), "Summary of continuous issues by new_child and gender")
+
+log_info(ces.summarize_all_categorical(two_years_new_parents, 'gender', 'before'), "Categorical 'before' responses, new mothers vs new fathers")
+log_info(ces.summarize_all_categorical(two_years_new_parents, 'gender', 'after'), "Categorical 'after' responses, new mothers vs new fathers")
+log_info(ces.summarize_all_categorical(two_years_new_parents, 'gender', 'change'), "Categorical response change, new mothers vs new fathers")
+log_info(ces.summarize_all_categorical(two_years_new_parents, 'gender', 'persists'), "Categorical response persistent change, new mothers vs new fathers")
+
+log_info(ces.summarize_all_categorical(two_years_men, 'new_child', 'before'), "Categorical 'before' responses, new fathers vs other men")
+log_info(ces.summarize_all_categorical(two_years_men, 'new_child', 'after'), "Categorical 'after' responses, new fathers vs other men")
+log_info(ces.summarize_all_categorical(two_years_men, 'new_child', 'change'), "Categorical response change, new fathers vs other men")
+log_info(ces.summarize_all_categorical(two_years_men, 'new_child', 'persists'), "Categorical response persistent change, new fathers vs other men")
+
+log_info(ces.summarize_all_categorical(two_years_women, 'new_child', 'before'), "Categorical 'before' responses, new mothers vs other women")
+log_info(ces.summarize_all_categorical(two_years_women, 'new_child', 'after'), "Categorical 'after' responses, new mothers vs other women")
+log_info(ces.summarize_all_categorical(two_years_women, 'new_child', 'change'), "Categorical response change, new mothers vs other women")
+log_info(ces.summarize_all_categorical(two_years_women, 'new_child', 'persists'), "Categorical response persistent change, new mothers vs other women")
 
 log_info('''
 ####################
@@ -154,50 +194,3 @@ log_info('''
 
 # TODO: Do non-response rates differ for parents and non-parents?
 log_info(ces.summarize_non_response(two_years), "Non-response rates")
-
-
-
-
-# Descriptive statistics on categorical issues
-ces.count_percentages(two_years, 'new_child', 'gay_marriage_before')
-
-ces.count_percentages(two_years, 'new_child', 'schip_before')
-ces.count_percentages(two_years, 'new_child', 'schip_after')
-
-ces.count_percentages(two_years, 'new_child', 'budget_before')
-ces.count_percentages(two_years, 'new_child', 'budget_after')
-
-ces.count_percentages(two_years, 'new_child', 'budget_avoid_before')
-
-# Persistence: how common is persistent change?
-# Of the new parents who changed, how many keep that change?
-# New parents often slightly more likely to experience persistent change than others
-ces.continuous_persists("climate_change") # 25% vs 18%
-ces.continuous_persists("jobs_env") # 23% vs 23%
-ces.continuous_persists("aff_action") # 16% vs 16%
-ces.continuous_persists("guns") # 16% vs 14%
-ces.continuous_persists("tax_or_spend") # 29% vs 35%
-ces.continuous_persists("sales_or_inc") # 39% vs 36%
-ces.continuous_persists("climate_composite") # 30% vs 21%
-ces.continuous_persists("gay_composite") # 17% vs 11%
-ces.continuous_persists("military_composite") # 32% vs 30%
-ces.continuous_persists("immigration_composite") # 50% vs 48%
- 
-ces.categorical_persists("gay_marriage") # 10% vs 7%
-ces.categorical_persists("schip") # 15% vs 12%
-ces.categorical_persists("budget") # 15% vs 12%
-ces.categorical_persists("budget_avoid") # 16% vs 16%
-
-### Ideology/party + continuous issues
-
-# Comparing new fathers to new mothers on budget_change
-ces.count_percentages(two_years_new_parents, "gender", "budget_before")
-ces.count_percentages(two_years_new_parents, "gender", "budget_after")
-ces.count_percentages(two_years_new_parents, "gender", "budget_change")
-
-# Comparing new mothers to other women on budget_change and budget_change_avoid
-ces.count_percentages(two_years_women, "new_child", "budget_before")
-ces.count_percentages(two_years_women, "new_child", "budget_after")
-ces.count_percentages(two_years_women, "new_child", "budget_avoid_before")
-ces.count_percentages(two_years_women, "new_child", "budget_avoid_after")
-

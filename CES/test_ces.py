@@ -118,5 +118,5 @@ class TestCESPanel(unittest.TestCase):
 
         data = data.loc[np.equal(data['new_child'], 1),:]
         change_counts = self.data.count_percentages(data, "gender", "budget_change")
-        self.assertListEqual(change_counts['caseid_x'].to_list(), [164,  45, 129,  88])
+        self.assertListEqual(change_counts['count'].to_list(), [164,  45, 129,  88])
         self.assertListEqual(change_counts['percent'].to_list(), [78.5, 21.5, 59.4, 40.6])
