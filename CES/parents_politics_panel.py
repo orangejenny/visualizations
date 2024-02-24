@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+from collections import defaultdict
 from pandas import DataFrame
 from scipy.stats import chi2_contingency, ttest_ind
 
@@ -179,6 +180,20 @@ class ParentsPoliticsPanel():
             all_issues = pd.concat([all_issues, issue_summary])
         return all_issues
 
+    def summarize_non_response(self, df):
+        total = len(df)
+        rates = defaultdict(list)
+        # Note the rates for persists are artificially high because they only apply to the 10/12 pairs, not the 12/14 pairs
+        for issue in sorted(self.CONTINUOUS_PREFIXES | self.CATEGORICAL_PREFIXES):
+            rates['issue'].append(issue)
+            for metric in set(self.CONTINUOUS_METRICS) | set(self.CATEGORICAL_METRICS):
+                label = f'{issue}_{metric}'
+                if label in df:
+                    missing = len(df.loc[np.isnan(df[label]),:])
+                    rates[metric].append(str(round(missing * 100 / total, 2)) + '%')
+                else:
+                    rates[metric].append('--')
+        return pd.DataFrame(rates)
 
     def summarize_continuous(self, df, group_by_labels, issue):
         if type(group_by_labels) == type(''):

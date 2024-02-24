@@ -51,6 +51,12 @@ log_info(panel.groupby("pid7_10").count().loc[:,'weight'],  "Overall distributio
 # TODO: Should this be looking at the whole panel, at people who became a parent in any wave?
 log_info(two_years.loc[np.equal(two_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'weight'], "Distribution of pid7_10 among new parents")
 
+# Counts of liberal/conservative movement, ignoring magnitude
+# New parents: 12% more liberal, 11% more conservative
+# Non-new-parents: 12% more liberal, 10% more conservative
+# TODO: use ideo_composite instead of ideo
+ces.count_percentages(ces.filter_na(two_years, 'ideo_delta'), 'new_child', 'ideo_direction')
+
 log_info('''
 ##########################################################################################
 # Analysis: Count flippers: How often do people change ideology/party between two waves? #
@@ -131,24 +137,16 @@ log_info(ces.all_chisq_pvalues(two_years_new_parents, demographic_label='high_in
 
 log_info(ces.summarize_all_continuous(two_years, ['new_child', 'high_income']), "Summary of continuous issues by new_child and income")
 
+log_info('''
+##########################
+# Analysis: Non-response #
+##########################''')
 
-# Counts of liberal/conservative movement, ignoring magnitude
-# New parents: 12% more liberal, 11% more conservative
-# Non-new-parents: 12% more liberal, 10% more conservative
-ces.count_percentages(ces.filter_na(two_years, 'ideo_delta'), 'new_child', 'ideo_direction')
+# TODO: Do non-response rates differ for parents and non-parents?
+log_info(ces.summarize_non_response(two_years), "Non-response rates")
 
-# Counts of liberal/conservative movement, ignoring magnitude, for younger adults
-# New parents: 20% more liberal, 9% more conservative
-# Non-new-parents: 14% more liberal, 10% more conservative
-ces.count_percentages(ces.filter_na(young_adults, 'ideo_delta'), 'new_child', 'ideo_direction')
 
-# Non-response rates, continuous & composite issues
-# Do non-response rates differ for parents and non-parents?
-total = len(two_years)
-for prefixes, suffix in ((ces.CONTINUOUS_PREFIXES, 'delta'), (ces.CATEGORICAL_PREFIXES, 'change')):
-    for issue in prefixes:
-        missing = len(two_years.loc[np.isnan(two_years[f'{issue}_{suffix}']),:])
-        #print(f"Non-response for {issue}_{suffix}: {round(missing * 100 / total, 2)}%")
+
 
 # Descriptive statistics on categorical issues
 ces.count_percentages(two_years, 'new_child', 'gay_marriage_before')
