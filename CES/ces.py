@@ -9,12 +9,20 @@ class CESPanel(ParentsPoliticsPanel):
     def _load_panel(cls):
         return pd.read_stata("~/Documents/visualizations/midterm/CCES_Panel_Full3waves_VV_V4.dta", convert_categoricals=False)  # n=9500
 
-    def _build_all_waves(self, all_waves):
-        all_waves = self._add_age(all_waves)
-        all_waves = self._recode_issues(all_waves)
-        all_waves = self._consolidate_demographics(all_waves)
-        all_waves = self._add_income_brackets(all_waves)
-        return all_waves.copy()
+    def _build_paired_waves(self, df):
+        if not len(self.waves):
+            raise Exception("Must contain at least one wave")
+        df = df.assign(start_wave=self.waves[0], end_wave=self.waves[-1])
+        df = self._add_age(df)
+        df = self._recode_issues(df)
+        df = self._consolidate_demographics(df)
+        df = self._add_income_brackets(df)
+        return pd.concat([
+            df.assign(
+                start_wave=w,
+                end_wave=self.end_waves[i],
+            ) for i, w in enumerate(self.start_waves)
+        ])
 
     def _trimmed_panel(self):
         # Drop most columns
@@ -64,53 +72,53 @@ class CESPanel(ParentsPoliticsPanel):
             self.panel.columns.str.startswith("pew_religimp_") # Limit to 1-4, 1 is "very important"
         ].copy()
 
-    def _add_age(self, all_waves):
-        return all_waves.assign(age=lambda x: 2010 - x.birthyr_10)
+    def _add_age(self, df):
+        return df.assign(age=lambda x: 2010 - x.birthyr_10)
 
-    def _recode_issues(self, all_waves):
+    def _recode_issues(self, df):
         # Recode a few columns to streamline later calculations
         # TODO: Verify that all invalid vlues are NAed out
         for year in self.waves:
             # Recode guns to be continuous (swapping 2 and 3 so that "no change" is in the middle of "less strict" and "more strict")
             label = f'CC{year}_320'
-            all_waves.loc[:, label] = np.where(all_waves[label] == 2, 3, np.where(all_waves[label] == 3, 2, np.where(all_waves[label] == 1, 1, np.nan)))
+            df.loc[:, label] = np.where(df[label] == 2, 3, np.where(df[label] == 3, 2, np.where(df[label] == 1, 1, np.nan)))
 
             # Recode don't ask don't tell, swapping so that 1 is the more conservative value, to match gay marriage ban question
-            all_waves[f'CC{year}_330G'] = np.where(
-                all_waves[f'CC{year}_330G'] == 1,
+            df[f'CC{year}_330G'] = np.where(
+                df[f'CC{year}_330G'] == 1,
                 2,
-                np.where(all_waves[f'CC{year}_330G'] == 2, 1, np.nan)
+                np.where(df[f'CC{year}_330G'] == 2, 1, np.nan)
             )
 
             # Replace NA with 0 for child18num columns - seems this question was skipped if child18_{year} was No
             label = f'child18num_{year}'
-            all_waves.loc[np.isnan(all_waves[label]), label] = 0
+            df.loc[np.isnan(df[label]), label] = 0
 
             # CC10_414_1-CC10_414_6 are all usage of military for for different reasons: 1 yes, 2 no
             # CC10_414_7 is a "none of the above" for the previous six: 1 yes, 2 no
-            all_waves[f'CC{year}_414_7'] = np.where(all_waves[f'CC{year}_414_7'] == 1, 2, 1)
+            df[f'CC{year}_414_7'] = np.where(df[f'CC{year}_414_7'] == 1, 2, 1)
 
             # Flip the 2 yes/no immigration questions that are opposite polarity of the other 5
             # For 1,7, 1 is more liberal and 2 is more conservative
             # For 2,3,4,5,6, 1 is more conservative and 2 is more liberal
-            all_waves[f'CC{year}_322_1'] = np.where(all_waves[f'CC{year}_322_1'] == 1, 2, 1)
+            df[f'CC{year}_322_1'] = np.where(df[f'CC{year}_322_1'] == 1, 2, 1)
             if year == 10:  # only asked in 2010
-                all_waves[f'CC{year}_322_7'] = np.where(all_waves[f'CC{year}_322_7'] == 1, 2, np.where(all_waves[f'CC{year}_322_7'] == 2, 1, np.nan))
-        return all_waves
+                df[f'CC{year}_322_7'] = np.where(df[f'CC{year}_322_7'] == 1, 2, np.where(df[f'CC{year}_322_7'] == 2, 1, np.nan))
+        return df
 
     # Consolidate demographics, arbitrarily using later data if there are differences
-    def _consolidate_demographics(self, all_waves):
+    def _consolidate_demographics(self, df):
         for demo in ('gender', 'race', 'investor', 'newsint', 'educ', 'marstat', 'pew_religimp'):
             old_labels = [f'{demo}_{wave}' for wave in self.waves]
-            all_waves[demo] = all_waves[old_labels].bfill(axis=1).iloc[:, 0]
-            all_waves.drop(old_labels, axis=1, inplace=True)
-        return all_waves
+            df[demo] = df[old_labels].bfill(axis=1).iloc[:, 0]
+            df.drop(old_labels, axis=1, inplace=True)
+        return df
 
-    def _add_income_brackets(self, all_waves):
+    def _add_income_brackets(self, df):
         # Income: Start with faminc_14 because the buckets vary by year, and the 2014 buckets are more granular
         # Income brackets are approximate, since incomes are given in ranges.
-        all_waves = all_waves.rename(columns={'faminc_14': 'income'})
-        all_waves = all_waves.assign(
+        df = df.rename(columns={'faminc_14': 'income'})
+        df = df.assign(
             income_quintile=lambda x:np.select(
                 [
                     # note the 10 response could go into either 4th or 5th quintile
@@ -132,7 +140,7 @@ class CESPanel(ParentsPoliticsPanel):
                 default=np.nan
             ),
         )
-        return all_waves
+        return df
 
     def _add_parenting(self, df):
         df = df.assign(
@@ -229,63 +237,62 @@ class CESPanel(ParentsPoliticsPanel):
 
         return df
 
-    def _add_before_after(self, df, before_pattern, prefix, lower_bound=None, upper_bound=None):
+    def _add_before_after(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
         df = df.assign(**{
-            f'{prefix}_before': lambda x: np.select(
+            f'{issue}_before': lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
                 [x[before_pattern.replace('XX', str(w))] for w in self.start_waves],
             ),
-            f'{prefix}_after': lambda x:np.select(
+            f'{issue}_after': lambda x:np.select(
                 [x.start_wave == w for w in self.waves[:-1]],
                 [x[before_pattern.replace('XX', str(w))] for w in self.end_waves],
             ),
         })
-        df = self.nan_out_of_bounds(df, f'{prefix}_before', lower_bound, upper_bound)
-        df = self.nan_out_of_bounds(df, f'{prefix}_after', lower_bound, upper_bound)
+        df = self.nan_out_of_bounds(df, f'{issue}_before', lower_bound, upper_bound)
+        df = self.nan_out_of_bounds(df, f'{issue}_after', lower_bound, upper_bound)
         return df
 
-    def _add_continuous(self, df, before_pattern, prefix, lower_bound=None, upper_bound=None):
-        df = self._add_before_after(df, before_pattern, prefix, lower_bound, upper_bound)
+    def _add_continuous(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
+        df = self._add_before_after(df, before_pattern, issue, lower_bound, upper_bound)
 
         df = df.assign(**{
-            f'{prefix}_delta': lambda x: x[f'{prefix}_after'] - x[f'{prefix}_before'],
-            f'{prefix}_delta_abs': lambda x: abs(x[f'{prefix}_delta']),
-            f'{prefix}_delta_sq': lambda x: x[f'{prefix}_delta'] * x[f'{prefix}_delta'],
-            f'{prefix}_direction': lambda x: np.sign(x[f'{prefix}_delta']),
+            f'{issue}_delta': lambda x: x[f'{issue}_after'] - x[f'{issue}_before'],
+            f'{issue}_delta_abs': lambda x: abs(x[f'{issue}_delta']),
+            f'{issue}_delta_sq': lambda x: x[f'{issue}_delta'] * x[f'{issue}_delta'],
+            f'{issue}_direction': lambda x: np.sign(x[f'{issue}_delta']),
         })
-        df.loc[np.isnan(df[f'{prefix}_delta']), f'{prefix}_direction'] = np.nan # because some of the 0s should be NaN
+        df.loc[np.isnan(df[f'{issue}_delta']), f'{issue}_direction'] = np.nan # because some of the 0s should be NaN
 
-        # Only relevant in all_waves
         df = df.assign(**{
-            f'{prefix}_persists': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves],
+            f'{issue}_persists': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves[:-1]],
                 [np.where(np.logical_and(
-                    x[f'{prefix}_delta'] != 0, # change in start vs end
+                    x[f'{issue}_delta'] != 0, # change in start vs end
                     # change from start to final is either zero or the same direction as delta
-                    x[f'{prefix}_delta'] * (x[before_pattern.replace('XX', str(self.end_waves[-1]))] - x[before_pattern.replace('XX', str(self.end_waves[i]))]) >= 0
+                    x[f'{issue}_delta'] * (x[before_pattern.replace('XX', str(self.end_waves[-1]))] - x[before_pattern.replace('XX', str(self.end_waves[i]))]) >= 0
                 ),
                 x[before_pattern.replace('XX', str(self.end_waves[-1]))] - x[before_pattern.replace('XX', str(w))],
-                0) for i, w in enumerate(self.start_waves)]
+                0) for i, w in enumerate(self.start_waves[:-1])]
             )
         })
         for wave in self.waves:
-            df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{prefix}_persists'] = np.nan
-        df[f'{prefix}_persists_abs'] = np.abs(df[f'{prefix}_persists'])
+            df.loc[df['start_wave'] == self.start_waves[-1], f'{issue}_persists'] = np.nan  # Can't calculate when there are only two waves
+            df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{issue}_persists'] = np.nan  # Can't calculate unless all waves are available
+        df[f'{issue}_persists_abs'] = np.abs(df[f'{issue}_persists'])
 
-        self.CONTINUOUS_PREFIXES.add(prefix)
+        self.CONTINUOUS_ISSUES.add(issue)
 
         return df
 
-    def _add_categorical(self, df, before_pattern, prefix, lower_bound=None, upper_bound=None):
-        df = self._add_before_after(df, before_pattern, prefix)
+    def _add_categorical(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
+        df = self._add_before_after(df, before_pattern, issue)
 
-        df[f'{prefix}_change'] = np.where(df[f'{prefix}_before'] == df[f'{prefix}_after'], 0, 1)
+        df[f'{issue}_change'] = np.where(df[f'{issue}_before'] == df[f'{issue}_after'], 0, 1)
         # distinguish between False and NaN
-        for suffix in ('before', 'after'):
-            df.loc[np.isnan(df[f'{prefix}_{suffix}']), f'{prefix}_change'] = np.nan
+        for metric in ('before', 'after'):
+            df.loc[np.isnan(df[f'{issue}_{metric}']), f'{issue}_change'] = np.nan
 
-        # Only relevant in all_waves
-        df = df.assign(**{f'{prefix}_persists': lambda x: np.select(
+        df = df.assign(**{f'{issue}_persists': lambda x: np.select(
             [x.start_wave == w for w in self.start_waves],
             [np.where(np.logical_and(
                 x[before_pattern.replace('XX', str(w))] != x[before_pattern.replace('XX', str(self.end_waves[i]))], # change in start vs end
@@ -293,9 +300,9 @@ class CESPanel(ParentsPoliticsPanel):
             ), 1, 0) for i, w in enumerate(self.start_waves)]
         )})
         for wave in self.waves:
-            df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{prefix}_persists'] = np.nan
-        df[f'{prefix}_persists_abs'] = np.abs(df[f'{prefix}_persists'])
+            df.loc[df['start_wave'] == self.start_waves[-1], f'{issue}_persists'] = np.nan  # Can't calculate when there are only two waves
+            df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{issue}_persists'] = np.nan  # Can't calulate unless all waves are available
 
-        self.CATEGORICAL_PREFIXES.add(prefix)
+        self.CATEGORICAL_ISSUES.add(issue)
 
         return df
