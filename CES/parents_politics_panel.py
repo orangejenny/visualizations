@@ -20,8 +20,8 @@ class ParentsPoliticsPanel():
         return self.waves[1:]
 
     def __init__(self):
-        self.CONTINUOUS_PREFIXES = set()
-        self.CATEGORICAL_PREFIXES = set()
+        self.CONTINUOUS_ISSUES = set()
+        self.CATEGORICAL_ISSUES = set()
 
         self.panel = self._load_panel()
         self.paired_waves = self._build_paired_waves(self._trimmed_panel())
@@ -111,10 +111,10 @@ class ParentsPoliticsPanel():
         return df.loc[pd.notna(df[label]),:].copy()
 
     def all_chisq_pvalues(self, df, **test_kwargs):
-        return self._all_test_pvalues(df, self.CATEGORICAL_PREFIXES, self.CATEGORICAL_METRICS, self.chisqs, **test_kwargs)
+        return self._all_test_pvalues(df, self.CATEGORICAL_ISSUES, self.CATEGORICAL_METRICS, self.chisqs, **test_kwargs)
 
     def all_t_test_pvalues(self, df, **test_kwargs):
-        return self._all_test_pvalues(df, self.CONTINUOUS_PREFIXES, self.CONTINUOUS_METRICS, self.t_tests, **test_kwargs)
+        return self._all_test_pvalues(df, self.CONTINUOUS_ISSUES, self.CONTINUOUS_METRICS, self.t_tests, **test_kwargs)
 
     def _all_test_pvalues(self, df, issues, metrics, test, **test_kwargs):
         issues = list(issues)
@@ -134,9 +134,10 @@ class ParentsPoliticsPanel():
             'pvalue': [],
             'issue': [],
         }
-        for prefix, label in [(p, f'{p}_{issue_suffix}') for p in self.CONTINUOUS_PREFIXES]:
+        for issue in self.CONTINUOUS_ISSUES:
+            label = f'{issue}_{issue_suffix}'
             result = self.t_test(df, label, demographic_label, a_value, b_value)
-            results['issue'].append(prefix)
+            results['issue'].append(issue)
             results['metric'].append(label)
             results['statistic'].append(result.statistic)
             results['df'].append(result.df)
@@ -156,9 +157,10 @@ class ParentsPoliticsPanel():
             'pvalue': [],
             'issue': [],
         }
-        for prefix, label in [(p, f'{p}_{issue_suffix}') for p in self.CATEGORICAL_PREFIXES]:
+        for issue in self.CATEGORICAL_ISSUES:
+            label = f'{issue}_{issue_suffix}'
             result = self.chisq(df, label, demographic_label)
-            results['issue'].append(prefix)
+            results['issue'].append(issue)
             results['metric'].append(label)
             results['statistic'].append(result.statistic)
             results['dof'].append(result.dof)
@@ -172,11 +174,11 @@ class ParentsPoliticsPanel():
         if type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
         all_issues = pd.DataFrame({k: [] for k in ['issue'] + group_by_labels + self.CONTINUOUS_METRICS})
-        for prefix in sorted(self.CONTINUOUS_PREFIXES):
+        for issue in sorted(self.CONTINUOUS_ISSUES):
             # TODO: also filter_na for columns in group_by_labels?
-            issue_summary = self.summarize_continuous(self.filter_na(df, f'{prefix}_delta'), group_by_labels, prefix)
-            issue_summary['issue'] = prefix
-            issue_summary.rename(columns={f'{prefix}_{m}': m for m in self.CONTINUOUS_METRICS}, inplace=True)
+            issue_summary = self.summarize_continuous(self.filter_na(df, f'{issue}_delta'), group_by_labels, issue)
+            issue_summary['issue'] = issue
+            issue_summary.rename(columns={f'{issue}_{m}': m for m in self.CONTINUOUS_METRICS}, inplace=True)
             all_issues = pd.concat([all_issues, issue_summary])
         return all_issues
 
@@ -184,7 +186,7 @@ class ParentsPoliticsPanel():
         total = len(df)
         rates = defaultdict(list)
         # Note the rates for persists are artificially high because they only apply to the 10/12 pairs, not the 12/14 pairs
-        for issue in sorted(self.CONTINUOUS_PREFIXES | self.CATEGORICAL_PREFIXES):
+        for issue in sorted(self.CONTINUOUS_ISSUES | self.CATEGORICAL_ISSUES):
             rates['issue'].append(issue)
             for metric in set(self.CONTINUOUS_METRICS) | set(self.CATEGORICAL_METRICS):
                 label = f'{issue}_{metric}'
@@ -217,7 +219,7 @@ class ParentsPoliticsPanel():
 
     def summarize_all_categorical(self, df, group_by_label, metric):
         all_issues = pd.DataFrame({k: [] for k in ['issue', group_by_label, metric, 'count', 'total', 'percent']})
-        for issue in sorted(self.CATEGORICAL_PREFIXES):
+        for issue in sorted(self.CATEGORICAL_ISSUES):
             issue_summary = self.count_percentages(df, group_by_label, f'{issue}_{metric}')
             issue_summary['issue'] = issue
             issue_summary.rename(columns={f'{issue}_{metric}': metric}, inplace=True)

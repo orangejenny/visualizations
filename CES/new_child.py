@@ -62,9 +62,9 @@ log_info('''
 # Analysis: Count flippers: How often do people change ideology/party between two waves? #
 ##########################################################################################''')
 
-def log_flippers(prefix, start_wave, end_wave, lower_bound, upper_bound):
-    log_info(f"Percentage of {prefix} changing from 20{start_wave} to 20{end_wave}: "
-             + str(ces.count_flippers(f"{prefix}_{start_wave}", f"{prefix}_{end_wave}", lower_bound, upper_bound)))  # 0.8%, too coarse to be useful
+def log_flippers(issue, start_wave, end_wave, lower_bound, upper_bound):
+    log_info(f"Percentage of {issue} changing from 20{start_wave} to 20{end_wave}: "
+             + str(ces.count_flippers(f"{issue}_{start_wave}", f"{issue}_{end_wave}", lower_bound, upper_bound)))  # 0.8%, too coarse to be useful
 
 log_flippers("pid3", 10, 12, 1, 3)  # 8.9%, fairly coarse
 
