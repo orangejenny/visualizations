@@ -123,11 +123,21 @@ log_info('''
 ####################
 # Analysis: Income #
 ####################''')
+
+log_info(panel.loc[:, ['caseid', 'faminc_14']].groupby("faminc_14").count(), "Income distribution across panel")
+# TODO: Should this be looking at the whole panel, at people who became a parent in any wave?
+log_info(two_years.loc[:,['income', 'new_child', 'caseid']].groupby(['new_child', 'income']).count(), "Income distribution, new parents and others")
+log_info(two_years.loc[:,['new_child', 'income_quintile', 'caseid']].groupby(['new_child', 'income_quintile']).count(), "Income distribution by quintile")
+
 two_years_bottom_80 = two_years.loc[np.equal(two_years['high_income'], 0),:]  # "not high", not necessarily low
+two_years_bottom_40 = two_years.loc[np.equal(two_years['low_income'], 1),:]
 two_years_top_20 = two_years.loc[np.equal(two_years['high_income'], 1),:]
 
 log_info(ces.all_t_test_pvalues(two_years_bottom_80), "T test p values, bottom 80% new parents versus other bottom 80% respondents")
 log_info(ces.all_chisq_pvalues(two_years_bottom_80), "Chi square p values, bottom 80% new parents versus other bottom 80% respondents")
+
+log_info(ces.all_t_test_pvalues(two_years_bottom_40), "T test p values, bottom 40% new parents versus other bottom 40% respondents")
+log_info(ces.all_chisq_pvalues(two_years_bottom_40), "Chi square p values, bottom 40% new parents versus other bottom 40% respondents")
 
 log_info(ces.all_t_test_pvalues(two_years_top_20), "T test p values, top 20% new parents versus other top 20% respondents")
 log_info(ces.all_chisq_pvalues(two_years_top_20), "Chi square p values, top 20% new parents versus other top 20% respondents")
@@ -191,12 +201,3 @@ ces.count_percentages(two_years_women, "new_child", "budget_after")
 ces.count_percentages(two_years_women, "new_child", "budget_avoid_before")
 ces.count_percentages(two_years_women, "new_child", "budget_avoid_after")
 
-# Exploratory: what does the income distribution look like across the panel?
-panel.loc[:, ['caseid', 'faminc_14']].groupby("faminc_14").count()
-
-# Exploratory: what does the income distribution look like for new parents?
-# TODO: Should this be looking at the whole panel, at people who became a parent in any wave?
-two_years.loc[np.equal(two_years['new_child'], 1),['income', 'new_child', 'caseid']].groupby('income').count()
-two_years.loc[:,['new_child', 'income_quintile', 'caseid']].groupby(['new_child', 'income_quintile']).count()
-two_years.loc[:,['high_income', 'caseid']].groupby('high_income').count()
-two_years.loc[:,['low_income', 'caseid']].groupby('low_income').count()
