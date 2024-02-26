@@ -245,26 +245,26 @@ class ParentsPoliticsPanel():
     # Matching functions #
     ######################
     def get_matched_outcomes(self, df):
-        columns = ['caseid', 'new_child', 'age', 'ideo_composite_delta']    # TODO: add weight
+        columns = ['caseid', 'new_child', 'score', 'ideo_composite_delta']    # TODO: add weight
+        df = self._add_score(df)
         new_parents = df.loc[df['new_child'] == 1, columns].copy()
-        new_parents['matched_ideo_composite_delta'] = np.nan
-        matches_by_age = {}
+        matches_by_score = {}
 
         matched_set = pd.DataFrame.from_dict({c: [] for c in columns})
         for index, row in new_parents.iterrows():
-            age = row.age
-            if age not in matches_by_age:
-                candidates = df.loc[np.logical_and(df['new_child'] == 0, df['age'] == age), columns]
+            score = row.score
+            if score not in matches_by_score:
+                candidates = df.loc[np.logical_and(df['new_child'] == 0, df['score'] == score), columns]
                 if candidates.empty:
-                    matches_by_age[age] = None
+                    matches_by_score[score] = None
                 else:
-                    matches_by_age[age] = pd.DataFrame.from_dict({
-                        'caseid': [f'Average of controls aged {age}'],
+                    matches_by_score[score] = pd.DataFrame.from_dict({
+                        'caseid': [f'Average of controls'],
                         'new_child': [0],
-                        'age': [age],
+                        'score': [score],
                         'ideo_composite_delta': [candidates['ideo_composite_delta'].mean()],
                     })
-            match = matches_by_age[age]
+            match = matches_by_score[score]
 
             if not match.empty:
                 matched_set = pd.concat([matched_set, match])
@@ -273,3 +273,6 @@ class ParentsPoliticsPanel():
             new_parents['ideo_composite_delta'].mean(),
             matched_set['ideo_composite_delta'].mean()
         )
+
+    def _add_score(self, df):
+        return df.assign(score=lambda x: x['age'])
