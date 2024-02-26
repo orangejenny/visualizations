@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+import pandas as pd
 
 from argparse import ArgumentParser
 from ces import CESPanel
@@ -20,6 +21,40 @@ log_info(f"Run {datetime.now()}")
 ces = CESPanel()
 panel = ces.get_panel()
 two_years = ces.get_paired_waves()
+
+log_info('''
+############
+# Matching #
+############''')
+columns = ['caseid', 'new_child', 'age', 'ideo_composite_delta']    # TODO: add weight
+df = ces.get_paired_waves()
+new_parents = df.loc[df['new_child'] == 1, columns].copy()
+new_parents['matched_ideo_composite_delta'] = np.nan
+matches_by_age = {}
+
+matched_set = pd.DataFrame.from_dict({c: [] for c in columns})
+for index, row in new_parents.iterrows():
+    age = row.age
+    if age not in matches_by_age:
+        candidates = df.loc[np.logical_and(df['new_child'] == 0, df['age'] == age), columns]
+        if candidates.empty:
+            matches_by_age[age] = None
+        else:
+            matches_by_age[age] = pd.DataFrame.from_dict({
+                'caseid': [f'Average of controls aged {age}'],
+                'new_child': [0],
+                'age': [age],
+                'ideo_composite_delta': [candidates['ideo_composite_delta'].mean()],
+            })
+    match = matches_by_age[age]
+
+    if not match.empty:
+        matched_set = pd.concat([matched_set, match])
+
+new_parents_outcome = new_parents['ideo_composite_delta'].mean()
+matched_set_outcome = matched_set['ideo_composite_delta'].mean()
+
+log_info(f"Matching based on age, new parents' mean ideo_composite_delta is {new_parents_outcome} while the matched set's is {matched_set_outcome}")
 
 
 log_info('''
