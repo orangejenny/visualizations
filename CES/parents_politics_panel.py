@@ -248,30 +248,19 @@ class ParentsPoliticsPanel():
         columns = ['caseid', 'new_child', 'score', 'ideo_composite_delta']    # TODO: add weight
         df = self._add_score(df)
         new_parents = df.loc[df['new_child'] == 1, columns].copy()
-        matches_by_score = {}
+        candidates = df.loc[df['new_child'] == 0, columns].copy()
 
-        matched_set = pd.DataFrame.from_dict({c: [] for c in columns})
-        for index, row in new_parents.iterrows():
-            score = row.score
-            if score not in matches_by_score:
-                candidates = df.loc[np.logical_and(df['new_child'] == 0, df['score'] == score), columns]
-                if candidates.empty:
-                    matches_by_score[score] = None
-                else:
-                    matches_by_score[score] = pd.DataFrame.from_dict({
-                        'caseid': [f'Average of controls'],
-                        'new_child': [0],
-                        'score': [score],
-                        'ideo_composite_delta': [candidates['ideo_composite_delta'].mean()],
-                    })
-            match = matches_by_score[score]
+        # Match up treatment and control groups
+        # TODO: note if any of new_parents didn't match:
+        matched_set = new_parents.merge(candidates, on='score', how='left', suffixes=('_treatment', '_control'))
 
-            if not match.empty:
-                matched_set = pd.concat([matched_set, match])
+        # Group on treatment caseid, averaging all relevant control matches
+        # TODO: why does this frame have fewer rows than new_parents? Did they not all match?
+        matched_outcomes = matched_set.loc[:,['caseid_treatment', 'ideo_composite_delta_control']].groupby('caseid_treatment').mean()
 
         return (
             new_parents['ideo_composite_delta'].mean(),
-            matched_set['ideo_composite_delta'].mean()
+            matched_outcomes['ideo_composite_delta_control'].mean()
         )
 
     def _add_score(self, df):
