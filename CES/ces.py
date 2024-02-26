@@ -15,14 +15,16 @@ class CESPanel(ParentsPoliticsPanel):
         df = df.assign(start_wave=self.waves[0], end_wave=self.waves[-1])
         df = self._add_age(df)
         df = self._recode_issues(df)
-        df = self._consolidate_demographics(df)
         df = self._add_income_brackets(df)
-        return pd.concat([
+
+        df = pd.concat([
             df.assign(
                 start_wave=w,
                 end_wave=self.end_waves[i],
             ) for i, w in enumerate(self.start_waves)
         ])
+        df = self._consolidate_demographics(df)
+        return df
 
     def _trimmed_panel(self):
         # Drop most columns
@@ -65,11 +67,10 @@ class CESPanel(ParentsPoliticsPanel):
             self.panel.columns.str.startswith("birthyr_") +
             self.panel.columns.str.startswith("faminc_") +
             self.panel.columns.str.startswith("investor_") + # 1/2 yes/no
-            self.panel.columns.str.startswith("newsint_") + # Limit to 1-4, 1 is "high"
             self.panel.columns.str.startswith("race_") + # Limit to 1-8, categorical
             self.panel.columns.str.startswith("educ_") + # Limit to 1-6, categorical
             self.panel.columns.str.startswith("marstat_") + # Limit to 1-6, categorical
-            self.panel.columns.str.startswith("pew_religimp_") # Limit to 1-4, 1 is "very important"
+            self.panel.columns.str.startswith("pew_religimp_") # Limit to 1-4, 1 is "very important" - there are other religious measures, so a composite would help
         ].copy()
 
     def _add_age(self, df):
@@ -106,11 +107,29 @@ class CESPanel(ParentsPoliticsPanel):
                 df[f'CC{year}_322_7'] = np.where(df[f'CC{year}_322_7'] == 1, 2, np.where(df[f'CC{year}_322_7'] == 2, 1, np.nan))
         return df
 
-    # Consolidate demographics, arbitrarily using later data if there are differences
     def _consolidate_demographics(self, df):
-        for demo in ('gender', 'race', 'investor', 'newsint', 'educ', 'marstat', 'pew_religimp'):
+        # TODO: add test
+        for demo, lower_bound, upper_bound in (
+                ('gender', 1, 2),
+                ('race', 1, 8),
+                ('investor', 1, 2),
+                ('educ', 1, 6),
+                ('marstat', 1, 6),
+                ('pew_religimp', 1, 4),
+        ):
             old_labels = [f'{demo}_{wave}' for wave in self.waves]
-            df[demo] = df[old_labels].bfill(axis=1).iloc[:, 0]
+            for old_label in old_labels:
+                df = self.nan_out_of_bounds(df, old_label, lower_bound, upper_bound)
+
+            # Use "after" data if available, else use most recent value
+            df = df.assign(**{demo: lambda x: np.select(
+                [x.end_wave == w for w in self.end_waves],
+                [np.where(
+                    pd.notna(x[f'{demo}_{w}']),
+                    x[f'{demo}_{w}'],
+                    x[old_labels].bfill(axis=1).iloc[:, 0]
+                ) for i, w in enumerate(self.end_waves)],
+            )})
             df.drop(old_labels, axis=1, inplace=True)
         return df
 
