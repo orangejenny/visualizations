@@ -26,8 +26,7 @@ log_info('''
 ############
 # Matching #
 ############''')
-(treatment_outcome, matched_outcome) = ces.get_matched_outcomes(ces.get_paired_waves())
-log_info(f"Matching based on age, new parents' mean ideo_composite_delta is {treatment_outcome} while the matched set's is {matched_outcome}")
+log_info(ces.get_matched_outcomes(ces.get_paired_waves()), f"Comparison of outcomes between new parents and a control group matched on age")
 
 log_info('''
 #########################

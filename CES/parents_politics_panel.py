@@ -245,23 +245,25 @@ class ParentsPoliticsPanel():
     # Matching functions #
     ######################
     def get_matched_outcomes(self, df):
-        columns = ['caseid', 'new_child', 'score', 'ideo_composite_delta']    # TODO: add weight
+        # TODO: add tests
+        outcomes = ['ideo_delta', 'pid_delta', 'ideo_composite_delta']
+        columns = ['caseid', 'new_child', 'score'] + outcomes    # TODO: add weight, and verify all mean calls are handling missing data appropriately
         df = self._add_score(df)
-        new_parents = df.loc[df['new_child'] == 1, columns].copy()
+        new_parents = df.loc[df['new_child'] == 1, columns].copy()  # TODO: use parenthood status instead of new parenthood?
         candidates = df.loc[df['new_child'] == 0, columns].copy()
 
         # Match up treatment and control groups
-        # TODO: note if any of new_parents didn't match:
-        matched_set = new_parents.merge(candidates, on='score', how='left', suffixes=('_treatment', '_control'))
+        # TODO: error/note if any of new_parents didn't match: ultimately implement nearest neighbor & record distance, noting bias
+        matched_set = new_parents.merge(candidates, on='score', how='left', suffixes=('_treatment', ''))
 
         # Group on treatment caseid, averaging all relevant control matches
         # TODO: why does this frame have fewer rows than new_parents? Did they not all match?
-        matched_outcomes = matched_set.loc[:,['caseid_treatment', 'ideo_composite_delta_control']].groupby('caseid_treatment').mean()
+        matched_outcomes = matched_set.loc[:, ['caseid_treatment'] + outcomes].groupby('caseid_treatment').mean()
+        agg_matched_outcomes = matched_outcomes.mean()
+        agg_treatment_outcomes = new_parents.loc[:, outcomes].mean()
 
-        return (
-            new_parents['ideo_composite_delta'].mean(),
-            matched_outcomes['ideo_composite_delta_control'].mean()
-        )
+        return pd.concat([agg_matched_outcomes, agg_treatment_outcomes], axis=1)
 
     def _add_score(self, df):
+        # TODO: replace with probability of parenthood
         return df.assign(score=lambda x: x['age'])
