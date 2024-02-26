@@ -57,7 +57,9 @@ class ParentsPoliticsPanel():
     def _add_all_composite(self, df):
         raise NotImplementedError()
 
-    ### Data accessors
+    ##################
+    # Data accessors #
+    ##################
     # panel contains all original data
     def get_panel(self):
         return self.panel
@@ -66,7 +68,9 @@ class ParentsPoliticsPanel():
     def get_paired_waves(self):
         return self.paired_waves
 
-    ### Analysis functions
+    ######################
+    # Analysis functions #
+    ######################
     def count_flippers(self, before_label, after_label, lower_bound, upper_bound):
         valid_rows = self.panel.loc[
             np.greater_equal(self.panel[before_label], lower_bound) & np.greater_equal(self.panel[after_label], lower_bound)
@@ -169,7 +173,9 @@ class ParentsPoliticsPanel():
         df.sort_values('metric', inplace=True)
         return df
 
-    ### Summary functions
+    #####################
+    # Summary functions #
+    #####################
     def summarize_all_continuous(self, df, group_by_labels):
         if type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
@@ -234,3 +240,36 @@ class ParentsPoliticsPanel():
         results['percent'] = np.round(results['caseid_x'] * 100 / results['caseid_y'], decimals=1)
         results.rename(columns={'caseid_x': 'count', 'caseid_y': 'total'}, inplace=True)
         return results
+
+    ######################
+    # Matching functions #
+    ######################
+    def get_matched_outcomes(self, df):
+        columns = ['caseid', 'new_child', 'age', 'ideo_composite_delta']    # TODO: add weight
+        new_parents = df.loc[df['new_child'] == 1, columns].copy()
+        new_parents['matched_ideo_composite_delta'] = np.nan
+        matches_by_age = {}
+
+        matched_set = pd.DataFrame.from_dict({c: [] for c in columns})
+        for index, row in new_parents.iterrows():
+            age = row.age
+            if age not in matches_by_age:
+                candidates = df.loc[np.logical_and(df['new_child'] == 0, df['age'] == age), columns]
+                if candidates.empty:
+                    matches_by_age[age] = None
+                else:
+                    matches_by_age[age] = pd.DataFrame.from_dict({
+                        'caseid': [f'Average of controls aged {age}'],
+                        'new_child': [0],
+                        'age': [age],
+                        'ideo_composite_delta': [candidates['ideo_composite_delta'].mean()],
+                    })
+            match = matches_by_age[age]
+
+            if not match.empty:
+                matched_set = pd.concat([matched_set, match])
+
+        return (
+            new_parents['ideo_composite_delta'].mean(),
+            matched_set['ideo_composite_delta'].mean()
+        )
