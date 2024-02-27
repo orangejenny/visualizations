@@ -7,7 +7,7 @@ from datetime import datetime
 from yougov import YouGovPanel
 
 OUTPUT_DIR = 'output'
-OUTPUT_FILES = ['significant.log', 'all.log']
+OUTPUT_FILES = ['significant.log', 'all.log', 'two_stars.log', 'three_stars.log']
 
 def truncate_output():
     for filename in OUTPUT_FILES:
@@ -28,24 +28,29 @@ def log_verbose(data, description=''):
     _output('all.log', data, description)
 
 def log_header(header):
-    _output('all.log', header)
-    _output('significant.log', header)
+    for filename in OUTPUT_FILES:
+        _output(filename, header)
 
 def log_findings(data, description=''):
     _output('all.log', data, description)
+    _output('significant.log', _limit_to_significant(data), description)
+    _output('two_stars.log', _limit_to_significant(data, level=2), description)
+    _output('three_stars.log', _limit_to_significant(data, level=3), description)
 
+def _limit_to_significant(data, level=1):
+    key = '*' * level
     if 'pvalue' in data:
         data = data.astype({'pvalue': pd.StringDtype()})
-        data['sig'] = data['pvalue'].str.find('*') != -1
+        data['sig'] = data['pvalue'].str.find(key) != -1
     else:
         for col in data.columns:
             if col.endswith('*'):
-                data[col.replace('*', '?')] = data[col].str.find('*') != -1
+                data[col.replace('*', '?')] = data[col].str.find(key) != -1
         data['sig'] = data.any(axis=1, bool_only=True)
         data.drop([col for col in data.columns if col.endswith("?")], axis=1, inplace=True)
     data = data.loc[data['sig'],:]
     data = data.drop(['sig'], axis=1)
-    _output('significant.log', data, description)
+    return data
 
 
 truncate_output()
