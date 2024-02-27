@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
 
 from collections import defaultdict
 from pandas import DataFrame
@@ -57,7 +59,9 @@ class ParentsPoliticsPanel():
     def _add_all_composite(self, df):
         raise NotImplementedError()
 
-    ### Data accessors
+    ##################
+    # Data accessors #
+    ##################
     # panel contains all original data
     def get_panel(self):
         return self.panel
@@ -66,7 +70,9 @@ class ParentsPoliticsPanel():
     def get_paired_waves(self):
         return self.paired_waves
 
-    ### Analysis functions
+    ######################
+    # Analysis functions #
+    ######################
     def count_flippers(self, before_label, after_label, lower_bound, upper_bound):
         valid_rows = self.panel.loc[
             np.greater_equal(self.panel[before_label], lower_bound) & np.greater_equal(self.panel[after_label], lower_bound)
@@ -88,7 +94,7 @@ class ParentsPoliticsPanel():
             np.greater(df[label], df.upper_bound)
         ), label] = np.nan
 
-        df.drop(['lower_bound', 'upper_bound'], axis=1)
+        df = df.drop(['lower_bound', 'upper_bound'], axis=1)
 
         return df
 
@@ -100,12 +106,6 @@ class ParentsPoliticsPanel():
         if pvalue < 0.05:
             return '*'
         return ''
-
-    def t_test(self, df, issue_label, demographic_label='new_child', a_value=0, b_value=1):
-        filtered = self.filter_na(self.filter_na(df, demographic_label), issue_label)
-        group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), issue_label]
-        group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), issue_label]
-        return ttest_ind(group_a, group_b, equal_var=False)
 
     def filter_na(self, df, label):
         return df.loc[pd.notna(df[label]),:].copy()
@@ -122,13 +122,14 @@ class ParentsPoliticsPanel():
         all_results = pd.DataFrame(data={'issue': issues})
         for metric in metrics:
             issue_results = test(df, metric, **test_kwargs)
-            all_results = all_results.merge(issue_results.loc[:,['issue', 'pvalue']], on='issue')
-            all_results.rename(columns={'pvalue': metric}, inplace=True)
+            all_results = all_results.merge(issue_results.loc[:,['issue', 'diff', 'pvalue']], on='issue')
+            all_results.rename(columns={'diff': f'{metric}-', 'pvalue': f'{metric}*'}, inplace=True)
         return all_results
 
     def t_tests(self, df, metric, demographic_label='new_child', a_value=0, b_value=1):
         results = {
             'metric': [],
+            'diff': [],
             'statistic': [],
             'df': [],
             'pvalue': [],
@@ -138,6 +139,10 @@ class ParentsPoliticsPanel():
             label = f'{issue}_{metric}'
             result = self.t_test(df, label, demographic_label, a_value, b_value)
             results['issue'].append(issue)
+            results['diff'].append(
+                round(df.loc[df[demographic_label] == a_value, label].mean()
+                - df.loc[df[demographic_label] == b_value, label].mean(),
+            2))
             results['metric'].append(label)
             results['statistic'].append(result.statistic)
             results['df'].append(result.df)
@@ -146,12 +151,16 @@ class ParentsPoliticsPanel():
         df.sort_values('metric', inplace=True)
         return df
 
-    def chisq(self, df, factor1, factor2='new_child'):
-        return chi2_contingency(pd.crosstab(df[factor1], df[factor2]))
+    def t_test(self, df, issue_label, demographic_label='new_child', a_value=0, b_value=1):
+        filtered = self.filter_na(self.filter_na(df, demographic_label), issue_label)
+        group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), issue_label]
+        group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), issue_label]
+        return ttest_ind(group_a, group_b, equal_var=False)
 
     def chisqs(self, df, metric, demographic_label='new_child'):
         results = {
             'metric': [],
+            'diff': [],
             'statistic': [],
             'dof': [],
             'pvalue': [],
@@ -161,6 +170,12 @@ class ParentsPoliticsPanel():
             label = f'{issue}_{metric}'
             result = self.chisq(df, label, demographic_label)
             results['issue'].append(issue)
+            percentages = self.count_percentages(df, demographic_label, label)
+            treatment = percentages.loc[percentages[demographic_label] == 1,:]
+            control = percentages.loc[percentages[demographic_label] == 0,:]
+            joined = treatment.merge(control, on=label, suffixes=('_treatment', '_control'))
+            joined['diff'] = round(joined['percent_treatment'] - joined['percent_control'], 1)
+            results['diff'].append("/".join([str(x) for x in joined['diff'].to_list()]))
             results['metric'].append(label)
             results['statistic'].append(result.statistic)
             results['dof'].append(result.dof)
@@ -169,7 +184,12 @@ class ParentsPoliticsPanel():
         df.sort_values('metric', inplace=True)
         return df
 
-    ### Summary functions
+    def chisq(self, df, factor1, factor2='new_child'):
+        return chi2_contingency(pd.crosstab(df[factor1], df[factor2]))
+
+    #####################
+    # Summary functions #
+    #####################
     def summarize_all_continuous(self, df, group_by_labels):
         if type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
@@ -234,3 +254,50 @@ class ParentsPoliticsPanel():
         results['percent'] = np.round(results['caseid_x'] * 100 / results['caseid_y'], decimals=1)
         results.rename(columns={'caseid_x': 'count', 'caseid_y': 'total'}, inplace=True)
         return results
+
+    ######################
+    # Matching functions #
+    ######################
+    def get_matched_outcomes(self, df, formula):
+        # TODO: add tests
+        outcomes = [
+            f'{issue}_{metric}' for issue in self.CATEGORICAL_ISSUES for metric in set(self.CATEGORICAL_METRICS) - set(['persists'])
+        ] + [
+            f'{issue}_{metric}' for issue in self.CONTINUOUS_ISSUES for metric in set(self.CONTINUOUS_METRICS) - set(['persists', 'persists_abs'])
+        ]
+        columns = ['caseid', 'new_child', 'score'] + outcomes    # TODO: add weight, and verify all mean calls are handling missing data appropriately
+        df = self._add_score(df, formula)
+        new_parents = df.loc[df['new_child'] == 1, columns].copy()  # TODO: use parenthood status instead of new parenthood?
+        candidates = df.loc[df['new_child'] == 0, columns].copy()
+
+        # Match up treatment and control groups
+        # TODO: error/note if any of new_parents didn't match: ultimately implement nearest neighbor & record distance, noting bias
+        matched_set = new_parents.merge(candidates, on='score', how='left', suffixes=('_treatment', ''))
+
+        # Group on treatment caseid, averaging all relevant control matches
+        # TODO: why does this frame have fewer rows than new_parents? Did they not all match?
+        matched_outcomes = matched_set.loc[:, ['caseid_treatment'] + outcomes].groupby('caseid_treatment').mean()
+        agg_matched_outcomes = matched_outcomes.mean()
+        agg_treatment_outcomes = new_parents.loc[:, outcomes].mean()
+
+        # Reduce matches to a single control row per treatment to t test
+        reduced_matches = matched_set.groupby('caseid_treatment').mean().loc[:,columns]
+        reduced_df = pd.concat([new_parents, reduced_matches])
+        pvalues = []
+        for o in outcomes:
+            result = self.t_test(reduced_df, o)
+            pvalues.append(str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue))
+
+        return pd.DataFrame(data={
+            'control': agg_matched_outcomes,
+            'treatment': agg_treatment_outcomes,
+            'diff': round(agg_matched_outcomes - agg_treatment_outcomes, 2),
+            'pvalue': pvalues,
+        })
+
+    def _add_score(self, df, formula):
+        logit = smf.glm(formula="new_child ~ " + formula,
+                        family=sm.families.Binomial(),
+                        data=df).fit()
+        df['score'] = logit.predict(df)
+        return df
