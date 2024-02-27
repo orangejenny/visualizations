@@ -26,7 +26,9 @@ log_info('''
 ############
 # Matching #
 ############''')
-log_info(ces.get_matched_outcomes(ces.get_paired_waves()), f"Comparison of outcomes between new parents and a control group matched on age")
+log_info(ces.get_matched_outcomes(ces.get_paired_waves(), "age"), f"Comparison of outcomes between new parents and a control group matched on age")
+log_info(ces.get_matched_outcomes(ces.get_paired_waves(), "age + marstat"), f"Comparison of outcomes between new parents and a control group matched on age & marital status")
+
 
 log_info('''
 #########################

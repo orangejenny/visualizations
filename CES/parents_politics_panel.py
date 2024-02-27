@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
 
 from collections import defaultdict
 from pandas import DataFrame
@@ -244,11 +246,11 @@ class ParentsPoliticsPanel():
     ######################
     # Matching functions #
     ######################
-    def get_matched_outcomes(self, df):
+    def get_matched_outcomes(self, df, formula):
         # TODO: add tests
         outcomes = ['ideo_delta', 'pid_delta', 'ideo_composite_delta']
         columns = ['caseid', 'new_child', 'score'] + outcomes    # TODO: add weight, and verify all mean calls are handling missing data appropriately
-        df = self._add_score(df)
+        df = self._add_score(df, formula)
         new_parents = df.loc[df['new_child'] == 1, columns].copy()  # TODO: use parenthood status instead of new parenthood?
         candidates = df.loc[df['new_child'] == 0, columns].copy()
 
@@ -264,6 +266,9 @@ class ParentsPoliticsPanel():
 
         return pd.concat([agg_matched_outcomes, agg_treatment_outcomes], axis=1)
 
-    def _add_score(self, df):
-        # TODO: replace with probability of parenthood
-        return df.assign(score=lambda x: x['age'])
+    def _add_score(self, df, formula):
+        logit = smf.glm(formula="new_child ~ " + formula,
+                        family=sm.families.Binomial(),
+                        data=df).fit()
+        df['score'] = logit.predict(df)
+        return df
