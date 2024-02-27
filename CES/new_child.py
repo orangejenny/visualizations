@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+import pandas as pd
 
 from argparse import ArgumentParser
 from ces import CESPanel
@@ -8,7 +9,10 @@ from yougov import YouGovPanel
 
 
 def log_info(data, description=''):
-    data = str(data)
+    if type(data) == pd.DataFrame:
+        data = data.to_string(max_rows=100)
+    else:
+        data = str(data)
     if description:
         data = "\n" + description + "\n" + data
     logging.info(data + "\n")

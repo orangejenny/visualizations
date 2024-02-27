@@ -248,7 +248,11 @@ class ParentsPoliticsPanel():
     ######################
     def get_matched_outcomes(self, df, formula):
         # TODO: add tests
-        outcomes = ['ideo_delta', 'pid_delta', 'ideo_composite_delta']
+        outcomes = [
+            f'{issue}_{metric}' for issue in self.CATEGORICAL_ISSUES for metric in set(self.CATEGORICAL_METRICS) - set(['persists'])
+        ] + [
+            f'{issue}_{metric}' for issue in self.CONTINUOUS_ISSUES for metric in set(self.CONTINUOUS_METRICS) - set(['persists', 'persists_abs'])
+        ]
         columns = ['caseid', 'new_child', 'score'] + outcomes    # TODO: add weight, and verify all mean calls are handling missing data appropriately
         df = self._add_score(df, formula)
         new_parents = df.loc[df['new_child'] == 1, columns].copy()  # TODO: use parenthood status instead of new parenthood?
@@ -264,7 +268,20 @@ class ParentsPoliticsPanel():
         agg_matched_outcomes = matched_outcomes.mean()
         agg_treatment_outcomes = new_parents.loc[:, outcomes].mean()
 
-        return pd.concat([agg_matched_outcomes, agg_treatment_outcomes], axis=1)
+        # Reduce matches to a single control row per treatment to t test
+        reduced_matches = matched_set.groupby('caseid_treatment').mean().loc[:,columns]
+        reduced_df = pd.concat([new_parents, reduced_matches])
+        pvalues = []
+        for o in outcomes:
+            result = self.t_test(reduced_df, o)
+            pvalues.append(str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue))
+
+        return pd.DataFrame(data={
+            'control': agg_matched_outcomes,
+            'treatment': agg_treatment_outcomes,
+            'difference': agg_matched_outcomes - agg_treatment_outcomes,
+            'pvalue': pvalues,
+        })
 
     def _add_score(self, df, formula):
         logit = smf.glm(formula="new_child ~ " + formula,
