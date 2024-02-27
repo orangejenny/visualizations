@@ -94,7 +94,7 @@ class ParentsPoliticsPanel():
             np.greater(df[label], df.upper_bound)
         ), label] = np.nan
 
-        df.drop(['lower_bound', 'upper_bound'], axis=1)
+        df = df.drop(['lower_bound', 'upper_bound'], axis=1)
 
         return df
 
