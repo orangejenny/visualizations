@@ -107,12 +107,6 @@ class ParentsPoliticsPanel():
             return '*'
         return ''
 
-    def t_test(self, df, issue_label, demographic_label='new_child', a_value=0, b_value=1):
-        filtered = self.filter_na(self.filter_na(df, demographic_label), issue_label)
-        group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), issue_label]
-        group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), issue_label]
-        return ttest_ind(group_a, group_b, equal_var=False)
-
     def filter_na(self, df, label):
         return df.loc[pd.notna(df[label]),:].copy()
 
@@ -128,13 +122,14 @@ class ParentsPoliticsPanel():
         all_results = pd.DataFrame(data={'issue': issues})
         for metric in metrics:
             issue_results = test(df, metric, **test_kwargs)
-            all_results = all_results.merge(issue_results.loc[:,['issue', 'pvalue']], on='issue')
-            all_results.rename(columns={'pvalue': metric}, inplace=True)
+            all_results = all_results.merge(issue_results.loc[:,['issue', 'diff', 'pvalue']], on='issue')
+            all_results.rename(columns={'diff': f'{metric}-', 'pvalue': f'{metric}*'}, inplace=True)
         return all_results
 
     def t_tests(self, df, metric, demographic_label='new_child', a_value=0, b_value=1):
         results = {
             'metric': [],
+            'diff': [],
             'statistic': [],
             'df': [],
             'pvalue': [],
@@ -144,6 +139,10 @@ class ParentsPoliticsPanel():
             label = f'{issue}_{metric}'
             result = self.t_test(df, label, demographic_label, a_value, b_value)
             results['issue'].append(issue)
+            results['diff'].append(
+                round(df.loc[df[demographic_label] == a_value, label].mean()
+                - df.loc[df[demographic_label] == b_value, label].mean(),
+            2))
             results['metric'].append(label)
             results['statistic'].append(result.statistic)
             results['df'].append(result.df)
@@ -152,12 +151,16 @@ class ParentsPoliticsPanel():
         df.sort_values('metric', inplace=True)
         return df
 
-    def chisq(self, df, factor1, factor2='new_child'):
-        return chi2_contingency(pd.crosstab(df[factor1], df[factor2]))
+    def t_test(self, df, issue_label, demographic_label='new_child', a_value=0, b_value=1):
+        filtered = self.filter_na(self.filter_na(df, demographic_label), issue_label)
+        group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), issue_label]
+        group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), issue_label]
+        return ttest_ind(group_a, group_b, equal_var=False)
 
     def chisqs(self, df, metric, demographic_label='new_child'):
         results = {
             'metric': [],
+            'diff': [],
             'statistic': [],
             'dof': [],
             'pvalue': [],
@@ -167,6 +170,12 @@ class ParentsPoliticsPanel():
             label = f'{issue}_{metric}'
             result = self.chisq(df, label, demographic_label)
             results['issue'].append(issue)
+            percentages = self.count_percentages(df, demographic_label, label)
+            treatment = percentages.loc[percentages[demographic_label] == 1,:]
+            control = percentages.loc[percentages[demographic_label] == 0,:]
+            joined = treatment.merge(control, on=label, suffixes=('_treatment', '_control'))
+            joined['diff'] = round(joined['percent_treatment'] - joined['percent_control'], 1)
+            results['diff'].append("/".join([str(x) for x in joined['diff'].to_list()]))
             results['metric'].append(label)
             results['statistic'].append(result.statistic)
             results['dof'].append(result.dof)
@@ -174,6 +183,9 @@ class ParentsPoliticsPanel():
         df = DataFrame.from_dict(results)
         df.sort_values('metric', inplace=True)
         return df
+
+    def chisq(self, df, factor1, factor2='new_child'):
+        return chi2_contingency(pd.crosstab(df[factor1], df[factor2]))
 
     #####################
     # Summary functions #
@@ -279,7 +291,7 @@ class ParentsPoliticsPanel():
         return pd.DataFrame(data={
             'control': agg_matched_outcomes,
             'treatment': agg_treatment_outcomes,
-            'difference': agg_matched_outcomes - agg_treatment_outcomes,
+            'diff': round(agg_matched_outcomes - agg_treatment_outcomes, 2),
             'pvalue': pvalues,
         })
 
