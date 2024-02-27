@@ -162,9 +162,16 @@ class CESPanel(ParentsPoliticsPanel):
         return df
 
     def _add_parenting(self, df):
+        '''
+        parenthood is based on child18 (parent of ninor children? yes/no) and child18num (number of minor children)
+        - 0 no children
+        - 1 new first child (same as firstborn)
+        - 2 new additional child
+        - 3 parent, no change in number of children
+        '''
         df = df.assign(
             # Combination of parent yes/no question and number of children question, being cautious of invalid values
-            new_child=lambda x: np.select(
+            parenthood=lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
                 [np.where(
                     # child18_start is NA or child18_next is NA,
@@ -174,11 +181,11 @@ class CESPanel(ParentsPoliticsPanel):
                     ),
                     np.nan,
                     np.where(
-                        x[f'child18_{w}'] == 2,  # child18_start is no
+                        x[f'child18_{w}'] == 2,  # child18_start is no, so not a parent at the start
                         np.where(
-                            x[f'child18_{self.waves[i + 1]}'] == 1,  # child18_next is yes
-                            1,
-                            0
+                            x[f'child18_{self.waves[i + 1]}'] == 1,  # child18_next is yes, so had a child at the end
+                            1, # first child
+                            0  # no children
                         ),
                         np.where(   # child18_start is yes
                             # child18num_start or child18num_next is invalid
@@ -189,19 +196,41 @@ class CESPanel(ParentsPoliticsPanel):
                             np.nan,
                             np.where(
                                 x[f'child18num_{w}'] < x[f'child18num_{self.waves[i + 1]}'],
-                                1,
-                                0
+                                2,  # new additional child
+                                3   # parent, but no change in number of children
                             )
                         )
                     )
                 ) for i, w in enumerate(self.start_waves)],
             )
         )
-        df = df.loc[pd.notna(df['new_child']),:].copy() # remove any rows where parenthood cannot be determined
-        df = df.assign(firstborn=lambda x: np.select(   # TODO: What's the n here?
-            [x.start_wave == w for w in self.start_waves],
-            [np.where(np.logical_and(x.new_child == 1, x[f'child18_{w}'] == 2), 1, 0) for i, w in enumerate(self.start_waves)],
-        ))
+        df = df.loc[pd.notna(df['parenthood']),:].copy() # remove any rows where parenthood cannot be determined
+        '''
+        Additional boolean columns based on parenthood
+        - firstborn: 1
+        - new_child: 1 or 2
+        - is_parent: 1, 2, or 3
+
+        - 0 no children
+        - 1 new first child (same as firstborn)
+        - 2 new additional child
+        - 3 parent, no change in number of children
+        '''
+        # TODO: What are the counts  of each of these groups?
+        df = df.assign(**{
+            'firstborn': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(x.parenthood == 1, 1, 0) for w in self.start_waves],
+            ),
+            'new_child': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(np.logical_or(x.parenthood == 1, x.parenthood == 2), 1, 0) for w in self.start_waves],
+            ),
+            'is_parent': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(x.parenthood != 0, 1, 0) for w in self.start_waves],
+            ),
+        })
         return df
 
     def _add_all_continuous(self, df):
