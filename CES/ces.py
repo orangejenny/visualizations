@@ -50,7 +50,6 @@ class CESPanel(ParentsPoliticsPanel):
             self.panel.columns.str.contains("CC1[024]_325", regex=True) + # job vs environment (1-5 favor environment to favor jobs)
             self.panel.columns.str.contains("CC1[024]_327", regex=True) + # affirmative action (1-4 support to oppose)
             self.panel.columns.str.contains("CC1[024]_415r", regex=True) + # taxes vs spending (examples given are of domestic spending) (0 to 100)
-            self.panel.columns.str.contains("CC1[024]_416r", regex=True) + # raise sales vs income tax (0 to 100)
 
             # Policy issues: additional issues for composites
             self.panel.columns.str.contains("CC1[024]_330C", regex=True) + # clean energy act (1/2 support/oppose, discard other values)
@@ -241,7 +240,6 @@ class CESPanel(ParentsPoliticsPanel):
         df = self._add_continuous(df, 'CCXX_327', 'aff_action', 1, 4)
         df = self._add_continuous(df, 'CCXX_320', 'guns', 1, 3)
         df = self._add_continuous(df, 'CCXX_415r', 'tax_or_spend', 0, 100)
-        df = self._add_continuous(df, 'CCXX_416r', 'sales_or_inc', 0, 100)
         return df
 
     def _add_all_categorical(self, df):

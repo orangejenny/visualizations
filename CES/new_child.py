@@ -155,7 +155,6 @@ ces.continuous_persists("jobs_env") # 23% vs 23%
 ces.continuous_persists("aff_action") # 16% vs 16%
 ces.continuous_persists("guns") # 16% vs 14%
 ces.continuous_persists("tax_or_spend") # 29% vs 35%
-ces.continuous_persists("sales_or_inc") # 39% vs 36%
 ces.continuous_persists("climate_composite") # 30% vs 21%
 ces.continuous_persists("gay_composite") # 17% vs 11%
 ces.continuous_persists("military_composite") # 32% vs 30%
