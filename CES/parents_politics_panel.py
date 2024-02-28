@@ -3,9 +3,12 @@ import pandas as pd
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from pandas import DataFrame
-from scipy.stats import chi2_contingency, ttest_ind
+from statsmodels.stats.weightstats import ttest_ind
+from scipy.stats import chi2_contingency
+
+Result = namedtuple('Result', ['statistic', 'df', 'pvalue'])
 
 
 class ParentsPoliticsPanel():
@@ -164,7 +167,8 @@ class ParentsPoliticsPanel():
         filtered = self.filter_na(self.filter_na(df, demographic_label), issue_label)
         group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), issue_label]
         group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), issue_label]
-        return ttest_ind(group_a, group_b, equal_var=False) # TODO: use nan_policy='omit' since I'm filtering anyway?
+        (statistic, pvalue, df) = ttest_ind(group_a, group_b, usevar='unequal')
+        return Result(statistic=statistic, df=df, pvalue=pvalue)
 
     def chisqs(self, df, metric, demographic_label='new_child'):
         results = {
