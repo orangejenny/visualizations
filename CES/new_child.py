@@ -28,6 +28,7 @@ def log_verbose(data, description=''):
     _output('all.log', data, description)
 
 def log_header(header):
+    print(header)
     for filename in OUTPUT_FILES:
         _output(filename, header)
 
@@ -127,6 +128,13 @@ log_header('''
 
 log_findings(ces.all_t_test_pvalues(ces.paired_waves), "T test p values, all paired data")
 log_findings(ces.all_chisq_pvalues(ces.paired_waves), "Chi square p values, all paired data")
+
+# How different do things look for a single pair of waves?
+both = ces.paired_waves
+first = both.loc[both['start_wave'] == 10,:]
+second = both.loc[both['start_wave'] == 12,:]
+log_findings(ces.all_t_test_pvalues(first), "T test p values, 2010/2012 only")
+log_findings(ces.all_t_test_pvalues(second), "T test p values, 2012/2014 only")
 
 log_findings(ces.all_t_test_pvalues(ces.paired_waves, demographic_label="firstborn"), "T test p values, all paired data, firstborn")
 log_findings(ces.all_chisq_pvalues(ces.paired_waves, demographic_label="firstborn"), "Chi square p values, all paired data, firstborn")
