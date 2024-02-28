@@ -151,8 +151,11 @@ class CESPanel(ParentsPoliticsPanel):
                     np.isnan(x.income_quintile),
                     x.income_quintile == 1,
                     x.income_quintile == 2,
+                    x.income_quintile == 3,
+                    x.income_quintile == 4,
+                    x.income_quintile == 5,
                 ],
-                [np.NAN, 1, 1],
+                [np.NAN, 1, 1, 0, 0, 0],
                 default=np.nan
             ),
         )
@@ -240,13 +243,6 @@ class CESPanel(ParentsPoliticsPanel):
         df = self._add_continuous(df, 'CCXX_415r', 'tax_or_spend', 0, 100)
         return df
 
-    def _add_all_categorical(self, df):
-        df = self._add_categorical(df, 'CCXX_326', 'gay_marriage', 1, 2)
-        df = self._add_categorical(df, 'CCXX_330B', 'schip', 1, 2)
-        df = self._add_categorical(df, 'CCXX_328', 'budget', 1, 3)
-        df = self._add_categorical(df, 'CCXX_329', 'budget_avoid', 1, 3)
-        return df
-
     def _add_all_composite(self, df):
         for year in self.waves:
             # TODO: add in the jobs/environment question to this composite?
@@ -332,28 +328,5 @@ class CESPanel(ParentsPoliticsPanel):
         df[f'{issue}_persists_abs'] = np.abs(df[f'{issue}_persists'])
 
         self.CONTINUOUS_ISSUES.add(issue)
-
-        return df
-
-    def _add_categorical(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
-        df = self._add_before_after(df, before_pattern, issue)
-
-        df[f'{issue}_change'] = np.where(df[f'{issue}_before'] == df[f'{issue}_after'], 0, 1)
-        # distinguish between False and NaN
-        for metric in ('before', 'after'):
-            df.loc[np.isnan(df[f'{issue}_{metric}']), f'{issue}_change'] = np.nan
-
-        df = df.assign(**{f'{issue}_persists': lambda x: np.select(
-            [x.start_wave == w for w in self.start_waves],
-            [np.where(np.logical_and(
-                x[before_pattern.replace('XX', str(w))] != x[before_pattern.replace('XX', str(self.end_waves[i]))], # change in start vs end
-                x[before_pattern.replace('XX', str(self.end_waves[i]))] == x[before_pattern.replace('XX', str(self.end_waves[-1]))]  # kept end value in final wave
-            ), 1, 0) for i, w in enumerate(self.start_waves)]
-        )})
-        for wave in self.waves:
-            df.loc[df['start_wave'] == self.start_waves[-1], f'{issue}_persists'] = np.nan  # Can't calculate when there are only two waves
-            df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{issue}_persists'] = np.nan  # Can't calulate unless all waves are available
-
-        self.CATEGORICAL_ISSUES.add(issue)
 
         return df

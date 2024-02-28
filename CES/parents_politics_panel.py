@@ -13,7 +13,6 @@ Result = namedtuple('Result', ['statistic', 'df', 'pvalue'])
 
 class ParentsPoliticsPanel():
     CONTINUOUS_METRICS = ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']
-    CATEGORICAL_METRICS = ['before', 'after', 'change', 'persists']
     waves = []
 
     @property
@@ -26,7 +25,6 @@ class ParentsPoliticsPanel():
 
     def __init__(self):
         self.CONTINUOUS_ISSUES = set()
-        self.CATEGORICAL_ISSUES = set()
 
         self.panel = self._load_panel()
         self.paired_waves = self._build_paired_waves(self._trimmed_panel())
@@ -35,7 +33,6 @@ class ParentsPoliticsPanel():
         self.paired_waves = self.paired_waves.astype({'new_child': 'int32', 'firstborn': 'int32'})
 
         self.paired_waves = self._add_all_continuous(self.paired_waves)
-        self.paired_waves = self._add_all_categorical(self.paired_waves)
         self.paired_waves = self._add_all_composite(self.paired_waves)
 
         # De-fragment frames
@@ -54,9 +51,6 @@ class ParentsPoliticsPanel():
         raise NotImplementedError()
 
     def _add_all_continuous(self, df):
-        raise NotImplementedError()
-
-    def _add_all_categorical(self, df):
         raise NotImplementedError()
 
     def _add_all_composite(self, df):
@@ -112,9 +106,6 @@ class ParentsPoliticsPanel():
 
     def filter_na(self, df, label):
         return df.loc[pd.notna(df[label]),:].copy()
-
-    def all_chisq_pvalues(self, df, **test_kwargs):
-        return self._all_test_pvalues(df, self.CATEGORICAL_ISSUES, self.CATEGORICAL_METRICS, self.chisqs, **test_kwargs)
 
     def all_t_test_pvalues(self, df, **test_kwargs):
         return self._all_test_pvalues(df, self.CONTINUOUS_ISSUES, self.CONTINUOUS_METRICS, self.t_tests, **test_kwargs)
@@ -174,37 +165,6 @@ class ParentsPoliticsPanel():
                                                 weights=(group_a.weight, group_b.weight))
         return Result(statistic=statistic, df=df, pvalue=pvalue)
 
-    def chisqs(self, df, metric, demographic_label='new_child'):
-        results = {
-            'metric': [],
-            'diff': [],
-            'statistic': [],
-            'dof': [],
-            'pvalue': [],
-            'issue': [],
-        }
-        for issue in self.CATEGORICAL_ISSUES:
-            label = f'{issue}_{metric}'
-            result = self.chisq(df, label, demographic_label)
-            results['issue'].append(issue)
-            percentages = self.count_percentages(df, demographic_label, label)
-            treatment = percentages.loc[percentages[demographic_label] == 1,:]
-            control = percentages.loc[percentages[demographic_label] == 0,:]
-            joined = treatment.merge(control, on=label, suffixes=('_treatment', '_control'))
-            joined['diff'] = round(joined['percent_treatment'] - joined['percent_control'], 1)
-            results['diff'].append("/".join([str(x) for x in joined['diff'].to_list()]))
-            results['metric'].append(label)
-            results['statistic'].append(result.statistic)
-            results['dof'].append(result.dof)
-            results['pvalue'].append(str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue))
-        df = DataFrame.from_dict(results)
-        df.sort_values('metric', inplace=True)
-        return df
-
-    # TODO: support weighting?
-    def chisq(self, df, factor1, factor2='new_child'):
-        return chi2_contingency(pd.crosstab(df[factor1], df[factor2]))
-
     #####################
     # Summary functions #
     #####################
@@ -224,9 +184,9 @@ class ParentsPoliticsPanel():
         total = len(df)
         rates = defaultdict(list)
         # Note the rates for persists are artificially high because they only apply to the 10/12 pairs, not the 12/14 pairs
-        for issue in sorted(self.CONTINUOUS_ISSUES | self.CATEGORICAL_ISSUES):
+        for issue in sorted(self.CONTINUOUS_ISSUES):
             rates['issue'].append(issue)
-            for metric in set(self.CONTINUOUS_METRICS) | set(self.CATEGORICAL_METRICS):
+            for metric in set(self.CONTINUOUS_METRICS):
                 label = f'{issue}_{metric}'
                 if label in df:
                     missing = len(df.loc[np.isnan(df[label]),:])
@@ -266,21 +226,6 @@ class ParentsPoliticsPanel():
         flags.groupby(['new_child', f'{issue}_persistence_flag']).count()
         return self.count_percentages(flags, 'new_child', f'{issue}_persistence_flag')
 
-    def categorical_persists(self, issue):
-        flags = self.filter_na(self.paired_waves, f'{issue}_persists')
-        flags[f'{issue}_persistence_flag'] = np.bool_(flags[f'{issue}_persists'])
-        flags.groupby(['new_child', f'{issue}_persistence_flag']).count()
-        return self.count_percentages(self.filter_na(self.paired_waves, f'{issue}_persists'), 'new_child', f'{issue}_persists')
-
-    def summarize_all_categorical(self, df, group_by_label, metric):
-        all_issues = pd.DataFrame({k: [] for k in ['issue', group_by_label, metric, 'count', 'total', 'percent']})
-        for issue in sorted(self.CATEGORICAL_ISSUES):
-            issue_summary = self.count_percentages(df, group_by_label, f'{issue}_{metric}')
-            issue_summary['issue'] = issue
-            issue_summary.rename(columns={f'{issue}_{metric}': metric}, inplace=True)
-            all_issues = pd.concat([all_issues, issue_summary])
-        return all_issues
-
     def count_percentages(self, df, group_by_label, metric_label):
         counts = df.loc[:,['caseid', group_by_label, metric_label]].groupby([group_by_label, metric_label], as_index=False).count() # roughly pd.crosstab
         # TODO: also filter_na for group_by_label?
@@ -296,8 +241,6 @@ class ParentsPoliticsPanel():
     def get_matched_outcomes(self, df, formula):
         # TODO: add tests
         outcomes = [
-            f'{issue}_{metric}' for issue in self.CATEGORICAL_ISSUES for metric in set(self.CATEGORICAL_METRICS) - set(['persists'])
-        ] + [
             f'{issue}_{metric}' for issue in self.CONTINUOUS_ISSUES for metric in set(self.CONTINUOUS_METRICS) - set(['persists', 'persists_abs'])
         ]
         columns = ['caseid', 'new_child', 'score', 'weight'] + outcomes
@@ -330,7 +273,7 @@ class ParentsPoliticsPanel():
         return pd.DataFrame(data={
             'control': agg_matched_outcomes,
             'treatment': agg_treatment_outcomes,
-            'diff': round(agg_matched_outcomes - agg_treatment_outcomes, 2),    # TODO: doesn't make sense for categorical (neither do means)
+            'diff': round(agg_matched_outcomes - agg_treatment_outcomes, 2),
             'pvalue': pvalues,
         })
 

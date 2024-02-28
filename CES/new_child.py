@@ -127,7 +127,6 @@ log_header('''
 #######################''')
 
 log_findings(ces.all_t_test_pvalues(ces.paired_waves), "T test p values, all paired data")
-log_findings(ces.all_chisq_pvalues(ces.paired_waves), "Chi square p values, all paired data")
 
 # How different do things look for a single pair of waves?
 both = ces.paired_waves
@@ -137,15 +136,9 @@ log_findings(ces.all_t_test_pvalues(first), "T test p values, 2010/2012 only")
 log_findings(ces.all_t_test_pvalues(second), "T test p values, 2012/2014 only")
 
 log_findings(ces.all_t_test_pvalues(ces.paired_waves, demographic_label="firstborn"), "T test p values, all paired data, firstborn")
-log_findings(ces.all_chisq_pvalues(ces.paired_waves, demographic_label="firstborn"), "Chi square p values, all paired data, firstborn")
 
 log_verbose(ces.summarize_all_continuous(two_years, 'new_child'), "Summary of continuous issues, all paired data")
 log_verbose(ces.summarize_all_continuous(two_years, 'firstborn'), "Summary of continuous issues, all paired data, firstborn child versus all others")
-
-log_verbose(ces.summarize_all_categorical(two_years, 'new_child', 'before'), "Summary of categorical 'before' responses, all paired data")
-log_verbose(ces.summarize_all_categorical(two_years, 'new_child', 'after'), "Summary of categorical 'after' responses, all paired data")
-log_verbose(ces.summarize_all_categorical(two_years, 'new_child', 'change'), "Summary of categorical responses changing between waves, all paired data")
-log_verbose(ces.summarize_all_categorical(two_years, 'new_child', 'persists'), "Summary of categorical responses that change and persist, all 2010/2012 data")
 
 # (not logged) Persistence: how common is persistent change?
 # Of the new parents who changed, how many keep that change?
@@ -160,12 +153,6 @@ ces.continuous_persists("gay_composite") # 17% vs 11%
 ces.continuous_persists("military_composite") # 32% vs 30%
 ces.continuous_persists("immigration_composite") # 50% vs 48%
 
-ces.categorical_persists("gay_marriage") # 10% vs 7%
-ces.categorical_persists("schip") # 15% vs 12%
-ces.categorical_persists("budget") # 15% vs 12%
-ces.categorical_persists("budget_avoid") # 16% vs 16%
-
-
 log_header('''
 #################
 # Analysis: Age #
@@ -173,7 +160,6 @@ log_header('''
 
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
 #log_findings(ces.all_t_test_pvalues(young_adults), "T test p values, respondents under 30 years old")   # TODO: RuntimeWarning: invalid value encountered in scalar multiply
-log_findings(ces.all_chisq_pvalues(young_adults), "Chi square p values, respondents under 30 years old")
 
 log_verbose(ces.summarize_all_continuous(young_adults, 'new_child'), "Summary of continuous issues, respondents under 30 years old")
 
@@ -186,30 +172,12 @@ two_years_men = two_years.loc[np.equal(two_years['gender'], 1),:]
 two_years_women = two_years.loc[np.equal(two_years['gender'], 2),:]
 
 log_findings(ces.all_t_test_pvalues(two_years_men), "T test p values, new fathers versus other men")
-log_findings(ces.all_chisq_pvalues(two_years_men), "Chi square p values, new fathers versus other men")
 
 log_findings(ces.all_t_test_pvalues(two_years_women), "T test p values, new mothers versus other women")
-log_findings(ces.all_chisq_pvalues(two_years_women), "Chi square p values, new mothers versus other women")
 
 log_findings(ces.all_t_test_pvalues(two_years_new_parents, demographic_label='gender', a_value=1, b_value=2), "T test p values, new fathers versus new mothers")
-log_findings(ces.all_chisq_pvalues(two_years_new_parents, demographic_label='gender'), "Chi square p values, new fathers versus new mothers")
 
 log_verbose(ces.summarize_all_continuous(two_years, ['new_child', 'gender']), "Summary of continuous issues by new_child and gender")
-
-log_verbose(ces.summarize_all_categorical(two_years_new_parents, 'gender', 'before'), "Categorical 'before' responses, new mothers vs new fathers")
-log_verbose(ces.summarize_all_categorical(two_years_new_parents, 'gender', 'after'), "Categorical 'after' responses, new mothers vs new fathers")
-log_verbose(ces.summarize_all_categorical(two_years_new_parents, 'gender', 'change'), "Categorical response change, new mothers vs new fathers")
-log_verbose(ces.summarize_all_categorical(two_years_new_parents, 'gender', 'persists'), "Categorical response persistent change, new mothers vs new fathers")
-
-log_verbose(ces.summarize_all_categorical(two_years_men, 'new_child', 'before'), "Categorical 'before' responses, new fathers vs other men")
-log_verbose(ces.summarize_all_categorical(two_years_men, 'new_child', 'after'), "Categorical 'after' responses, new fathers vs other men")
-log_verbose(ces.summarize_all_categorical(two_years_men, 'new_child', 'change'), "Categorical response change, new fathers vs other men")
-log_verbose(ces.summarize_all_categorical(two_years_men, 'new_child', 'persists'), "Categorical response persistent change, new fathers vs other men")
-
-log_verbose(ces.summarize_all_categorical(two_years_women, 'new_child', 'before'), "Categorical 'before' responses, new mothers vs other women")
-log_verbose(ces.summarize_all_categorical(two_years_women, 'new_child', 'after'), "Categorical 'after' responses, new mothers vs other women")
-log_verbose(ces.summarize_all_categorical(two_years_women, 'new_child', 'change'), "Categorical response change, new mothers vs other women")
-log_verbose(ces.summarize_all_categorical(two_years_women, 'new_child', 'persists'), "Categorical response persistent change, new mothers vs other women")
 
 log_header('''
 ####################
@@ -226,16 +194,12 @@ two_years_bottom_40 = two_years.loc[np.equal(two_years['low_income'], 1),:]
 two_years_top_20 = two_years.loc[np.equal(two_years['high_income'], 1),:]
 
 log_findings(ces.all_t_test_pvalues(two_years_bottom_80), "T test p values, bottom 80% new parents versus other bottom 80% respondents")
-log_findings(ces.all_chisq_pvalues(two_years_bottom_80), "Chi square p values, bottom 80% new parents versus other bottom 80% respondents")
 
 log_findings(ces.all_t_test_pvalues(two_years_bottom_40), "T test p values, bottom 40% new parents versus other bottom 40% respondents")
-log_findings(ces.all_chisq_pvalues(two_years_bottom_40), "Chi square p values, bottom 40% new parents versus other bottom 40% respondents")
 
 log_findings(ces.all_t_test_pvalues(two_years_top_20), "T test p values, top 20% new parents versus other top 20% respondents")
-log_findings(ces.all_chisq_pvalues(two_years_top_20), "Chi square p values, top 20% new parents versus other top 20% respondents")
 
 log_findings(ces.all_t_test_pvalues(two_years_new_parents, demographic_label='high_income'), "T test p values, top 20% new parents versus bottom 80% new parents")
-log_findings(ces.all_chisq_pvalues(two_years_new_parents, demographic_label='high_income'), "Chi square p values, top 20% new parents versus bottom 80% new parents")
 
 log_verbose(ces.summarize_all_continuous(two_years, ['new_child', 'high_income']), "Summary of continuous issues by new_child and income")
 

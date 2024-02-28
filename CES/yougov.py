@@ -20,8 +20,5 @@ class YouGovPanel(ParentsPoliticsPanel):
     def _add_all_continuous(self, df):
         return df
 
-    def _add_all_categorical(self, df):
-        return df
-
     def _add_all_composite(self, df):
         return df

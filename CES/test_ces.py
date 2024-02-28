@@ -65,41 +65,6 @@ class TestCESPanel(unittest.TestCase):
         self.assertEqual(round(float(pid['df']), 1), 777.7)
         self.assertEqual(round(float(pid['pvalue']), 4), 0.8079)
 
-    def test_chisq(self):
-        def _test_chiqsq(expected, data, label, demographic='new_child'):
-            self._test_pvalue(expected, self.data.chisq(data, label, demographic))
-
-        paired_waves = self.data.get_paired_waves()
-        _test_chiqsq(0.9465, paired_waves, 'ideo_direction')
-        _test_chiqsq(0.4124, paired_waves, 'pid_direction')
-
-        data = paired_waves.loc[np.equal(paired_waves['new_child'], 1),:]
-        _test_chiqsq(0.8229, data, 'ideo_direction', 'high_income')
-        _test_chiqsq(0.5296, data, 'pid_direction', 'high_income')
-        _test_chiqsq(0.5551, data, 'ideo_direction', 'gender')
-        _test_chiqsq(0.0956, data, 'pid_direction', 'gender')
-
-        data = paired_waves.loc[np.equal(paired_waves['gender'], 1),:]
-        _test_chiqsq(0.9348, data, 'ideo_direction')
-        _test_chiqsq(0.2544, data, 'pid_direction')
-
-        data = paired_waves.loc[np.equal(paired_waves['gender'], 2),:]
-        _test_chiqsq(0.7973, data, 'ideo_direction')
-        _test_chiqsq(0.1096, data, 'pid_direction')
-
-    def test_chisqs(self):
-        results = self.data.chisqs(self.data.get_paired_waves(), 'change')
-
-        schip = {
-            k: list(v.values())[0]  # v will have a single value
-            for k, v in results.loc[results['issue'] == 'schip',:].to_dict().items()
-        }
-        self.assertEqual(schip['issue'], 'schip')
-        self.assertEqual(schip['metric'], 'schip_change')
-        self.assertEqual(round(float(schip['statistic']), 3), 0.821)
-        self.assertEqual(round(float(schip['dof']), 1), 1)
-        self.assertEqual(round(float(schip['pvalue']), 4), 0.3649)
-
     def test_summarize_continuous(self):
         data = self.data.get_paired_waves()
         guns = self.data.summarize_continuous(data, "new_child", "guns")
@@ -110,13 +75,6 @@ class TestCESPanel(unittest.TestCase):
     def test_count_percentages(self):
         data = self.data.get_paired_waves()
 
-        after_counts = self.data.count_percentages(data, 'new_child', 'gay_marriage_after')
-        self.assertListEqual(after_counts.loc[np.equal(after_counts['new_child'], True), 'percent'].to_list(), [40.7, 59.3])
-
-        after_counts = self.data.count_percentages(data, 'new_child', 'budget_avoid_after')
-        self.assertListEqual(after_counts.loc[np.equal(after_counts['new_child'], True), 'percent'].to_list(), [19.2, 36.4, 44.4])
-
-        data = data.loc[np.equal(data['new_child'], 1),:]
-        change_counts = self.data.count_percentages(data, "gender", "budget_change")
-        self.assertListEqual(change_counts['count'].to_list(), [164,  45, 129,  88])
-        self.assertListEqual(change_counts['percent'].to_list(), [78.5, 21.5, 59.4, 40.6])
+        counts = self.data.count_percentages(data, 'new_child', 'gender')
+        self.assertListEqual(counts.loc[np.equal(counts['new_child'], True), 'percent'].to_list(), [48.4, 51.6])
+        self.assertListEqual(counts.loc[np.equal(counts['new_child'], False), 'percent'].to_list(), [55.7, 44.3])
