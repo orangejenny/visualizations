@@ -65,11 +65,11 @@ class TestCESPanel(unittest.TestCase):
         self.assertEqual(round(float(pid['df']), 1), 777.7)
         self.assertEqual(round(float(pid['pvalue']), 4), 0.8079)
 
-    def test_summarize_continuous(self):
+    def test_summarize_issue(self):
         data = self.data.get_paired_waves()
-        guns = self.data.summarize_continuous(data, "new_child", "guns")
+        guns = self.data.summarize_issue(data, "new_child", "guns")
         self.assertListEqual([round(v, 2) for v in guns.iloc[1, 1:].values], [1.7, 1.68, -0.0, 0.31, -0.04, 0.09])
-        military = self.data.summarize_continuous(data, "new_child", "military_composite")
+        military = self.data.summarize_issue(data, "new_child", "military_composite")
         self.assertListEqual([round(v, 2) for v in military.iloc[1, 1:].values], [1.49, 1.53, 0.04, 0.16, 0.04, 0.07])
 
     def test_count_percentages(self):

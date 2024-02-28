@@ -137,21 +137,21 @@ log_findings(ces.all_t_test_pvalues(second), "T test p values, 2012/2014 only")
 
 log_findings(ces.all_t_test_pvalues(ces.paired_waves, demographic_label="firstborn"), "T test p values, all paired data, firstborn")
 
-log_verbose(ces.summarize_all_continuous(two_years, 'new_child'), "Summary of continuous issues, all paired data")
-log_verbose(ces.summarize_all_continuous(two_years, 'firstborn'), "Summary of continuous issues, all paired data, firstborn child versus all others")
+log_verbose(ces.summarize_all_issues(two_years, 'new_child'), "Summary of issues, all paired data")
+log_verbose(ces.summarize_all_issues(two_years, 'firstborn'), "Summary of issues, all paired data, firstborn child versus all others")
 
 # (not logged) Persistence: how common is persistent change?
 # Of the new parents who changed, how many keep that change?
 # New parents often slightly more likely to experience persistent change than others
-ces.continuous_persists("climate_change") # 25% vs 18%
-ces.continuous_persists("jobs_env") # 23% vs 23%
-ces.continuous_persists("aff_action") # 16% vs 16%
-ces.continuous_persists("guns") # 16% vs 14%
-ces.continuous_persists("tax_or_spend") # 29% vs 35%
-ces.continuous_persists("climate_composite") # 30% vs 21%
-ces.continuous_persists("gay_composite") # 17% vs 11%
-ces.continuous_persists("military_composite") # 32% vs 30%
-ces.continuous_persists("immigration_composite") # 50% vs 48%
+ces.summarize_persistence("climate_change") # 25% vs 18%
+ces.summarize_persistence("jobs_env") # 23% vs 23%
+ces.summarize_persistence("aff_action") # 16% vs 16%
+ces.summarize_persistence("guns") # 16% vs 14%
+ces.summarize_persistence("tax_or_spend") # 29% vs 35%
+ces.summarize_persistence("climate_composite") # 30% vs 21%
+ces.summarize_persistence("gay_composite") # 17% vs 11%
+ces.summarize_persistence("military_composite") # 32% vs 30%
+ces.summarize_persistence("immigration_composite") # 50% vs 48%
 
 log_header('''
 #################
@@ -161,7 +161,7 @@ log_header('''
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
 #log_findings(ces.all_t_test_pvalues(young_adults), "T test p values, respondents under 30 years old")   # TODO: RuntimeWarning: invalid value encountered in scalar multiply
 
-log_verbose(ces.summarize_all_continuous(young_adults, 'new_child'), "Summary of continuous issues, respondents under 30 years old")
+log_verbose(ces.summarize_all_issues(young_adults, 'new_child'), "Summary of issues, respondents under 30 years old")
 
 log_header('''
 ####################
@@ -177,7 +177,7 @@ log_findings(ces.all_t_test_pvalues(two_years_women), "T test p values, new moth
 
 log_findings(ces.all_t_test_pvalues(two_years_new_parents, demographic_label='gender', a_value=1, b_value=2), "T test p values, new fathers versus new mothers")
 
-log_verbose(ces.summarize_all_continuous(two_years, ['new_child', 'gender']), "Summary of continuous issues by new_child and gender")
+log_verbose(ces.summarize_all_issues(two_years, ['new_child', 'gender']), "Summary of issues by new_child and gender")
 
 log_header('''
 ####################
@@ -201,7 +201,7 @@ log_findings(ces.all_t_test_pvalues(two_years_top_20), "T test p values, top 20%
 
 log_findings(ces.all_t_test_pvalues(two_years_new_parents, demographic_label='high_income'), "T test p values, top 20% new parents versus bottom 80% new parents")
 
-log_verbose(ces.summarize_all_continuous(two_years, ['new_child', 'high_income']), "Summary of continuous issues by new_child and income")
+log_verbose(ces.summarize_all_issues(two_years, ['new_child', 'high_income']), "Summary of issues by new_child and income")
 
 log_verbose('''
 ##########################

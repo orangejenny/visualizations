@@ -38,7 +38,7 @@ class CESPanel(ParentsPoliticsPanel):
             self.panel.columns.str.contains('^pid3_1[024]', regex=True) +
             self.panel.columns.str.startswith('pid7_') + 
 
-            # Policy issues: continuous
+            # Policy issues: single issues
             self.panel.columns.str.contains("CC1[024]_320", regex=True) + # gun control (1-3 more strict, less strict, same)
             self.panel.columns.str.contains("CC1[024]_321", regex=True) + # climate change (1-5 real to not real)
             self.panel.columns.str.contains("CC1[024]_325", regex=True) + # job vs environment (1-5 favor environment to favor jobs)
@@ -233,17 +233,17 @@ class CESPanel(ParentsPoliticsPanel):
         })
         return df
 
-    def _add_all_continuous(self, df):
-        df = self._add_continuous(df, 'ideo5_XX', 'ideo', 1, 5)
-        df = self._add_continuous(df, 'pid7_XX', 'pid', 1, 7)
-        df = self._add_continuous(df, 'CCXX_321', 'climate_change', 1, 5)
-        df = self._add_continuous(df, 'CCXX_325', 'jobs_env', 1, 5)
-        df = self._add_continuous(df, 'CCXX_327', 'aff_action', 1, 4)
-        df = self._add_continuous(df, 'CCXX_320', 'guns', 1, 3)
-        df = self._add_continuous(df, 'CCXX_415r', 'tax_or_spend', 0, 100)
+    def _add_all_single_issues(self, df):
+        df = self._add_issue(df, 'ideo5_XX', 'ideo', 1, 5)
+        df = self._add_issue(df, 'pid7_XX', 'pid', 1, 7)
+        df = self._add_issue(df, 'CCXX_321', 'climate_change', 1, 5)
+        df = self._add_issue(df, 'CCXX_325', 'jobs_env', 1, 5)
+        df = self._add_issue(df, 'CCXX_327', 'aff_action', 1, 4)
+        df = self._add_issue(df, 'CCXX_320', 'guns', 1, 3)
+        df = self._add_issue(df, 'CCXX_415r', 'tax_or_spend', 0, 100)
         return df
 
-    def _add_all_composite(self, df):
+    def _add_all_composite_issues(self, df):
         for year in self.waves:
             # TODO: add in the jobs/environment question to this composite?
             # CC10_321 is climate change: 1-5 with 1 liberal
@@ -276,11 +276,11 @@ class CESPanel(ParentsPoliticsPanel):
         df[f'immigration_composite_2012'] = np.sum(df.loc[:, df.columns.str.contains('CC12_322_[1-6]')], axis=1) / 6
         df[f'immigration_composite_2014'] = np.sum(df.loc[:, df.columns.str.contains('CC14_322_[1-6]')], axis=1) / 6
 
-        df = self._add_continuous(df, 'climate_composite_20XX', 'climate_composite')
-        df = self._add_continuous(df, 'gay_composite_20XX', 'gay_composite')
-        df = self._add_continuous(df, 'ideo_composite_20XX', 'ideo_composite')
-        df = self._add_continuous(df, 'military_composite_20XX', 'military_composite')
-        df = self._add_continuous(df, 'immigration_composite_20XX', 'immigration_composite') # TODO: there are a bunch of NaNs, why?
+        df = self._add_issue(df, 'climate_composite_20XX', 'climate_composite')
+        df = self._add_issue(df, 'gay_composite_20XX', 'gay_composite')
+        df = self._add_issue(df, 'ideo_composite_20XX', 'ideo_composite')
+        df = self._add_issue(df, 'military_composite_20XX', 'military_composite')
+        df = self._add_issue(df, 'immigration_composite_20XX', 'immigration_composite') # TODO: there are a bunch of NaNs, why?
 
         return df
 
@@ -299,7 +299,7 @@ class CESPanel(ParentsPoliticsPanel):
         df = self.nan_out_of_bounds(df, f'{issue}_after', lower_bound, upper_bound)
         return df
 
-    def _add_continuous(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
+    def _add_issue(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
         df = self._add_before_after(df, before_pattern, issue, lower_bound, upper_bound)
 
         df = df.assign(**{
@@ -327,6 +327,6 @@ class CESPanel(ParentsPoliticsPanel):
             df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{issue}_persists'] = np.nan  # Can't calculate unless all waves are available
         df[f'{issue}_persists_abs'] = np.abs(df[f'{issue}_persists'])
 
-        self.CONTINUOUS_ISSUES.add(issue)
+        self.ISSUES.add(issue)
 
         return df

@@ -6,13 +6,12 @@ import statsmodels.formula.api as smf
 from collections import defaultdict, namedtuple
 from pandas import DataFrame
 from statsmodels.stats.weightstats import ttest_ind
-from scipy.stats import chi2_contingency
 
 Result = namedtuple('Result', ['statistic', 'df', 'pvalue'])
 
 
 class ParentsPoliticsPanel():
-    CONTINUOUS_METRICS = ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']
+    METRICS = ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']
     waves = []
 
     @property
@@ -24,7 +23,7 @@ class ParentsPoliticsPanel():
         return self.waves[1:]
 
     def __init__(self):
-        self.CONTINUOUS_ISSUES = set()
+        self.ISSUES = set()
 
         self.panel = self._load_panel()
         self.paired_waves = self._build_paired_waves(self._trimmed_panel())
@@ -32,8 +31,8 @@ class ParentsPoliticsPanel():
         self.paired_waves = self._add_parenting(self.paired_waves)
         self.paired_waves = self.paired_waves.astype({'new_child': 'int32', 'firstborn': 'int32'})
 
-        self.paired_waves = self._add_all_continuous(self.paired_waves)
-        self.paired_waves = self._add_all_composite(self.paired_waves)
+        self.paired_waves = self._add_all_single_issues(self.paired_waves)
+        self.paired_waves = self._add_all_composite_issues(self.paired_waves)
 
         # De-fragment frames
         self.paired_waves = self.paired_waves.copy()
@@ -50,10 +49,10 @@ class ParentsPoliticsPanel():
     def _add_parenting(self, df):
         raise NotImplementedError()
 
-    def _add_all_continuous(self, df):
+    def _add_all_single_issues(self, df):
         raise NotImplementedError()
 
-    def _add_all_composite(self, df):
+    def _add_all_composite_issues(self, df):
         raise NotImplementedError()
 
     ##################
@@ -108,7 +107,7 @@ class ParentsPoliticsPanel():
         return df.loc[pd.notna(df[label]),:].copy()
 
     def all_t_test_pvalues(self, df, **test_kwargs):
-        return self._all_test_pvalues(df, self.CONTINUOUS_ISSUES, self.CONTINUOUS_METRICS, self.t_tests, **test_kwargs)
+        return self._all_test_pvalues(df, self.ISSUES, self.METRICS, self.t_tests, **test_kwargs)
 
     def _all_test_pvalues(self, df, issues, metrics, test, **test_kwargs):
         issues = list(issues)
@@ -129,7 +128,7 @@ class ParentsPoliticsPanel():
             'pvalue': [],
             'issue': [],
         }
-        for issue in self.CONTINUOUS_ISSUES:
+        for issue in self.ISSUES:
             results['issue'].append(issue)
             label = f'{issue}_{metric}'
             result = self.t_test(df, label, demographic_label, a_value, b_value)
@@ -168,15 +167,15 @@ class ParentsPoliticsPanel():
     #####################
     # Summary functions #
     #####################
-    def summarize_all_continuous(self, df, group_by_labels):
+    def summarize_all_issues(self, df, group_by_labels):
         if type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
-        all_issues = pd.DataFrame({k: [] for k in ['issue'] + group_by_labels + self.CONTINUOUS_METRICS})
-        for issue in sorted(self.CONTINUOUS_ISSUES):
+        all_issues = pd.DataFrame({k: [] for k in ['issue'] + group_by_labels + self.METRICS})
+        for issue in sorted(self.ISSUES):
             # TODO: also filter_na for columns in group_by_labels?
-            issue_summary = self.summarize_continuous(self.filter_na(df, f'{issue}_delta'), group_by_labels, issue)
+            issue_summary = self.summarize_issue(self.filter_na(df, f'{issue}_delta'), group_by_labels, issue)
             issue_summary['issue'] = issue
-            issue_summary.rename(columns={f'{issue}_{m}': m for m in self.CONTINUOUS_METRICS}, inplace=True)
+            issue_summary.rename(columns={f'{issue}_{m}': m for m in self.METRICS}, inplace=True)
             all_issues = pd.concat([all_issues, issue_summary])
         return all_issues
 
@@ -184,9 +183,9 @@ class ParentsPoliticsPanel():
         total = len(df)
         rates = defaultdict(list)
         # Note the rates for persists are artificially high because they only apply to the 10/12 pairs, not the 12/14 pairs
-        for issue in sorted(self.CONTINUOUS_ISSUES):
+        for issue in sorted(self.ISSUES):
             rates['issue'].append(issue)
-            for metric in set(self.CONTINUOUS_METRICS):
+            for metric in set(self.METRICS):
                 label = f'{issue}_{metric}'
                 if label in df:
                     missing = len(df.loc[np.isnan(df[label]),:])
@@ -195,11 +194,11 @@ class ParentsPoliticsPanel():
                     rates[metric].append('--')
         return pd.DataFrame(rates)
 
-    def summarize_continuous(self, df, group_by_labels, issue):
+    def summarize_issue(self, df, group_by_labels, issue):
         if type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
 
-        issue_columns = [f'{issue}_{m}' for m in self.CONTINUOUS_METRICS]
+        issue_columns = [f'{issue}_{m}' for m in self.METRICS]
         return self._weighted_averages(df, group_by_labels, issue_columns)
 
     # For each issue column, calculate (values * weights).groupby(by).sum() / weights.groupby(by).sum()
@@ -220,7 +219,7 @@ class ParentsPoliticsPanel():
         summary = summary.drop(['weight'], axis=(1 if type(summary) == pd.DataFrame else 0))
         return summary
 
-    def continuous_persists(self, issue):
+    def summarize_persistence(self, issue):
         flags = self.filter_na(self.paired_waves, f'{issue}_persists')
         flags[f'{issue}_persistence_flag'] = np.bool_(flags[f'{issue}_persists'])
         flags.groupby(['new_child', f'{issue}_persistence_flag']).count()
@@ -241,7 +240,7 @@ class ParentsPoliticsPanel():
     def get_matched_outcomes(self, df, formula):
         # TODO: add tests
         outcomes = [
-            f'{issue}_{metric}' for issue in self.CONTINUOUS_ISSUES for metric in set(self.CONTINUOUS_METRICS) - set(['persists', 'persists_abs'])
+            f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
         columns = ['caseid', 'new_child', 'score', 'weight'] + outcomes
         df = self._add_score(df, formula)
