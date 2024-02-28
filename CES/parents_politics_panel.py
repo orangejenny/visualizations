@@ -162,12 +162,16 @@ class ParentsPoliticsPanel():
         df.sort_values('metric', inplace=True)
         return df
 
-    # TODO: support weighting
     def t_test(self, df, issue_label, demographic_label='new_child', a_value=0, b_value=1):
         filtered = self.filter_na(self.filter_na(df, demographic_label), issue_label)
-        group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), issue_label]
-        group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), issue_label]
-        (statistic, pvalue, df) = ttest_ind(group_a, group_b, usevar='unequal')
+        group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), ['weight', issue_label]]
+        group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), ['weight', issue_label]]
+        if group_a.empty or group_b.empty:
+            (statistic, pvalue, df) = (np.nan, np.nan, np.nan)
+        else:
+            (statistic, pvalue, df) = ttest_ind(group_a[issue_label], group_b[issue_label],
+                                                usevar='unequal',
+                                                weights=(group_a.weight, group_b.weight))
         return Result(statistic=statistic, df=df, pvalue=pvalue)
 
     def chisqs(self, df, metric, demographic_label='new_child'):
@@ -314,7 +318,9 @@ class ParentsPoliticsPanel():
 
         # Reduce matches to a single control row per treatment to t test
         # TODO: matched_outcomes outcomes are weighted, but new_parents are not
+        # Is doing weighting myself for t tests legit?
         matched_outcomes['new_child'] = 0
+        matched_outcomes['weight'] = 1  # Outcomes have been weighted, so set weight to 1
         reduced_df = pd.concat([new_parents, matched_outcomes])
         pvalues = []
         for o in outcomes:
@@ -324,7 +330,7 @@ class ParentsPoliticsPanel():
         return pd.DataFrame(data={
             'control': agg_matched_outcomes,
             'treatment': agg_treatment_outcomes,
-            'diff': round(agg_matched_outcomes - agg_treatment_outcomes, 2),
+            'diff': round(agg_matched_outcomes - agg_treatment_outcomes, 2),    # TODO: doesn't make sense for categorical (neither do means)
             'pvalue': pvalues,
         })
 

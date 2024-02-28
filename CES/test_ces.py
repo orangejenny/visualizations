@@ -28,32 +28,32 @@ class TestCESPanel(unittest.TestCase):
             self._test_pvalue(expected, self.data.t_test(data, label, demographic))
 
         data = self.data.get_paired_waves()
-        _test_t_test(0.5091, data, 'ideo_delta')
-        _test_t_test(0.8786, data, 'ideo_composite_delta')
-        _test_t_test(0.4249, data, 'pid_delta')
+        _test_t_test(0.0113, data, 'ideo_delta')
+        _test_t_test(0.368, data, 'ideo_composite_delta')
+        _test_t_test(0.8079, data, 'pid_delta')
 
         young_adults = data.loc[np.less(data['age'], 30),:]
-        _test_t_test(0.6028, young_adults, 'ideo_delta_abs')
-        _test_t_test(0.3203, young_adults, 'ideo_composite_delta_abs')
+        _test_t_test(0.8714, young_adults, 'pid_delta')
+        _test_t_test(0.0451, young_adults, 'military_composite_delta_abs')
 
-        _test_t_test(0.9458, data, 'climate_composite_after')
-        _test_t_test(0.7488, data, 'immigration_composite_delta')
-        _test_t_test(0.3704, data, 'military_composite_delta')
-        _test_t_test(0.6686, data, 'jobs_env_delta', 'firstborn')
-        _test_t_test(0.4053, data, 'jobs_env_delta_abs', 'firstborn')
+        _test_t_test(0.0114, data, 'climate_composite_after')
+        _test_t_test(0.1355, data, 'immigration_composite_delta')
+        _test_t_test(0.0035, data, 'military_composite_delta')
+        _test_t_test(0.6504, data, 'jobs_env_delta', 'firstborn')
+        _test_t_test(0.5963, data, 'jobs_env_delta_abs', 'firstborn')
 
     def test_t_tests(self):
         results = self.data.t_tests(self.data.get_paired_waves(), 'delta')
 
-        aff_action = {
+        jobs_env = {
             k: list(v.values())[0]  # v will have a single value
-            for k, v in results.loc[results['issue'] == 'aff_action',:].to_dict().items()
+            for k, v in results.loc[results['issue'] == 'jobs_env',:].to_dict().items()
         }
-        self.assertEqual(aff_action['issue'], 'aff_action')
-        self.assertEqual(aff_action['metric'], 'aff_action_delta')
-        self.assertEqual(round(float(aff_action['statistic']), 3), -0.09)
-        self.assertEqual(round(float(aff_action['df']), 1), 444.5)
-        self.assertEqual(round(float(aff_action['pvalue']), 4), 0.9283)
+        self.assertEqual(jobs_env['issue'], 'jobs_env')
+        self.assertEqual(jobs_env['metric'], 'jobs_env_delta')
+        self.assertEqual(round(float(jobs_env['statistic']), 3), -1.051)
+        self.assertEqual(round(float(jobs_env['df']), 1), 759.4)
+        self.assertEqual(round(float(jobs_env['pvalue']), 4), 0.2937)
 
         pid = {
             k: list(v.values())[0]
@@ -61,9 +61,9 @@ class TestCESPanel(unittest.TestCase):
         }
         self.assertEqual(pid['issue'], 'pid')
         self.assertEqual(pid['metric'], 'pid_delta')
-        self.assertEqual(round(float(pid['statistic']), 3), -0.799)
-        self.assertEqual(round(float(pid['df']), 1), 435.8)
-        self.assertEqual(round(float(pid['pvalue']), 4), 0.4249)
+        self.assertEqual(round(float(pid['statistic']), 3), 0.243)
+        self.assertEqual(round(float(pid['df']), 1), 777.7)
+        self.assertEqual(round(float(pid['pvalue']), 4), 0.8079)
 
     def test_chisq(self):
         def _test_chiqsq(expected, data, label, demographic='new_child'):

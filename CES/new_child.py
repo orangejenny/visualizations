@@ -181,8 +181,8 @@ two_years_women = two_years.loc[np.equal(two_years['gender'], 2),:]
 log_findings(ces.all_t_test_pvalues(two_years_men), "T test p values, new fathers versus other men")
 log_findings(ces.all_chisq_pvalues(two_years_men), "Chi square p values, new fathers versus other men")
 
-log_findings(ces.all_t_test_pvalues(two_years_women), "T test p values, new fathers versus other women")
-log_findings(ces.all_chisq_pvalues(two_years_women), "Chi square p values, new fathers versus other women")
+log_findings(ces.all_t_test_pvalues(two_years_women), "T test p values, new mothers versus other women")
+log_findings(ces.all_chisq_pvalues(two_years_women), "Chi square p values, new mothers versus other women")
 
 log_findings(ces.all_t_test_pvalues(two_years_new_parents, demographic_label='gender', a_value=1, b_value=2), "T test p values, new fathers versus new mothers")
 log_findings(ces.all_chisq_pvalues(two_years_new_parents, demographic_label='gender'), "Chi square p values, new fathers versus new mothers")
