@@ -22,7 +22,7 @@ class CESPanel(ParentsPoliticsPanel):
                 start_wave=w,
                 end_wave=self.end_waves[i],
             ) for i, w in enumerate(self.start_waves)
-        ])
+        ], ignore_index=True)
         df = self._consolidate_demographics(df)
         return df
 
@@ -31,7 +31,7 @@ class CESPanel(ParentsPoliticsPanel):
         return self.panel.loc[
             :,
             self.panel.columns.str.contains('caseid') +
-            self.panel.columns.str.contains('weight') +   # TODO
+            self.panel.columns.str.contains('weight') +
 
             # Ideology and partisanship
             self.panel.columns.str.startswith('ideo5_') + 
@@ -281,7 +281,7 @@ class CESPanel(ParentsPoliticsPanel):
         df = self._add_continuous(df, 'gay_composite_20XX', 'gay_composite')
         df = self._add_continuous(df, 'ideo_composite_20XX', 'ideo_composite')
         df = self._add_continuous(df, 'military_composite_20XX', 'military_composite')
-        df = self._add_continuous(df, 'immigration_composite_20XX', 'immigration_composite')
+        df = self._add_continuous(df, 'immigration_composite_20XX', 'immigration_composite') # TODO: there are a bunch of NaNs, why?
 
         return df
 

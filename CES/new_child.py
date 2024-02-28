@@ -68,9 +68,9 @@ log_findings(ces.get_matched_outcomes(ces.get_paired_waves(), "age"), f"Comparis
 log_findings(ces.get_matched_outcomes(ces.get_paired_waves(), "age + marstat"), f"Comparison of outcomes between new parents and a control group matched on age & marital status")
 
 log_verbose('''
-#########################
-# Analysis: Exploratory #
-#########################''')
+######################################
+# Analysis: Exploratory (unweighted) #
+######################################''')
 
 counts = ces.get_paired_waves().groupby('new_child', as_index=False).count().rename(columns={'caseid': 'total'})
 log_verbose(counts.loc[:,['new_child', 'total']], "Total number of new parents and non-new-parents in sample (paired waves)")
@@ -87,14 +87,14 @@ counts = ces.get_paired_waves().groupby('firstborn', as_index=False).count().ren
 log_verbose(counts.loc[:,['firstborn', 'total']], "Total number of new first-time parents and others in sample (all waves)")
 
 # Ideology distribution across panel: roughly normal, skewing conservative
-log_verbose(panel.groupby("ideo5_10").count().loc[:,'weight'], "Overall distribution of ideo5_10")
+log_verbose(panel.groupby("ideo5_10").count().loc[:,'caseid'], "Overall distribution of ideo5_10")
 
 # Party distribution across panel: not normal, but U-shaped, with more strong Democrats but similar total Dem/Rep
-log_verbose(panel.groupby("pid7_10").count().loc[:,'weight'],  "Overall distribution of pid7_10")
+log_verbose(panel.groupby("pid7_10").count().loc[:,'caseid'],  "Overall distribution of pid7_10")
 
 # Party distribution among parents: still U-shaped, a little more liberal, also looks like more moderates
 # TODO: Should this be looking at the whole panel, at people who became a parent in any wave?
-log_verbose(two_years.loc[np.equal(two_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'weight'], "Distribution of pid7_10 among new parents")
+log_verbose(two_years.loc[np.equal(two_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'caseid'], "Distribution of pid7_10 among new parents")
 
 # Counts of liberal/conservative movement, ignoring magnitude
 # New parents: 12% more liberal, 11% more conservative
@@ -103,9 +103,9 @@ log_verbose(two_years.loc[np.equal(two_years['new_child'], 1),:].groupby("pid7_1
 log_verbose(ces.count_percentages(ces.filter_na(two_years, 'ideo_delta'), 'new_child', 'ideo_direction'), "Ideological direction change")
 
 log_verbose('''
-##########################################################################################
-# Analysis: Count flippers: How often do people change ideology/party between two waves? #
-##########################################################################################''')
+#######################################################################################################
+# Analysis: Count flippers: How often do people change ideology/party between two waves? (unweighted) #
+#######################################################################################################''')
 
 def log_flippers(issue, start_wave, end_wave, lower_bound, upper_bound):
     log_verbose(f"Percentage of {issue} changing from 20{start_wave} to 20{end_wave}: "
@@ -238,4 +238,5 @@ log_verbose('''
 ##########################''')
 
 # TODO: Do non-response rates differ for parents and non-parents?
+# TODO: weight these?
 log_verbose(ces.summarize_non_response(two_years), "Non-response rates")

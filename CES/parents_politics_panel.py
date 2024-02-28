@@ -136,13 +136,21 @@ class ParentsPoliticsPanel():
             'issue': [],
         }
         for issue in self.CONTINUOUS_ISSUES:
+            results['issue'].append(issue)
             label = f'{issue}_{metric}'
             result = self.t_test(df, label, demographic_label, a_value, b_value)
-            results['issue'].append(issue)
-            results['diff'].append(
-                round(df.loc[df[demographic_label] == a_value, label].mean()
-                - df.loc[df[demographic_label] == b_value, label].mean(),
-            2))
+
+            filtered = self.filter_na(df, label)
+            a_values = filtered.loc[filtered[demographic_label] == a_value, [label, 'weight']]
+            b_values = filtered.loc[filtered[demographic_label] == b_value, [label, 'weight']]
+            if np.isnan(result.statistic):
+                results['diff'].append(np.nan)
+            else:
+                results['diff'].append(round(
+                    np.average(a_values[label], weights=a_values['weight'])
+                    - np.average(b_values[label], weights=b_values['weight']),
+                2))
+
             results['metric'].append(label)
             results['statistic'].append(result.statistic)
             results['df'].append(result.df)
@@ -151,11 +159,12 @@ class ParentsPoliticsPanel():
         df.sort_values('metric', inplace=True)
         return df
 
+    # TODO: support weighting
     def t_test(self, df, issue_label, demographic_label='new_child', a_value=0, b_value=1):
         filtered = self.filter_na(self.filter_na(df, demographic_label), issue_label)
         group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), issue_label]
         group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), issue_label]
-        return ttest_ind(group_a, group_b, equal_var=False)
+        return ttest_ind(group_a, group_b, equal_var=False) # TODO: use nan_policy='omit' since I'm filtering anyway?
 
     def chisqs(self, df, metric, demographic_label='new_child'):
         results = {
@@ -184,6 +193,7 @@ class ParentsPoliticsPanel():
         df.sort_values('metric', inplace=True)
         return df
 
+    # TODO: support weighting?
     def chisq(self, df, factor1, factor2='new_child'):
         return chi2_contingency(pd.crosstab(df[factor1], df[factor2]))
 
@@ -220,10 +230,27 @@ class ParentsPoliticsPanel():
     def summarize_continuous(self, df, group_by_labels, issue):
         if type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
-        return df.loc[
-            :,
-            group_by_labels + [f'{issue}_{m}' for m in self.CONTINUOUS_METRICS]
-        ].groupby(group_by_labels, as_index=False).mean()
+
+        issue_columns = [f'{issue}_{m}' for m in self.CONTINUOUS_METRICS]
+        return self._weighted_averages(df, group_by_labels, issue_columns)
+
+    # For each issue column, calculate (values * weights).groupby(by).sum() / weights.groupby(by).sum()
+    def _weighted_averages(self, df, group_by_labels, columns):
+        if group_by_labels is None:
+            group_by_labels = []
+        elif type(group_by_labels) == type(''):
+            group_by_labels = [group_by_labels]
+
+        summary = df.loc[:,['weight'] + group_by_labels + columns].copy()
+        for col in columns:
+            summary[col] = np.multiply(summary[col], summary['weight'])
+        if group_by_labels:
+            summary = summary.groupby(group_by_labels, as_index=False)
+        summary = summary.sum()
+        for col in columns:
+            summary[col] = np.divide(summary[col], summary['weight'])
+        summary = summary.drop(['weight'], axis=(1 if type(summary) == pd.DataFrame else 0))
+        return summary
 
     def continuous_persists(self, issue):
         flags = self.filter_na(self.paired_waves, f'{issue}_persists')
@@ -265,7 +292,7 @@ class ParentsPoliticsPanel():
         ] + [
             f'{issue}_{metric}' for issue in self.CONTINUOUS_ISSUES for metric in set(self.CONTINUOUS_METRICS) - set(['persists', 'persists_abs'])
         ]
-        columns = ['caseid', 'new_child', 'score'] + outcomes    # TODO: add weight, and verify all mean calls are handling missing data appropriately
+        columns = ['caseid', 'new_child', 'score', 'weight'] + outcomes
         df = self._add_score(df, formula)
         new_parents = df.loc[df['new_child'] == 1, columns].copy()  # TODO: use parenthood status instead of new parenthood?
         candidates = df.loc[df['new_child'] == 0, columns].copy()
@@ -276,13 +303,15 @@ class ParentsPoliticsPanel():
 
         # Group on treatment caseid, averaging all relevant control matches
         # TODO: why does this frame have fewer rows than new_parents? Did they not all match?
-        matched_outcomes = matched_set.loc[:, ['caseid_treatment'] + outcomes].groupby('caseid_treatment').mean()
+        matched_outcomes = self._weighted_averages(matched_set, 'caseid_treatment', outcomes)
+        matched_outcomes = matched_outcomes.drop(['caseid_treatment'], axis=1)
         agg_matched_outcomes = matched_outcomes.mean()
-        agg_treatment_outcomes = new_parents.loc[:, outcomes].mean()
+        agg_treatment_outcomes = self._weighted_averages(new_parents, None, outcomes)
 
         # Reduce matches to a single control row per treatment to t test
-        reduced_matches = matched_set.groupby('caseid_treatment').mean().loc[:,columns]
-        reduced_df = pd.concat([new_parents, reduced_matches])
+        # TODO: matched_outcomes outcomes are weighted, but new_parents are not
+        matched_outcomes['new_child'] = 0
+        reduced_df = pd.concat([new_parents, matched_outcomes])
         pvalues = []
         for o in outcomes:
             result = self.t_test(reduced_df, o)
