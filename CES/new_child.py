@@ -76,14 +76,12 @@ log_verbose('''
 counts = ces.get_paired_waves().groupby('new_child', as_index=False).count().rename(columns={'caseid': 'total'})
 log_verbose(counts.loc[:,['new_child', 'total']], "Total number of new parents and non-new-parents in sample (paired waves)")
 
-# TODO: Should this be looking at the whole panel, at people who became a parent in any wave?
 counts = ces.get_paired_waves().groupby('new_child', as_index=False).count().rename(columns={'caseid': 'total'})
 log_verbose(counts.loc[:,['new_child', 'total']], "Total number of new parents and non-new-parents in sample (all waves)")
 
 counts = ces.get_paired_waves().groupby('firstborn', as_index=False).count().rename(columns={'caseid': 'total'})
 log_verbose(counts.loc[:,['firstborn', 'total']], "Total number of new first-time parents and others in sample (paired waves)")
 
-# TODO: Should this be looking at the whole panel, at people who became a parent in any wave?
 counts = ces.get_paired_waves().groupby('firstborn', as_index=False).count().rename(columns={'caseid': 'total'})
 log_verbose(counts.loc[:,['firstborn', 'total']], "Total number of new first-time parents and others in sample (all waves)")
 
@@ -94,7 +92,6 @@ log_verbose(panel.groupby("ideo5_10").count().loc[:,'caseid'], "Overall distribu
 log_verbose(panel.groupby("pid7_10").count().loc[:,'caseid'],  "Overall distribution of pid7_10")
 
 # Party distribution among parents: still U-shaped, a little more liberal, also looks like more moderates
-# TODO: Should this be looking at the whole panel, at people who became a parent in any wave?
 log_verbose(two_years.loc[np.equal(two_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'caseid'], "Distribution of pid7_10 among new parents")
 
 # Counts of liberal/conservative movement, ignoring magnitude
@@ -128,7 +125,7 @@ log_header('''
 
 log_findings(ces.all_t_test_pvalues(ces.paired_waves), "T test p values, all paired data")
 
-# How different do things look for a single pair of waves?
+# How different do things look for a single pair of waves? Should I treat these as two different data sets?
 both = ces.paired_waves
 first = both.loc[both['start_wave'] == 10,:]
 second = both.loc[both['start_wave'] == 12,:]
@@ -185,7 +182,6 @@ log_header('''
 ####################''')
 
 log_verbose(panel.loc[:, ['caseid', 'faminc_14']].groupby("faminc_14").count(), "Income distribution across panel")
-# TODO: Should this be looking at the whole panel, at people who became a parent in any wave?
 log_verbose(two_years.loc[:,['income', 'new_child', 'caseid']].groupby(['new_child', 'income']).count(), "Income distribution, new parents and others")
 log_verbose(two_years.loc[:,['new_child', 'income_quintile', 'caseid']].groupby(['new_child', 'income_quintile']).count(), "Income distribution by quintile")
 
