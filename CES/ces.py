@@ -38,20 +38,18 @@ class CESPanel(ParentsPoliticsPanel):
             self.panel.columns.str.contains('^pid3_1[024]', regex=True) +
             self.panel.columns.str.startswith('pid7_') + 
 
-            # Policy issues: categorical
-            self.panel.columns.str.contains("CC1[024]_320", regex=True) + # gun control (1-3 more strict, less strict, same)
-            self.panel.columns.str.contains("CC1[024]_326", regex=True) + # gay marriage (1/2 no/yes): note issue was very active during this time, with Obergefell in 2015
-            self.panel.columns.str.contains("CC1[024]_328", regex=True) + # budget (1 cut defense, 2 cut domestic, 3 raise taxes)
-            self.panel.columns.str.contains("CC1[024]_329", regex=True) + # budget move to avoid (1 cut defense, 2 cut domestic, 3 raise taxes)
-            self.panel.columns.str.contains("CC1[024]_330B", regex=True) + # SCHIP (1 renew, 2 expire)
-
             # Policy issues: continuous
+            self.panel.columns.str.contains("CC1[024]_320", regex=True) + # gun control (1-3 more strict, less strict, same)
             self.panel.columns.str.contains("CC1[024]_321", regex=True) + # climate change (1-5 real to not real)
             self.panel.columns.str.contains("CC1[024]_325", regex=True) + # job vs environment (1-5 favor environment to favor jobs)
             self.panel.columns.str.contains("CC1[024]_327", regex=True) + # affirmative action (1-4 support to oppose)
             self.panel.columns.str.contains("CC1[024]_415r", regex=True) + # taxes vs spending (examples given are of domestic spending) (0 to 100)
 
             # Policy issues: additional issues for composites
+            self.panel.columns.str.contains("CC1[024]_326", regex=True) + # gay marriage (1/2 no/yes): note issue was very active during this time, with Obergefell in 2015
+            self.panel.columns.str.contains("CC1[024]_328", regex=True) + # budget (1 cut defense, 2 cut domestic, 3 raise taxes)
+            self.panel.columns.str.contains("CC1[024]_329", regex=True) + # budget move to avoid (1 cut defense, 2 cut domestic, 3 raise taxes)
+            self.panel.columns.str.contains("CC1[024]_330B", regex=True) + # SCHIP (1 renew, 2 expire)
             self.panel.columns.str.contains("CC1[024]_330C", regex=True) + # clean energy act (1/2 support/oppose, discard other values)
             self.panel.columns.str.contains("CC1[024]_330G", regex=True) + # end don't ask don't tell (1/2 support/oppose, discard other values)
             self.panel.columns.str.contains("CC1[024]_322_[1-7]", regex=True) + # immigration policies (1/2 support/oppose)
@@ -268,6 +266,13 @@ class CESPanel(ParentsPoliticsPanel):
 
             # Ideology composite that combines ideo and pid
             df[f'ideo_composite_20{year}'] = (df[f'ideo5_{year}'] * 5 + 2.5 * df[f'pid7_{year}']) / 7 / 2  # 5-point composite scale
+
+            # TODO: budget composite that combines SCHIP, budget, budget_avoid, and tax_or_spend
+            # Should anything else go in it?
+            # How to code budget & budget avoid? Maybe do pairwise comparisons, a 1-3 scale:
+            # raise_taxes vs cut_military: ambiguous
+            # raise_taxes vs cut_domestic: more liberal to raise taxes
+            # cut_military vs cut_domestic: more liberal to cut military
 
         # CC10_322_1-CC10_322_7 are all yes/no immigration questions, 8 and 9 are "nothing"/"none of the above" which aren't clearly liberal or conservative
         # 2010 asked 1 2 3 4 7, 2012 asked 1 2 3 4 5 6, 2014 asked 1 2 3 4 5 6
