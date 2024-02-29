@@ -162,4 +162,5 @@ log_verbose('''
 #######################################''')
 
 # TODO: Do non-response rates differ for parents and non-parents?
+# TODO: check non-response on demographics, in particular income
 log_verbose(ces.summarize_non_response(two_years), "Non-response rates")
