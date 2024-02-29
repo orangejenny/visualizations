@@ -97,16 +97,7 @@ log_verbose(ces.summarize_all_issues(two_years, 'firstborn'), "Summary of issues
 # (not logged) Persistence: how common is persistent change?
 # Of the new parents who changed, how many keep that change?
 # New parents often slightly more likely to experience persistent change than others
-# TODO: write a summarize_all_persistence function
-ces.summarize_persistence("climate_change") # 25% vs 18%
-ces.summarize_persistence("jobs_env") # 23% vs 23%
-ces.summarize_persistence("aff_action") # 16% vs 16%
-ces.summarize_persistence("guns") # 16% vs 14%
-ces.summarize_persistence("tax_or_spend") # 29% vs 35%
-ces.summarize_persistence("climate_composite") # 30% vs 21%
-ces.summarize_persistence("gay_composite") # 17% vs 11%
-ces.summarize_persistence("military_composite") # 32% vs 30%
-ces.summarize_persistence("immigration_composite") # 50% vs 48%
+log_verbose(ces.summarize_all_persistence(), "Summary of persistent change frequency")
 
 log_header('''
 #################
