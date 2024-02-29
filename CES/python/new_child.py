@@ -105,7 +105,7 @@ log_header('''
 #################''')
 
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
-#log_findings(ces.all_t_test_pvalues(young_adults), "T test p values, respondents under 30 years old")   # TODO: RuntimeWarning: invalid value encountered in scalar multiply
+log_findings(ces.all_t_test_pvalues(young_adults), "T test p values, respondents under 30 years old")
 
 log_verbose(ces.summarize_all_issues(young_adults, 'new_child'), "Summary of issues, respondents under 30 years old")
 
