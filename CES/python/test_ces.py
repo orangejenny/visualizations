@@ -4,7 +4,6 @@ import numpy as np
 import unittest
 
 from ces import CESPanel
-from yougov import YouGovPanel
 
 class TestCESPanel(unittest.TestCase):
     @classmethod
