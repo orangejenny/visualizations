@@ -18,7 +18,6 @@ log_header('''
 log_findings(ces.get_matched_outcomes(ces.get_paired_waves(), "age"), f"Comparison of outcomes between new parents and a control group matched on age")
 log_findings(ces.get_matched_outcomes(ces.get_paired_waves(), "age + marstat"), f"Comparison of outcomes between new parents and a control group matched on age & marital status")
 
-# TODO: clean up output, which just dumps a dict
 log_verbose(ces.consider_models(ces.get_paired_waves()), f"Comparison of models to predict new parenthood")
 
 log_verbose('''

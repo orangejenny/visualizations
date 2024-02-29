@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import re
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 
@@ -311,8 +312,12 @@ class ParentsPoliticsPanel():
         max_models = int(len(models) * 0.05)
         decent_r_squared = by_r_squared[-max_models:]
         decent_aic = by_aic[:max_models]
-        decent_formulas = set([x[0] for x in decent_r_squared]) & set([x[0] for x in decent_aic])
-        return {
-            k: v for k, v in models.items()
-            if k in decent_formulas
-        }
+        decent_formulas = list(set([x[0] for x in decent_r_squared]) & set([x[0] for x in decent_aic]))
+
+        summary = pd.DataFrame(data={
+            'formula': [re.sub(r'.*~\s*', '', f) for f in decent_formulas],
+            'r_squared': [models[f][1] for f in decent_formulas],
+            'aic': [models[f][2] for f in decent_formulas],
+        })
+        summary.sort_values('aic', inplace=True)
+        return summary
