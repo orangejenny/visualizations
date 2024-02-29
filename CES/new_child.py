@@ -68,6 +68,9 @@ log_header('''
 log_findings(ces.get_matched_outcomes(ces.get_paired_waves(), "age"), f"Comparison of outcomes between new parents and a control group matched on age")
 log_findings(ces.get_matched_outcomes(ces.get_paired_waves(), "age + marstat"), f"Comparison of outcomes between new parents and a control group matched on age & marital status")
 
+# TODO: clean up output, which just dumps a dict
+log_verbose(ces.consider_models(ces.get_paired_waves()), f"Comparison of models to predict new parenthood")
+
 log_verbose('''
 ######################################
 # Analysis: Exploratory (unweighted) #
@@ -140,6 +143,7 @@ log_verbose(ces.summarize_all_issues(two_years, 'firstborn'), "Summary of issues
 # (not logged) Persistence: how common is persistent change?
 # Of the new parents who changed, how many keep that change?
 # New parents often slightly more likely to experience persistent change than others
+# TODO: write a summarize_all_persistence function
 ces.summarize_persistence("climate_change") # 25% vs 18%
 ces.summarize_persistence("jobs_env") # 23% vs 23%
 ces.summarize_persistence("aff_action") # 16% vs 16%

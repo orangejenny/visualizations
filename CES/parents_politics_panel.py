@@ -4,6 +4,7 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 
 from collections import defaultdict, namedtuple
+from itertools import combinations
 from pandas import DataFrame
 from statsmodels.stats.weightstats import ttest_ind
 
@@ -282,3 +283,34 @@ class ParentsPoliticsPanel():
                         data=df).fit()
         df['score'] = logit.predict(df)
         return df
+
+    def consider_models(self, df):
+        '''
+        TODO
+        - Remove investor? It's just a yes/no
+        - income_quintile instead of income?
+        - Combine pew_religimp with pew_churatd and/or pew_prayer?
+        - Add employment status and maybe home ownership
+        - Urban/rural? Need to cross-reference zip code with some other dataset.
+        '''
+        demographics = ['gender', 'race', 'investor', 'educ', 'marstat', 'age', 'pew_religimp', 'income']
+        models = {}
+        for choose_count in range(1, len(demographics) + 1):
+            for chosen in list(combinations(demographics, choose_count)):
+                formula = "new_child ~ " + " + ".join(chosen)  # TODO: other parenting statuses
+                logit = smf.glm(formula=formula,
+                                family=sm.families.Binomial(),
+                                data=df).fit()
+                models[formula] = (formula, logit.pseudo_rsquared(), logit.aic, logit)
+
+        by_r_squared = sorted(models.values(), key=lambda t: t[1]) # higher is better
+        by_aic = sorted(models.values(), key=lambda t: t[2]) # lower is better
+
+        max_models = int(len(models) * 0.05)
+        decent_r_squared = by_r_squared[-max_models:]
+        decent_aic = by_aic[:max_models]
+        decent_formulas = set([x[0] for x in decent_r_squared]) & set([x[0] for x in decent_aic])
+        return {
+            k: v for k, v in models.items()
+            if k in decent_formulas
+        }
