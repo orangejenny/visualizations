@@ -293,9 +293,9 @@ class ParentsPoliticsPanel():
         - Combine pew_religimp with pew_churatd and/or pew_prayer?
         - Add employment status and maybe home ownership
         - Urban/rural? Need to cross-reference zip code with some other dataset.
-        - Z-score for age?
+        - Z-score for age? Doesn't seem to make a difference compared to age
         '''
-        demographics = ['gender', 'race', 'investor', 'educ', 'marstat', 'age', 'pew_religimp', 'income']
+        demographics = ['gender', 'race', 'educ', 'marstat', 'age', 'pew_religimp', 'income', 'income_quintile']
         models = {}
         for choose_count in range(1, len(demographics) + 1):
             for chosen in list(combinations(demographics, choose_count)):

@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 
+from scipy.stats import zscore
+
 from parents_politics_panel import ParentsPoliticsPanel
 
 class CESPanel(ParentsPoliticsPanel):
@@ -71,7 +73,9 @@ class CESPanel(ParentsPoliticsPanel):
         ].copy()
 
     def _add_age(self, df):
-        return df.assign(age=lambda x: 2010 - x.birthyr_10)
+        df = df.assign(age=lambda x: 2010 - x.birthyr_10)
+        df['age_zscore'] = zscore(df['age'])
+        return df
 
     def _recode_issues(self, df):
         # Recode a few columns to streamline later calculations
