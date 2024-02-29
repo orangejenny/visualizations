@@ -1,15 +1,85 @@
 # python -m unittest test_ces.py
 
 import numpy as np
+import pandas as pd
 import unittest
 
 from ces import CESPanel
+
 
 class TestCESPanel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.data = CESPanel()
+
+    def test_start_waves(self):
+        self.assertListEqual(self.data.start_waves, [10, 12])
+
+    def test_end_waves(self):
+        self.assertListEqual(self.data.end_waves, [12, 14])
+
+    def test_pvalue_stars(self):
+        self.assertEqual(self.data.pvalue_stars(0.11), "")
+        self.assertEqual(self.data.pvalue_stars(0.045), "*")
+        self.assertEqual(self.data.pvalue_stars(0.008), "**")
+        self.assertEqual(self.data.pvalue_stars(0.0009), "***")
+
+    def test_nan_out_of_bounds(self):
+        df = pd.DataFrame(data={'one_digit': [1, 4, 34, -2, 9, 15], 'two_digit': [5, 10, 12, 3, 40, 100]})
+
+        updated = self.data.nan_out_of_bounds(df, 'one_digit', 1, 9)
+        self.assertEqual(len(df), 6)
+        self.assertEqual(len(updated), 6)
+        self.assertTrue(all(np.equal(df['one_digit'], [1, 4, 34, -2, 9, 15])))
+        self.assertTrue(all(np.equal(updated['two_digit'], [5, 10, 12, 3, 40, 100])))
+        self.assertEqual(updated['one_digit'][0], 1)
+        self.assertEqual(updated['one_digit'][1], 4)
+        self.assertTrue(np.isnan(updated['one_digit'][2]))
+        self.assertTrue(np.isnan(updated['one_digit'][3]))
+        self.assertEqual(updated['one_digit'][4], 9)
+        self.assertTrue(np.isnan(updated['one_digit'][5]))
+        self.assertEqual(updated['two_digit'][0], 5)
+        self.assertEqual(updated['two_digit'][1], 10)
+
+        updated = self.data.nan_out_of_bounds(updated, 'two_digit', 10, 99)
+        self.assertEqual(updated['one_digit'][1], 4)
+        self.assertTrue(np.isnan(updated['one_digit'][2]))
+        self.assertTrue(np.isnan(updated['two_digit'][0]))
+        self.assertEqual(updated['two_digit'][1], 10)
+        self.assertEqual(updated['two_digit'][2], 12)
+        self.assertTrue(np.isnan(updated['two_digit'][3]))
+        self.assertEqual(updated['two_digit'][4], 40)
+        self.assertTrue(np.isnan(updated['two_digit'][5]))
+
+    def test_filter_na(self):
+        df = pd.DataFrame(data={'one': [1, np.nan, np.nan, 4], 'two': [8, 7, np.nan, 5], 'three': [5, 3, 2, 1]})
+        filter_one = self.data.filter_na(df, 'one')
+        filter_three = self.data.filter_na(df, 'three')
+
+        self.assertEqual(len(df), 4)
+        self.assertEqual(len(filter_one), 2)
+        self.assertEqual(len(filter_three), 4)
+
+        self.assertTrue(all(np.equal(df['three'], [5, 3, 2, 1])))
+        self.assertTrue(all(np.equal(filter_one['one'], [1, 4])))
+        self.assertTrue(all(np.equal(filter_one['two'], [8, 5])))
+        self.assertEqual(filter_three['one'][0], 1)
+        self.assertTrue(np.isnan(filter_three['one'][1]))
+        self.assertTrue(np.isnan(filter_three['one'][2]))
+        self.assertEqual(filter_three['one'][3], 4)
+
+    # TODO: add tests
+    #def _weighted_averages(self, df, group_by_labels, columns):
+    #def _add_age(self, df):
+    #def _recode_issues(self, df):
+    #def _consolidate_demographics(self, df):
+    #def _add_income_brackets(self, df):
+    #def _add_parenting(self, df):
+    #def _add_all_composite_issues(self, df):
+    #def _add_before_after(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
+    #def _add_issue(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
+    #def get_matched_outcomes(self, df, formula):
 
     def test_parenting_counts(self):
         counts = self.data.get_paired_waves().groupby('new_child', as_index=False).count()

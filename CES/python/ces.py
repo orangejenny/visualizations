@@ -105,7 +105,6 @@ class CESPanel(ParentsPoliticsPanel):
         return df
 
     def _consolidate_demographics(self, df):
-        # TODO: add test
         for demo, lower_bound, upper_bound in (
                 ('gender', 1, 2),
                 ('race', 1, 8),

@@ -241,7 +241,6 @@ class ParentsPoliticsPanel():
     ######################
     # TODO: Make weighting an option, not default
     def get_matched_outcomes(self, df, formula):
-        # TODO: add tests
         outcomes = [
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
