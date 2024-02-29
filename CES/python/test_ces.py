@@ -37,7 +37,7 @@ class TestCESPanel(unittest.TestCase):
         _test_t_test(0.0451, young_adults, 'military_composite_delta_abs')
 
         _test_t_test(0.0114, data, 'climate_composite_after')
-        _test_t_test(0.1355, data, 'immigration_composite_delta')
+        _test_t_test(0.0012, data, 'immigration_composite_delta')
         _test_t_test(0.0035, data, 'military_composite_delta')
         _test_t_test(0.6504, data, 'jobs_env_delta', 'firstborn')
         _test_t_test(0.5963, data, 'jobs_env_delta_abs', 'firstborn')

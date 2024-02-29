@@ -271,8 +271,8 @@ class CESPanel(ParentsPoliticsPanel):
             # cut_military vs cut_domestic: more liberal to cut military
 
         # CC10_322_1-CC10_322_7 are all yes/no immigration questions, 8 and 9 are "nothing"/"none of the above" which aren't clearly liberal or conservative
-        # 2010 asked 1 2 3 4 7, 2012 asked 1 2 3 4 5 6, 2014 asked 1 2 3 4 5 6
-        df[f'immigration_composite_2010'] = (np.sum(df.loc[:, df.columns.str.contains('CC10_322_[1-4]')], axis=1) + df['CC10_322_7']) / 5
+        # 2010 has data for 1-3, 2012 and 2014 have data for 1-6
+        df[f'immigration_composite_2010'] = np.sum(df.loc[:, df.columns.str.contains('CC10_322_[1-3]')], axis=1) / 3
         df[f'immigration_composite_2012'] = np.sum(df.loc[:, df.columns.str.contains('CC12_322_[1-6]')], axis=1) / 6
         df[f'immigration_composite_2014'] = np.sum(df.loc[:, df.columns.str.contains('CC14_322_[1-6]')], axis=1) / 6
 
@@ -280,7 +280,7 @@ class CESPanel(ParentsPoliticsPanel):
         df = self._add_issue(df, 'gay_composite_20XX', 'gay_composite')
         df = self._add_issue(df, 'ideo_composite_20XX', 'ideo_composite')
         df = self._add_issue(df, 'military_composite_20XX', 'military_composite')
-        df = self._add_issue(df, 'immigration_composite_20XX', 'immigration_composite') # TODO: there are a bunch of NaNs, why?
+        df = self._add_issue(df, 'immigration_composite_20XX', 'immigration_composite')
 
         return df
 
