@@ -26,6 +26,9 @@ log_verbose('''
 # Analysis: Exploratory (unweighted) #
 ######################################''')
 
+counts = ces.get_paired_waves().groupby('parenthood', as_index=False).count().rename(columns={'caseid': 'total'})
+log_verbose(counts.loc[:,['new_child', 'total']], "Total number of each parenthood group (paired waves)")
+
 counts = ces.get_paired_waves().groupby('new_child', as_index=False).count().rename(columns={'caseid': 'total'})
 log_verbose(counts.loc[:,['new_child', 'total']], "Total number of new parents and non-new-parents in sample (paired waves)")
 

@@ -215,7 +215,6 @@ class CESPanel(ParentsPoliticsPanel):
         - 2 new additional child
         - 3 parent, no change in number of children
         '''
-        # TODO: What are the counts  of each of these groups?
         df = df.assign(**{
             'firstborn': lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
