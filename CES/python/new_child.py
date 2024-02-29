@@ -51,10 +51,12 @@ log_verbose(panel.groupby("pid7_10").count().loc[:,'caseid'],  "Overall distribu
 log_verbose(two_years.loc[np.equal(two_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'caseid'], "Distribution of pid7_10 among new parents")
 
 # Counts of liberal/conservative movement, ignoring magnitude
-# New parents: 12% more liberal, 11% more conservative
-# Non-new-parents: 12% more liberal, 10% more conservative
-# TODO: use ideo_composite instead of ideo
-log_verbose(ces.count_percentages(ces.filter_na(two_years, 'ideo_delta'), 'new_child', 'ideo_direction'), "Ideological direction change")
+# Maybe curiously, these numbers are a lot higher for the composite - people often change pid or ideo but not both
+# New parents: 22% more liberal, 19% more conservative
+# Non-new-parents: 21% more liberal, 17% more conservative
+log_verbose(ces.count_percentages(two_years, 'new_child', 'ideo_composite_direction'), "Ideological composite direction change")
+log_verbose(ces.count_percentages(two_years, 'new_child', 'ideo_direction'), "Ideological direction change")
+log_verbose(ces.count_percentages(two_years, 'new_child', 'pid_direction'), "Party direction change")
 
 log_verbose('''
 #######################################################################################################
