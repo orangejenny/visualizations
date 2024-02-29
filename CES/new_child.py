@@ -6,6 +6,7 @@ from ces import CESPanel
 from datetime import datetime
 from yougov import YouGovPanel
 
+# TODO: extract into a utils file
 OUTPUT_DIR = 'output'
 OUTPUT_FILES = ['significant.log', 'all.log', 'two_stars.log', 'three_stars.log']
 
@@ -204,10 +205,9 @@ log_findings(ces.all_t_test_pvalues(two_years_new_parents, demographic_label='hi
 log_verbose(ces.summarize_all_issues(two_years, ['new_child', 'high_income']), "Summary of issues by new_child and income")
 
 log_verbose('''
-##########################
-# Analysis: Non-response #
-##########################''')
+#######################################
+# Analysis: Non-response (unweighted) #
+#######################################''')
 
 # TODO: Do non-response rates differ for parents and non-parents?
-# TODO: weight these?
 log_verbose(ces.summarize_non_response(two_years), "Non-response rates")

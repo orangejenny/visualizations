@@ -120,6 +120,7 @@ class ParentsPoliticsPanel():
             all_results.rename(columns={'diff': f'{metric}-', 'pvalue': f'{metric}*'}, inplace=True)
         return all_results
 
+    # TODO: Make weighting an option, not default
     def t_tests(self, df, metric, demographic_label='new_child', a_value=0, b_value=1):
         results = {
             'metric': [],
@@ -238,6 +239,7 @@ class ParentsPoliticsPanel():
     ######################
     # Matching functions #
     ######################
+    # TODO: Make weighting an option, not default
     def get_matched_outcomes(self, df, formula):
         # TODO: add tests
         outcomes = [
@@ -292,6 +294,7 @@ class ParentsPoliticsPanel():
         - Combine pew_religimp with pew_churatd and/or pew_prayer?
         - Add employment status and maybe home ownership
         - Urban/rural? Need to cross-reference zip code with some other dataset.
+        - Z-score for age?
         '''
         demographics = ['gender', 'race', 'investor', 'educ', 'marstat', 'age', 'pew_religimp', 'income']
         models = {}
