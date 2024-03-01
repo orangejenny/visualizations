@@ -253,7 +253,7 @@ class ParentsPoliticsPanel():
     # Note this is unweighted
     def summarize_persistence(self, issue):
         flags = self.filter_na(self.paired_waves, f'{issue}_persists')
-        flags[f'{issue}_persistence_flag'] = np.bool_(flags[f'{issue}_persists'])   # TODO: Why is this an int for aff_action?
+        flags[f'{issue}_persistence_flag'] = np.int32(np.bool_(flags[f'{issue}_persists']))
         flags.groupby(['new_child', f'{issue}_persistence_flag']).count()
         return self.count_percentages(flags, 'new_child', f'{issue}_persistence_flag')
 
