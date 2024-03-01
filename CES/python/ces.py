@@ -260,25 +260,12 @@ class CESPanel(ParentsPoliticsPanel):
         df = self._add_issue(df, 'CCXX_415r', 'tax_or_spend', 0, 100)
         return df
 
-    def _add_all_composite_issues(self, df):
+    def add_all_composite_issues(self, df):
         for year in self.waves:
-            # CC10_321 is climate change: 1-5 with 1 liberal
-            # CC10_325 is jobs vs environment: 1-5 with 1 liberal
-            # CC10_330C is clean energy act, with 1 support, 2, oppose, and other values invalid
-            # Composite is 1-5, with lower values more liberal
-            df = self.nan_out_of_bounds(df, f'CC{year}_330C', 1, 2)
-            df[f'climate_composite_20{year}'] = (df[f'CC{year}_321'] + df[f'CC{year}_325'] + ((df[f'CC{year}_330C'] - 1) * 4 + 1)) / 3
-
-            # CC10_326 is gay marriage ban: 1 support, 2 oppose
-            # CC10_330G is ending don't ask don't tell: 1 support, 2 oppose, others invalid
-            df = self.nan_out_of_bounds(df, f'CC{year}_330G', 1, 2)
-            df[f'gay_composite_20{year}'] = (df[f'CC{year}_326'] + df[f'CC{year}_330G']) / 2
-
-            # yes/no questions on military force usage
-            df[f'military_composite_20{year}'] = np.sum(df.loc[:, df.columns.str.startswith(f'CC{year}_414_')], axis=1) / 7
-
-            # Ideology composite that combines ideo and pid
-            df[f'ideo_composite_20{year}'] = ((df[f'ideo5_{year}'] - 1) * 6 + (df[f'pid7_{year}'] - 1) * 4) / 4 / 2 + 1  # 5-point composite scale
+            df = self.add_climate_composite(df, year)
+            df = self.add_gay_composite(df, year)
+            df = self.add_military_composite(df, year)
+            df = self.add_ideo_composite(df, year)
 
             # TODO: budget composite that combines SCHIP, budget, budget_avoid, and tax_or_spend
             # Should anything else go in it?
@@ -287,11 +274,7 @@ class CESPanel(ParentsPoliticsPanel):
             # raise_taxes vs cut_domestic: more liberal to raise taxes
             # cut_military vs cut_domestic: more liberal to cut military
 
-        # CC10_322_1-CC10_322_7 are all yes/no immigration questions, 8 and 9 are "nothing"/"none of the above" which aren't clearly liberal or conservative
-        # 2010 has data for 1-3, 2012 and 2014 have data for 1-6
-        df[f'immigration_composite_2010'] = np.sum(df.loc[:, df.columns.str.contains('CC10_322_[1-3]')], axis=1) / 3
-        df[f'immigration_composite_2012'] = np.sum(df.loc[:, df.columns.str.contains('CC12_322_[1-6]')], axis=1) / 6
-        df[f'immigration_composite_2014'] = np.sum(df.loc[:, df.columns.str.contains('CC14_322_[1-6]')], axis=1) / 6
+        df = self.add_immigration_composite(df)
 
         df = self._add_issue(df, 'climate_composite_20XX', 'climate_composite')
         df = self._add_issue(df, 'gay_composite_20XX', 'gay_composite')
@@ -299,6 +282,40 @@ class CESPanel(ParentsPoliticsPanel):
         df = self._add_issue(df, 'military_composite_20XX', 'military_composite')
         df = self._add_issue(df, 'immigration_composite_20XX', 'immigration_composite')
 
+        return df
+
+    def add_climate_composite(self, df, year):
+        # CC10_321 is climate change: 1-5 with 1 liberal
+        # CC10_325 is jobs vs environment: 1-5 with 1 liberal
+        # CC10_330C is clean energy act, with 1 support, 2, oppose, and other values invalid
+        # Composite is 1-5, with lower values more liberal
+        df = self.nan_out_of_bounds(df, f'CC{year}_330C', 1, 2)
+        df[f'climate_composite_20{year}'] = (df[f'CC{year}_321'] + df[f'CC{year}_325'] + ((df[f'CC{year}_330C'] - 1) * 4 + 1)) / 3
+        return df
+
+    def add_gay_composite(self, df, year):
+        # CC10_326 is gay marriage ban: 1 support, 2 oppose
+        # CC10_330G is ending don't ask don't tell: 1 support, 2 oppose, others invalid
+        df = self.nan_out_of_bounds(df, f'CC{year}_330G', 1, 2)
+        df[f'gay_composite_20{year}'] = (df[f'CC{year}_326'] + df[f'CC{year}_330G']) / 2
+        return df
+
+    def add_military_composite(self, df, year):
+        # yes/no questions on military force usage
+        df[f'military_composite_20{year}'] = np.sum(df.loc[:, df.columns.str.startswith(f'CC{year}_414_')], axis=1) / 7
+        return df
+
+    def add_ideo_composite(self, df, year):
+        # Ideology composite that combines ideo and pid
+        df[f'ideo_composite_20{year}'] = ((df[f'ideo5_{year}'] - 1) * 6 + (df[f'pid7_{year}'] - 1) * 4) / 4 / 2 + 1  # 5-point composite scale
+        return df
+
+    def add_immigration_composite(self, df):
+        # CC10_322_1-CC10_322_7 are all yes/no immigration questions, 8 and 9 are "nothing"/"none of the above" which aren't clearly liberal or conservative
+        # 2010 has data for 1-3, 2012 and 2014 have data for 1-6
+        df[f'immigration_composite_2010'] = np.sum(df.loc[:, df.columns.str.contains('CC10_322_[1-3]')], axis=1) / 3
+        df[f'immigration_composite_2012'] = np.sum(df.loc[:, df.columns.str.contains('CC12_322_[1-6]')], axis=1) / 6
+        df[f'immigration_composite_2014'] = np.sum(df.loc[:, df.columns.str.contains('CC14_322_[1-6]')], axis=1) / 6
         return df
 
     def _add_before_after(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):

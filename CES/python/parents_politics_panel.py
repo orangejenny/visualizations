@@ -55,7 +55,7 @@ class ParentsPoliticsPanel():
         self.paired_waves = self.paired_waves.astype({'new_child': 'int32', 'firstborn': 'int32'})
 
         self.paired_waves = self._add_all_single_issues(self.paired_waves)
-        self.paired_waves = self._add_all_composite_issues(self.paired_waves)
+        self.paired_waves = self.add_all_composite_issues(self.paired_waves)
 
         # De-fragment frames
         self.paired_waves = self.paired_waves.copy()
@@ -119,7 +119,7 @@ class ParentsPoliticsPanel():
     def _add_all_single_issues(self, df):
         raise NotImplementedError()
 
-    def _add_all_composite_issues(self, df):
+    def add_all_composite_issues(self, df):
         raise NotImplementedError()
 
     ##################
