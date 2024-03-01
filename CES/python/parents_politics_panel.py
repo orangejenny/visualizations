@@ -38,9 +38,14 @@ class ParentsPoliticsPanel():
     def demographics(self):
         return [d[0] for d in self.demographics_with_bounds]
 
-    def __init__(self):
+    def __init__(self, output_suffix=''):
         self.ISSUES = set()
 
+        if output_suffix:
+            self.OUTPUT_DIR = f'{self.OUTPUT_DIR}_{output_suffix}'
+        if not os.path.isdir(self.OUTPUT_DIR):
+            print("Making directory " + self.OUTPUT_DIR)
+            os.mkdir(self.OUTPUT_DIR)
         self._truncate_output()
 
         self.panel = self._load_panel()

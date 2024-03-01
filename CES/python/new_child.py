@@ -1,10 +1,16 @@
+import argparse
 import numpy as np
 import pandas as pd
 
 from ces import CESPanel
 
 
-ces = CESPanel()
+parser = argparse.ArgumentParser(description="Analyze parenting political data")
+parser.add_argument('-o', '--output', help='Suffix for output directory')
+args = parser.parse_args()
+
+
+ces = CESPanel(args.output)
 panel = ces.get_panel()
 two_years = ces.get_paired_waves()
 
