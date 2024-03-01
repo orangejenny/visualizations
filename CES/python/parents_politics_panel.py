@@ -15,6 +15,7 @@ Result = namedtuple('Result', ['statistic', 'df', 'pvalue'])
 class ParentsPoliticsPanel():
     METRICS = ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']
     waves = []
+    demographics_with_bounds = []
 
     @property
     def start_waves(self):
@@ -23,6 +24,10 @@ class ParentsPoliticsPanel():
     @property
     def end_waves(self):
         return self.waves[1:]
+
+    @property
+    def demographics(self):
+        return [d[0] for d in self.demographics_with_bounds]
 
     def __init__(self):
         self.ISSUES = set()
@@ -182,9 +187,10 @@ class ParentsPoliticsPanel():
             all_issues = pd.concat([all_issues, issue_summary])
         return all_issues
 
-    def summarize_non_response(self, df):
+    def summarize_issues_non_response(self, df):
         total = len(df)
         rates = defaultdict(list)
+
         # Note the rates for persists are artificially high because they only apply to the 10/12 pairs, not the 12/14 pairs
         for issue in sorted(self.ISSUES):
             rates['issue'].append(issue)
@@ -195,6 +201,18 @@ class ParentsPoliticsPanel():
                     rates[metric].append(str(round(missing * 100 / total, 2)) + '%')
                 else:
                     rates[metric].append('--')
+
+        return pd.DataFrame(rates)
+
+    def summarize_demographics_non_response(self, df):
+        total = len(df)
+        rates = defaultdict(list)
+
+        for demographic in self.demographics:
+            missing = len(df.loc[np.isnan(df[demographic]),:])
+            rates['demographic'].append(demographic)
+            rates['rate'].append(str(round(missing * 100 / total, 2)) + '%')
+
         return pd.DataFrame(rates)
 
     def summarize_issue(self, df, group_by_labels, issue):
@@ -308,10 +326,9 @@ class ParentsPoliticsPanel():
         - Urban/rural? Need to cross-reference zip code with some other dataset.
         - Z-score for age? Doesn't seem to make a difference compared to age
         '''
-        demographics = ['gender', 'race', 'educ', 'marstat', 'age', 'pew_religimp', 'income', 'income_quintile']
         models = {}
-        for choose_count in range(1, len(demographics) + 1):
-            for chosen in list(combinations(demographics, choose_count)):
+        for choose_count in range(1, len(self.demographics) + 1):
+            for chosen in list(combinations(self.demographics, choose_count)):
                 formula = "new_child ~ " + " + ".join(chosen)  # TODO: other parenting statuses
                 logit = smf.glm(formula=formula,
                                 family=sm.families.Binomial(),

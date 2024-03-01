@@ -80,6 +80,8 @@ class TestCESPanel(unittest.TestCase):
     #def _add_before_after(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
     #def _add_issue(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
     #def get_matched_outcomes(self, df, formula):
+    #def summarize_issues_non_response(self, df):
+    #def summarize_demographics_non_response(self, df):
 
     def test_parenting_counts(self):
         counts = self.data.get_paired_waves().groupby('new_child', as_index=False).count()

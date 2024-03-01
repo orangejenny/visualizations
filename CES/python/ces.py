@@ -7,6 +7,19 @@ from parents_politics_panel import ParentsPoliticsPanel
 
 class CESPanel(ParentsPoliticsPanel):
     waves = [10, 12, 14]
+    demographics_with_bounds = [
+        ('gender', 1, 2),
+        ('race', 1, 8),
+        ('investor', 1, 2),
+        ('educ', 1, 6),
+        ('marstat', 1, 6),
+        ('pew_religimp', 1, 4),
+
+        # constructed
+        ('age', None, None),
+        ('income', None, None),
+        ('income_quintile', None, None),
+    ]
 
     def _load_panel(cls):
         return pd.read_stata("~/Documents/visualizations/midterm/CCES_Panel_Full3waves_VV_V4.dta", convert_categoricals=False)  # n=9500
@@ -109,14 +122,10 @@ class CESPanel(ParentsPoliticsPanel):
         return df
 
     def _consolidate_demographics(self, df):
-        for demo, lower_bound, upper_bound in (
-                ('gender', 1, 2),
-                ('race', 1, 8),
-                ('investor', 1, 2),
-                ('educ', 1, 6),
-                ('marstat', 1, 6),
-                ('pew_religimp', 1, 4),
-        ):
+        for demo, lower_bound, upper_bound in self.demographics_with_bounds:
+            if lower_bound is None and upper_bound is None:
+                continue
+
             old_labels = [f'{demo}_{wave}' for wave in self.waves]
             for old_label in old_labels:
                 df = self.nan_out_of_bounds(df, old_label, lower_bound, upper_bound)
