@@ -15,8 +15,12 @@ log_header('''
 # Matching #
 ############''')
 
-log_findings(ces.get_matched_outcomes(ces.get_paired_waves(), "age"), f"Comparison of outcomes between new parents and a control group matched on age")
-log_findings(ces.get_matched_outcomes(ces.get_paired_waves(), "age + marstat"), f"Comparison of outcomes between new parents and a control group matched on age & marital status")
+waves_1012 = two_years.loc[two_years['start_wave'] == 10,:].copy()
+waves_1214 = two_years.loc[two_years['start_wave'] == 12,:].copy()
+
+log_findings(ces.get_matched_outcomes(waves_1012, "age"), f"Comparison of outcomes between new parents and a control group matched on age")
+log_findings(ces.get_matched_outcomes(waves_1012, "age + marstat"), f"Comparison of outcomes between new parents and a control group matched on age & marital status")
+log_findings(ces.get_matched_outcomes(waves_1012, "age + marstat + ideo_before"), f"Comparison of outcomes between new parents and a control group matched on age & marital status & ideology")
 
 log_verbose(ces.consider_models(ces.get_paired_waves()), f"Comparison of models to predict new parenthood")
 
@@ -83,11 +87,8 @@ log_header('''
 log_findings(ces.all_t_test_pvalues(ces.paired_waves), "T test p values, all paired data")
 
 # How different do things look for a single pair of waves? Should I treat these as two different data sets?
-both = ces.paired_waves
-first = both.loc[both['start_wave'] == 10,:]
-second = both.loc[both['start_wave'] == 12,:]
-log_findings(ces.all_t_test_pvalues(first), "T test p values, 2010/2012 only")
-log_findings(ces.all_t_test_pvalues(second), "T test p values, 2012/2014 only")
+log_findings(ces.all_t_test_pvalues(waves_1012), "T test p values, 2010/2012 only")
+log_findings(ces.all_t_test_pvalues(waves_1214), "T test p values, 2012/2014 only")
 
 log_findings(ces.all_t_test_pvalues(ces.paired_waves, demographic_label="firstborn"), "T test p values, all paired data, firstborn")
 

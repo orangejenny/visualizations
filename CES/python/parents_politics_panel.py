@@ -12,6 +12,10 @@ from statsmodels.stats.weightstats import ttest_ind
 Result = namedtuple('Result', ['statistic', 'df', 'pvalue'])
 
 
+class ParentsPoliticsPanelException(Exception):
+    pass
+
+
 class ParentsPoliticsPanel():
     METRICS = ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']
     waves = []
@@ -274,8 +278,12 @@ class ParentsPoliticsPanel():
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
         columns = ['caseid', 'new_child', 'score', 'weight'] + outcomes
+
+        if len(df['caseid'].unique()) != len(df['caseid']):
+            raise ParentsPoliticsPanelException("Data frame gives to get_matched_outcomes does not have unique cases")
+
         df = self._add_score(df, formula)
-        new_parents = df.loc[df['new_child'] == 1, columns].copy()  # TODO: use parenthood status instead of new parenthood?
+        new_parents = df.loc[df['new_child'] == 1, columns].copy()  # TODO: use parenthood status instead of new parenthood? consider parenthood status in matching
         candidates = df.loc[df['new_child'] == 0, columns].copy()
 
         # Match up treatment and control groups
@@ -283,7 +291,6 @@ class ParentsPoliticsPanel():
         matched_set = new_parents.merge(candidates, on='score', how='left', suffixes=('_treatment', ''))
 
         # Group on treatment caseid, averaging all relevant control matches
-        # TODO: why does this frame have fewer rows than new_parents? Did they not all match?
         matched_outcomes = self._weighted_averages(matched_set, 'caseid_treatment', outcomes)
         matched_outcomes = matched_outcomes.drop(['caseid_treatment'], axis=1)
         agg_matched_outcomes = matched_outcomes.mean()
@@ -300,12 +307,14 @@ class ParentsPoliticsPanel():
             result = self.t_test(reduced_df, o)
             pvalues.append(str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue))
 
-        return pd.DataFrame(data={
+        summary = pd.DataFrame(data={
             'control': agg_matched_outcomes,
             'treatment': agg_treatment_outcomes,
             'diff': round(agg_matched_outcomes - agg_treatment_outcomes, 2),
             'pvalue': pvalues,
         })
+        summary.sort_index(inplace=True)
+        return summary
 
     def _add_score(self, df, formula):
         logit = smf.glm(formula="new_child ~ " + formula,
