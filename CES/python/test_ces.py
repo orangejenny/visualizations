@@ -100,14 +100,14 @@ class TestCESPanel(unittest.TestCase):
 
         data = self.data.get_paired_waves()
         _test_t_test(0.0113, data, 'ideo_delta')
-        _test_t_test(0.368, data, 'ideo_composite_delta')
+        _test_t_test(0.4035, data, 'ideo_composite_delta')
         _test_t_test(0.8079, data, 'pid_delta')
 
         young_adults = data.loc[np.less(data['age'], 30),:]
         _test_t_test(0.8714, young_adults, 'pid_delta')
         _test_t_test(0.0451, young_adults, 'military_composite_delta_abs')
 
-        _test_t_test(0.0114, data, 'climate_composite_after')
+        _test_t_test(0.0005, data, 'climate_composite_after')
         _test_t_test(0.0012, data, 'immigration_composite_delta')
         _test_t_test(0.0035, data, 'military_composite_delta')
         _test_t_test(0.6504, data, 'jobs_env_delta', 'firstborn')

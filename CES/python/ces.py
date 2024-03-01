@@ -262,12 +262,12 @@ class CESPanel(ParentsPoliticsPanel):
 
     def _add_all_composite_issues(self, df):
         for year in self.waves:
-            # TODO: add in the jobs/environment question to this composite?
             # CC10_321 is climate change: 1-5 with 1 liberal
+            # CC10_325 is jobs vs environment: 1-5 with 1 liberal
             # CC10_330C is clean energy act, with 1 support, 2, oppose, and other values invalid
             # Composite is 1-5, with lower values more liberal
             df = self.nan_out_of_bounds(df, f'CC{year}_330C', 1, 2)
-            df[f'climate_composite_20{year}'] = (df[f'CC{year}_321'] * 2.5 + df[f'CC{year}_330C']) / 2
+            df[f'climate_composite_20{year}'] = (df[f'CC{year}_321'] + df[f'CC{year}_325'] + ((df[f'CC{year}_330C'] - 1) * 4 + 1)) / 3
 
             # CC10_326 is gay marriage ban: 1 support, 2 oppose
             # CC10_330G is ending don't ask don't tell: 1 support, 2 oppose, others invalid
@@ -278,7 +278,7 @@ class CESPanel(ParentsPoliticsPanel):
             df[f'military_composite_20{year}'] = np.sum(df.loc[:, df.columns.str.startswith(f'CC{year}_414_')], axis=1) / 7
 
             # Ideology composite that combines ideo and pid
-            df[f'ideo_composite_20{year}'] = (df[f'ideo5_{year}'] * 5 + 2.5 * df[f'pid7_{year}']) / 7 / 2  # 5-point composite scale
+            df[f'ideo_composite_20{year}'] = ((df[f'ideo5_{year}'] - 1) * 6 + (df[f'pid7_{year}'] - 1) * 4) / 4 / 2 + 1  # 5-point composite scale
 
             # TODO: budget composite that combines SCHIP, budget, budget_avoid, and tax_or_spend
             # Should anything else go in it?
