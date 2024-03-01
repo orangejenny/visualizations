@@ -1,10 +1,12 @@
 import numpy as np
+import os
 import pandas as pd
 import re
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 
 from collections import defaultdict, namedtuple
+from datetime import datetime
 from itertools import combinations
 from pandas import DataFrame
 from statsmodels.stats.weightstats import ttest_ind
@@ -17,6 +19,9 @@ class ParentsPoliticsPanelException(Exception):
 
 
 class ParentsPoliticsPanel():
+    OUTPUT_DIR = 'output'
+    OUTPUT_FILES = ['significant.log', 'all.log', 'two_stars.log', 'three_stars.log']
+
     METRICS = ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']
     waves = []
     demographics_with_bounds = []
@@ -36,6 +41,8 @@ class ParentsPoliticsPanel():
     def __init__(self):
         self.ISSUES = set()
 
+        self._truncate_output()
+
         self.panel = self._load_panel()
         self.paired_waves = self._build_paired_waves(self._trimmed_panel())
 
@@ -47,6 +54,50 @@ class ParentsPoliticsPanel():
 
         # De-fragment frames
         self.paired_waves = self.paired_waves.copy()
+
+    def _truncate_output(self):
+        for filename in self.OUTPUT_FILES:
+            with open(os.path.join(self.OUTPUT_DIR, filename), 'w') as fh:
+                fh.write(f"Run started {datetime.now()}\n")
+
+    def log_header(self, header):
+        print(header)
+        for filename in self.OUTPUT_FILES:
+            self._output(filename, header)
+
+    def log_verbose(self, data, description=''):
+        self._output('all.log', data, description)
+
+    def log_findings(self, data, description=''):
+        self._output('all.log', data, description)
+        self._output('significant.log', self._limit_to_significant(data), description)
+        self._output('two_stars.log', self._limit_to_significant(data, level=2), description)
+        self._output('three_stars.log', self._limit_to_significant(data, level=3), description)
+
+    def _limit_to_significant(self, data, level=1):
+        key = '*' * level
+        if 'pvalue' in data:
+            data = data.astype({'pvalue': pd.StringDtype()})
+            data['sig'] = data['pvalue'].str.find(key) != -1
+        else:
+            for col in data.columns:
+                if col.endswith('*'):
+                    data[col.replace('*', '?')] = data[col].str.find(key) != -1
+            data['sig'] = data.any(axis=1, bool_only=True)
+            data.drop([col for col in data.columns if col.endswith("?")], axis=1, inplace=True)
+        data = data.loc[data['sig'],:]
+        data = data.drop(['sig'], axis=1)
+        return data
+
+    def _output(self, filename, data, description=''):
+        if type(data) == pd.DataFrame:
+            data = data.to_string(max_rows=100)
+        else:
+            data = str(data)
+        if description:
+            data = "\n" + description + "\n" + data
+        with open(os.path.join(self.OUTPUT_DIR, filename), 'a') as fh:
+            fh.write(data + "\n")
 
     def _load_panel(self):
         raise NotImplementedError()
