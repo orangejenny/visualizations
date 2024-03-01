@@ -26,7 +26,20 @@ ces.log_findings(ces.get_matched_outcomes(waves_1012, "age"), f"Comparison of ou
 ces.log_findings(ces.get_matched_outcomes(waves_1012, "age + marstat"), f"Comparison of outcomes between new parents and a control group matched on age & marital status")
 ces.log_findings(ces.get_matched_outcomes(waves_1012, "age + marstat + ideo_before"), f"Comparison of outcomes between new parents and a control group matched on age & marital status & ideology")
 
-ces.log_verbose(ces.consider_models(ces.get_paired_waves()), f"Comparison of models to predict new parenthood")
+ces.log_header('''
+############
+# Modeling #
+############''')
+
+ces.log_verbose(ces.consider_models(ces.get_paired_waves()), f"Comparison of models to predict new_child")
+ces.log_verbose(ces.consider_models(ces.get_paired_waves(), treatment='firstborn'), f"Comparison of models to predict firstborn")
+
+waves_1012_all_parents = waves_1012.loc[waves_1012['is_parent'] == 1,:].copy()
+ces.log_verbose(ces.consider_models(ces.get_paired_waves()), f"Comparison of models to predict new parenthood, limited to parents")
+
+waves_1012_under_40 = waves_1012.loc[waves_1012['age'] < 40,:].copy()
+ces.log_verbose(ces.consider_models(waves_1012_under_40), f"Comparison of models to predict new_child, limited to respondents under 40")
+ces.log_verbose(ces.consider_models(waves_1012_under_40, treatment='is_parent'), f"Comparison of models to predict is_parent, limited to respondents under 40")
 
 ces.log_verbose('''
 ######################################

@@ -379,7 +379,7 @@ class ParentsPoliticsPanel():
         df['score'] = logit.predict(df)
         return df
 
-    def consider_models(self, df):
+    def consider_models(self, df, treatment='new_child'):
         '''
         TODO
         - Remove investor? It's just a yes/no
@@ -392,7 +392,7 @@ class ParentsPoliticsPanel():
         models = {}
         for choose_count in range(1, len(self.demographics) + 1):
             for chosen in list(combinations(self.demographics, choose_count)):
-                formula = "new_child ~ " + " + ".join(chosen)  # TODO: other parenting statuses
+                formula = treatment + " ~ " + " + ".join(chosen)
                 logit = smf.glm(formula=formula,
                                 family=sm.families.Binomial(),
                                 data=df).fit()
