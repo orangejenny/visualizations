@@ -180,7 +180,6 @@ class ParentsPoliticsPanel():
             group_by_labels = [group_by_labels]
         all_issues = pd.DataFrame({k: [] for k in ['issue'] + group_by_labels + self.METRICS})
         for issue in sorted(self.ISSUES):
-            # TODO: also filter_na for columns in group_by_labels?
             issue_summary = self.summarize_issue(self.filter_na(df, f'{issue}_delta'), group_by_labels, issue)
             issue_summary['issue'] = issue
             issue_summary.rename(columns={f'{issue}_{m}': m for m in self.METRICS}, inplace=True)
@@ -260,7 +259,6 @@ class ParentsPoliticsPanel():
 
     def count_percentages(self, df, group_by_label, metric_label):
         counts = df.loc[:,['caseid', group_by_label, metric_label]].groupby([group_by_label, metric_label], as_index=False).count() # roughly pd.crosstab
-        # TODO: also filter_na for group_by_label?
         totals = self.filter_na(df, metric_label).loc[:,['caseid', group_by_label]].groupby([group_by_label], as_index=False).count()
         results = counts.merge(totals, on=group_by_label)
         results['percent'] = np.round(results['caseid_x'] * 100 / results['caseid_y'], decimals=1)
