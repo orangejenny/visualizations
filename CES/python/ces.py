@@ -146,13 +146,14 @@ class CESPanel(ParentsPoliticsPanel):
         # Income: Start with faminc_14 because the buckets vary by year, and the 2014 buckets are more granular
         # Income brackets are approximate, since incomes are given in ranges.
         df = df.rename(columns={'faminc_14': 'income'})
+        df = self.nan_out_of_bounds(df, 'income', 1, 50)
         df = df.assign(
             income_quintile=lambda x:np.select(
                 [
                     # note the 10 response could go into either 4th or 5th quintile
-                    x.income == n for n in range(1, 17)
+                    x.income == n for n in [x for x in range(1, 17)] + [32]
                 ],
-                [1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5],
+                [1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5],
                 default=np.nan
             ),
             # "High income" is top 20% to match Reeves
