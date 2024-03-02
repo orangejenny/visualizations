@@ -319,7 +319,7 @@ class CESPanel(ParentsPoliticsPanel):
         df[f'immigration_composite_2014'] = np.sum(df.loc[:, df.columns.str.contains('CC14_322_[1-6]')], axis=1) / 6
         return df
 
-    def _add_before_after(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
+    def add_before_after(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
         df = df.assign(**{
             f'{issue}_before': lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
@@ -335,7 +335,7 @@ class CESPanel(ParentsPoliticsPanel):
         return df
 
     def _add_issue(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
-        df = self._add_before_after(df, before_pattern, issue, lower_bound, upper_bound)
+        df = self.add_before_after(df, before_pattern, issue, lower_bound, upper_bound)
 
         df = df.assign(**{
             f'{issue}_delta': lambda x: x[f'{issue}_after'] - x[f'{issue}_before'],

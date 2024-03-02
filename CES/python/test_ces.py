@@ -93,12 +93,32 @@ class TestCESPanel(unittest.TestCase):
         self.assertListEqual(df['high_income'][1:].to_list(), [0, 0, 0, 1])
         self.assertListEqual(df['low_income'][1:].to_list(), [1, 0, 1, 0])
 
+    def test_add_before_after(self):
+        df = pd.DataFrame(data={
+            'start_wave': [10, 10, 12],
+            'end_wave': [12, 12, 14],
+            'abc10': [3, 5, 2],
+            'abc12': [1, 3, 4],
+            'abc14': [5, 3, 5],
+            'def10': [4, 2, 2],
+            'def12': [2, 1, 3],
+            'def14': [1, 4, 1],
+        })
+
+        df = self.data.add_before_after(df, 'abcXX', 'gov_approval')
+        self.assertListEqual(df['gov_approval_before'].to_list(), [3, 5, 4])
+        self.assertListEqual(df['gov_approval_after'].to_list(), [1, 3, 5])
+
+        df = self.data.add_before_after(df, 'defXX', 'senate_approval', 1, 3)
+        self.assertTrue(np.isnan(df['senate_approval_before'][0]))
+        self.assertListEqual(df['senate_approval_before'][1:].to_list(), [2, 3])
+        self.assertListEqual(df['senate_approval_after'].to_list(), [2, 1, 1])
+
     # TODO: add tests
     #def _weighted_averages(self, df, group_by_labels, columns):
     #def _recode_issues(self, df):
     #def _consolidate_demographics(self, df):
     #def _add_parenting(self, df):
-    #def _add_before_after(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
     #def _add_issue(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
     #def get_matched_outcomes(self, df, formula):
     #def summarize_issues_non_response(self, df):
