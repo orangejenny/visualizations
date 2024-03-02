@@ -30,7 +30,7 @@ class CESPanel(ParentsPoliticsPanel):
         df = df.assign(start_wave=self.waves[0], end_wave=self.waves[-1])
         df = self.add_age(df)
         df = self._recode_issues(df)
-        df = self._add_income_brackets(df)
+        df = self.add_income_brackets(df)
 
         df = pd.concat([
             df.assign(
@@ -143,11 +143,11 @@ class CESPanel(ParentsPoliticsPanel):
             df.drop(old_labels, axis=1, inplace=True)
         return df
 
-    def _add_income_brackets(self, df):
+    def add_income_brackets(self, df):
         # Income: Start with faminc_14 because the buckets vary by year, and the 2014 buckets are more granular
         # Income brackets are approximate, since incomes are given in ranges.
         df = df.rename(columns={'faminc_14': 'income'})
-        df = self.nan_out_of_bounds(df, 'income', 1, 50)
+        df = self.nan_out_of_bounds(df, 'income', 1, 50)  # good enough to get rid of 98/99
         df = df.assign(
             income_quintile=lambda x:np.select(
                 [

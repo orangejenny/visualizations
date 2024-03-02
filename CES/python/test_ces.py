@@ -80,11 +80,23 @@ class TestCESPanel(unittest.TestCase):
         self.assertTrue(np.isnan(df['age_zscore'][1]))
         self.assertEqual(df['age_zscore'][2], 1)
 
+    def test_add_income_brackets(self):
+        df = pd.DataFrame(data={'faminc_14': [75, 1, 8, 2, 14]})
+        df = self.data.add_income_brackets(df)
+        self.assertEqual(len(df), 5)
+        self.assertTrue(np.isnan(df['income'][0]))
+        self.assertTrue(np.isnan(df['income_quintile'][0]))
+        self.assertTrue(np.isnan(df['high_income'][0]))
+        self.assertTrue(np.isnan(df['low_income'][0]))
+        self.assertListEqual(df['income'][1:].to_list(), [1, 8, 2, 14])
+        self.assertListEqual(df['income_quintile'][1:].to_list(), [1, 4, 1, 5])
+        self.assertListEqual(df['high_income'][1:].to_list(), [0, 0, 0, 1])
+        self.assertListEqual(df['low_income'][1:].to_list(), [1, 0, 1, 0])
+
     # TODO: add tests
     #def _weighted_averages(self, df, group_by_labels, columns):
     #def _recode_issues(self, df):
     #def _consolidate_demographics(self, df):
-    #def _add_income_brackets(self, df):
     #def _add_parenting(self, df):
     #def _add_before_after(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
     #def _add_issue(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
