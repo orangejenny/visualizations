@@ -125,9 +125,22 @@ class TestCESPanel(unittest.TestCase):
     #def summarize_demographics_non_response(self, df):
     #def add_climate_composite(self, df, year):
     #def add_gay_composite(self, df, year):
-    #def add_military_composite(self, df, year):
     #def add_ideo_composite(self, df, year):
     #def add_immigration_composite(self, df):
+
+    def test_add_military_composite(self):
+        df = pd.DataFrame(data={
+            'CC10_414_1': [1, 2],
+            'CC10_414_2': [1, 1],
+            'CC10_414_3': [1, 1],
+            'CC10_414_4': [1, 1],
+            'CC10_414_5': [1, 2],
+            'CC10_414_6': [1, 2],
+            'CC10_414_7': [1, 1],
+            'CC12_414_7': [1, 1],
+        })
+        df = self.data.add_military_composite(df, 10)
+        self.assertListEqual([round(x, 2) for x in df['military_composite_2010'].to_list()], [1, 1.43])
 
     def test_parenting_counts(self):
         counts = self.data.get_paired_waves().groupby('new_child', as_index=False).count()
