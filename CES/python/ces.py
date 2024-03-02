@@ -28,7 +28,7 @@ class CESPanel(ParentsPoliticsPanel):
         if not len(self.waves):
             raise Exception("Must contain at least one wave")
         df = df.assign(start_wave=self.waves[0], end_wave=self.waves[-1])
-        df = self._add_age(df)
+        df = self.add_age(df)
         df = self._recode_issues(df)
         df = self._add_income_brackets(df)
 
@@ -85,9 +85,10 @@ class CESPanel(ParentsPoliticsPanel):
             self.panel.columns.str.startswith("pew_religimp_") # Limit to 1-4, 1 is "very important" - there are other religious measures, so a composite would help
         ].copy()
 
-    def _add_age(self, df):
+    def add_age(self, df):
         df = df.assign(age=lambda x: 2010 - x.birthyr_10)
-        df['age_zscore'] = zscore(df['age'])
+        df = self.nan_out_of_bounds(df, 'age', 1, 200)
+        df['age_zscore'] = zscore(df['age'], nan_policy='omit')
         return df
 
     def _recode_issues(self, df):

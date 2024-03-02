@@ -69,9 +69,19 @@ class TestCESPanel(unittest.TestCase):
         self.assertTrue(np.isnan(filter_three['one'][2]))
         self.assertEqual(filter_three['one'][3], 4)
 
+    def test_add_age(self):
+        df = pd.DataFrame(data={'birthyr_10': [1990, 9999, 1978]})
+        df = self.data.add_age(df)
+        self.assertEqual(len(df), 3)
+        self.assertEqual(df['age'][0], 20)
+        self.assertTrue(np.isnan(df['age'][1]))
+        self.assertEqual(df['age'][2], 32)
+        self.assertEqual(df['age_zscore'][0], -1)
+        self.assertTrue(np.isnan(df['age_zscore'][1]))
+        self.assertEqual(df['age_zscore'][2], 1)
+
     # TODO: add tests
     #def _weighted_averages(self, df, group_by_labels, columns):
-    #def _add_age(self, df):
     #def _recode_issues(self, df):
     #def _consolidate_demographics(self, df):
     #def _add_income_brackets(self, df):
