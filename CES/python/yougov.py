@@ -17,11 +17,8 @@ class YouGovPanel(ParentsPoliticsPanel):
     def _add_parenting(self, df):
         return df
 
-    def _add_all_continuous(self, df):
+    def _add_all_single_issues(self, df):
         return df
 
-    def _add_all_categorical(self, df):
-        return df
-
-    def _add_all_composite(self, df):
+    def add_all_composite_issues(self, df):
         return df

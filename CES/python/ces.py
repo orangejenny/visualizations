@@ -1,10 +1,25 @@
 import numpy as np
 import pandas as pd
 
+from scipy.stats import zscore
+
 from parents_politics_panel import ParentsPoliticsPanel
 
 class CESPanel(ParentsPoliticsPanel):
     waves = [10, 12, 14]
+    demographics_with_bounds = [
+        ('gender', 1, 2),
+        ('race', 1, 8),
+        ('investor', 1, 2),
+        ('educ', 1, 6),
+        ('marstat', 1, 6),
+        ('pew_religimp', 1, 4),
+
+        # constructed
+        ('age', None, None),
+        ('income', None, None),
+        ('income_quintile', None, None),
+    ]
 
     def _load_panel(cls):
         return pd.read_stata("~/Documents/visualizations/midterm/CCES_Panel_Full3waves_VV_V4.dta", convert_categoricals=False)  # n=9500
@@ -13,16 +28,16 @@ class CESPanel(ParentsPoliticsPanel):
         if not len(self.waves):
             raise Exception("Must contain at least one wave")
         df = df.assign(start_wave=self.waves[0], end_wave=self.waves[-1])
-        df = self._add_age(df)
+        df = self.add_age(df)
         df = self._recode_issues(df)
-        df = self._add_income_brackets(df)
+        df = self.add_income_brackets(df)
 
         df = pd.concat([
             df.assign(
                 start_wave=w,
                 end_wave=self.end_waves[i],
             ) for i, w in enumerate(self.start_waves)
-        ])
+        ], ignore_index=True)
         df = self._consolidate_demographics(df)
         return df
 
@@ -31,28 +46,25 @@ class CESPanel(ParentsPoliticsPanel):
         return self.panel.loc[
             :,
             self.panel.columns.str.contains('caseid') +
-            self.panel.columns.str.contains('weight') +   # TODO
+            self.panel.columns.str.contains('weight') +
 
             # Ideology and partisanship
             self.panel.columns.str.startswith('ideo5_') + 
             self.panel.columns.str.contains('^pid3_1[024]', regex=True) +
             self.panel.columns.str.startswith('pid7_') + 
 
-            # Policy issues: categorical
+            # Policy issues: single issues
             self.panel.columns.str.contains("CC1[024]_320", regex=True) + # gun control (1-3 more strict, less strict, same)
-            self.panel.columns.str.contains("CC1[024]_326", regex=True) + # gay marriage (1/2 no/yes): note issue was very active during this time, with Obergefell in 2015
-            self.panel.columns.str.contains("CC1[024]_328", regex=True) + # budget (1 cut defense, 2 cut domestic, 3 raise taxes)
-            self.panel.columns.str.contains("CC1[024]_329", regex=True) + # budget move to avoid (1 cut defense, 2 cut domestic, 3 raise taxes)
-            self.panel.columns.str.contains("CC1[024]_330B", regex=True) + # SCHIP (1 renew, 2 expire)
-
-            # Policy issues: continuous
             self.panel.columns.str.contains("CC1[024]_321", regex=True) + # climate change (1-5 real to not real)
             self.panel.columns.str.contains("CC1[024]_325", regex=True) + # job vs environment (1-5 favor environment to favor jobs)
             self.panel.columns.str.contains("CC1[024]_327", regex=True) + # affirmative action (1-4 support to oppose)
             self.panel.columns.str.contains("CC1[024]_415r", regex=True) + # taxes vs spending (examples given are of domestic spending) (0 to 100)
-            self.panel.columns.str.contains("CC1[024]_416r", regex=True) + # raise sales vs income tax (0 to 100)
 
             # Policy issues: additional issues for composites
+            self.panel.columns.str.contains("CC1[024]_326", regex=True) + # gay marriage (1/2 no/yes): note issue was very active during this time, with Obergefell in 2015
+            self.panel.columns.str.contains("CC1[024]_328", regex=True) + # budget (1 cut defense, 2 cut domestic, 3 raise taxes)
+            self.panel.columns.str.contains("CC1[024]_329", regex=True) + # budget move to avoid (1 cut defense, 2 cut domestic, 3 raise taxes)
+            self.panel.columns.str.contains("CC1[024]_330B", regex=True) + # SCHIP (1 renew, 2 expire)
             self.panel.columns.str.contains("CC1[024]_330C", regex=True) + # clean energy act (1/2 support/oppose, discard other values)
             self.panel.columns.str.contains("CC1[024]_330G", regex=True) + # end don't ask don't tell (1/2 support/oppose, discard other values)
             self.panel.columns.str.contains("CC1[024]_322_[1-7]", regex=True) + # immigration policies (1/2 support/oppose)
@@ -73,8 +85,11 @@ class CESPanel(ParentsPoliticsPanel):
             self.panel.columns.str.startswith("pew_religimp_") # Limit to 1-4, 1 is "very important" - there are other religious measures, so a composite would help
         ].copy()
 
-    def _add_age(self, df):
-        return df.assign(age=lambda x: 2010 - x.birthyr_10)
+    def add_age(self, df):
+        df = df.assign(age=lambda x: 2010 - x.birthyr_10)
+        df = self.nan_out_of_bounds(df, 'age', 1, 200)
+        df['age_zscore'] = zscore(df['age'], nan_policy='omit')
+        return df
 
     def _recode_issues(self, df):
         # Recode a few columns to streamline later calculations
@@ -108,15 +123,10 @@ class CESPanel(ParentsPoliticsPanel):
         return df
 
     def _consolidate_demographics(self, df):
-        # TODO: add test
-        for demo, lower_bound, upper_bound in (
-                ('gender', 1, 2),
-                ('race', 1, 8),
-                ('investor', 1, 2),
-                ('educ', 1, 6),
-                ('marstat', 1, 6),
-                ('pew_religimp', 1, 4),
-        ):
+        for demo, lower_bound, upper_bound in self.demographics_with_bounds:
+            if lower_bound is None and upper_bound is None:
+                continue
+
             old_labels = [f'{demo}_{wave}' for wave in self.waves]
             for old_label in old_labels:
                 df = self.nan_out_of_bounds(df, old_label, lower_bound, upper_bound)
@@ -133,17 +143,18 @@ class CESPanel(ParentsPoliticsPanel):
             df.drop(old_labels, axis=1, inplace=True)
         return df
 
-    def _add_income_brackets(self, df):
+    def add_income_brackets(self, df):
         # Income: Start with faminc_14 because the buckets vary by year, and the 2014 buckets are more granular
         # Income brackets are approximate, since incomes are given in ranges.
         df = df.rename(columns={'faminc_14': 'income'})
+        df = self.nan_out_of_bounds(df, 'income', 1, 50)  # good enough to get rid of 98/99
         df = df.assign(
             income_quintile=lambda x:np.select(
                 [
                     # note the 10 response could go into either 4th or 5th quintile
-                    x.income == n for n in range(1, 17)
+                    x.income == n for n in [x for x in range(1, 17)] + [32]
                 ],
-                [1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5],
+                [1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5],
                 default=np.nan
             ),
             # "High income" is top 20% to match Reeves
@@ -154,8 +165,11 @@ class CESPanel(ParentsPoliticsPanel):
                     np.isnan(x.income_quintile),
                     x.income_quintile == 1,
                     x.income_quintile == 2,
+                    x.income_quintile == 3,
+                    x.income_quintile == 4,
+                    x.income_quintile == 5,
                 ],
-                [np.NAN, 1, 1],
+                [np.NAN, 1, 1, 0, 0, 0],
                 default=np.nan
             ),
         )
@@ -207,6 +221,7 @@ class CESPanel(ParentsPoliticsPanel):
         df = df.loc[pd.notna(df['parenthood']),:].copy() # remove any rows where parenthood cannot be determined
         '''
         Additional boolean columns based on parenthood
+        - childless: 0     ...recall this is only about minor children
         - firstborn: 1
         - new_child: 1 or 2
         - is_parent: 1, 2, or 3
@@ -216,8 +231,11 @@ class CESPanel(ParentsPoliticsPanel):
         - 2 new additional child
         - 3 parent, no change in number of children
         '''
-        # TODO: What are the counts  of each of these groups?
         df = df.assign(**{
+            'childless': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(x.parenthood == 0, 1, 0) for w in self.start_waves],
+            ),
             'firstborn': lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
                 [np.where(x.parenthood == 1, 1, 0) for w in self.start_waves],
@@ -233,59 +251,89 @@ class CESPanel(ParentsPoliticsPanel):
         })
         return df
 
-    def _add_all_continuous(self, df):
-        df = self._add_continuous(df, 'ideo5_XX', 'ideo', 1, 5)
-        df = self._add_continuous(df, 'pid7_XX', 'pid', 1, 7)
-        df = self._add_continuous(df, 'CCXX_321', 'climate_change', 1, 5)
-        df = self._add_continuous(df, 'CCXX_325', 'jobs_env', 1, 5)
-        df = self._add_continuous(df, 'CCXX_327', 'aff_action', 1, 4)
-        df = self._add_continuous(df, 'CCXX_320', 'guns', 1, 3)
-        df = self._add_continuous(df, 'CCXX_415r', 'tax_or_spend', 0, 100)
-        df = self._add_continuous(df, 'CCXX_416r', 'sales_or_inc', 0, 100)
+    def _add_all_single_issues(self, df):
+        df = self._add_issue(df, 'ideo5_XX', 'ideo', 1, 5)
+        df = self._add_issue(df, 'pid7_XX', 'pid', 1, 7)
+        df = self._add_issue(df, 'CCXX_327', 'aff_action', 1, 4)
+        df = self._add_issue(df, 'CCXX_320', 'guns', 1, 3)
         return df
 
-    def _add_all_categorical(self, df):
-        df = self._add_categorical(df, 'CCXX_326', 'gay_marriage', 1, 2)
-        df = self._add_categorical(df, 'CCXX_330B', 'schip', 1, 2)
-        df = self._add_categorical(df, 'CCXX_328', 'budget', 1, 3)
-        df = self._add_categorical(df, 'CCXX_329', 'budget_avoid', 1, 3)
-        return df
-
-    def _add_all_composite(self, df):
+    def add_all_composite_issues(self, df):
         for year in self.waves:
-            # TODO: add in the jobs/environment question to this composite?
-            # CC10_321 is climate change: 1-5 with 1 liberal
-            # CC10_330C is clean energy act, with 1 support, 2, oppose, and other values invalid
-            # Composite is 1-5, with lower values more liberal
-            df = self.nan_out_of_bounds(df, f'CC{year}_330C', 1, 2)
-            df[f'climate_composite_20{year}'] = (df[f'CC{year}_321'] * 2.5 + df[f'CC{year}_330C']) / 2
+            df = self.add_budget_composite(df, year)
+            df = self.add_climate_composite(df, year)
+            df = self.add_gay_composite(df, year)
+            df = self.add_military_composite(df, year)
+            df = self.add_ideo_composite(df, year)
 
-            # CC10_326 is gay marriage ban: 1 support, 2 oppose
-            # CC10_330G is ending don't ask don't tell: 1 support, 2 oppose, others invalid
-            df = self.nan_out_of_bounds(df, f'CC{year}_330G', 1, 2)
-            df[f'gay_composite_20{year}'] = (df[f'CC{year}_326'] + df[f'CC{year}_330G']) / 2
+        df = self.add_immigration_composite(df)
 
-            # yes/no questions on military force usage
-            df[f'military_composite_20{year}'] = np.sum(df.loc[:, df.columns.str.startswith(f'CC{year}_414_')], axis=1) / 7
+        df = self._add_issue(df, 'budget_composite_20XX', 'budget_composite')
+        df = self._add_issue(df, 'climate_composite_20XX', 'climate_composite')
+        df = self._add_issue(df, 'gay_composite_20XX', 'gay_composite')
+        df = self._add_issue(df, 'ideo_composite_20XX', 'ideo_composite')
+        df = self._add_issue(df, 'military_composite_20XX', 'military_composite')
+        df = self._add_issue(df, 'immigration_composite_20XX', 'immigration_composite')
 
-            # Ideology composite that combines ideo and pid
-            df[f'ideo_composite_20{year}'] = (df[f'ideo5_{year}'] * 5 + 2.5 * df[f'pid7_{year}']) / 7 / 2  # 5-point composite scale
+        return df
 
+    def add_budget_composite(self, df, year):
+        # CC10_415r is taxes vs spending (examples given are of domestic spending): 0 to 100 (0 is raise taxes, 100 is cut all spending)
+        # CC10_330B is SCHIP renewal: 1 renew, 2 expire
+        # CC10_328 and CC10_329 are budget actions to take/avoid, respectively: 1 cut defense spending, 2 cut domestic spending, 3 raise taxes
+        # Final scale is 1-2, with 1 more liberal
+        df = df.assign(**{
+            f'budget_strategy_{year}': lambda x: np.select(
+                [
+                    np.logical_and(x[f'CC{year}_328'] == 2, x[f'CC{year}_329'] != 2),
+                    np.logical_and(x[f'CC{year}_329'] == 2, x[f'CC{year}_328'] != 2),
+                ],
+                [
+                    2,  # conservative: prefer cut domestic spending, avoid anything else
+                    1,  # liberal: avoid cut domestic spending, prefer anything else
+                ],
+                default=1.5,  # not na to avoid discarding these rows
+            ),
+            f'temp{year}': (df[f'CC{year}_415r'] / 100 + 1),
+        })
+        df[f'budget_composite_20{year}'] = ((df[f'CC{year}_415r'] / 100 + 1) + df[f'CC{year}_330B'] + df[f'budget_strategy_{year}']) / 3
+        return df
+
+    def add_climate_composite(self, df, year):
+        # CC10_321 is climate change: 1-5 with 1 liberal
+        # CC10_325 is jobs vs environment: 1-5 with 1 liberal
+        # CC10_330C is clean energy act, with 1 support, 2, oppose, and other values invalid: count 1 as 1, 2, as 5
+        # Composite is 1-5, with lower values more liberal
+        df = self.nan_out_of_bounds(df, f'CC{year}_330C', 1, 2)
+        df[f'climate_composite_20{year}'] = (df[f'CC{year}_321'] + df[f'CC{year}_325'] + ((df[f'CC{year}_330C'] - 1) * 4 + 1)) / 3
+        return df
+
+    def add_gay_composite(self, df, year):
+        # CC10_326 is gay marriage ban: 1 support, 2 oppose
+        # CC10_330G is ending don't ask don't tell: 1 support, 2 oppose, others invalid
+        df = self.nan_out_of_bounds(df, f'CC{year}_330G', 1, 2)
+        df[f'gay_composite_20{year}'] = (df[f'CC{year}_326'] + df[f'CC{year}_330G']) / 2
+        return df
+
+    def add_military_composite(self, df, year):
+        # yes/no questions on military force usage
+        df[f'military_composite_20{year}'] = np.sum(df.loc[:, df.columns.str.startswith(f'CC{year}_414_')], axis=1) / 7
+        return df
+
+    def add_ideo_composite(self, df, year):
+        # Ideology composite that combines ideo and pid
+        df[f'ideo_composite_20{year}'] = (df[f'ideo5_{year}'] * 7 + df[f'pid7_{year}'] * 5) / 7 / 2  # ~5-point composite scale
+        return df
+
+    def add_immigration_composite(self, df):
         # CC10_322_1-CC10_322_7 are all yes/no immigration questions, 8 and 9 are "nothing"/"none of the above" which aren't clearly liberal or conservative
-        # 2010 asked 1 2 3 4 7, 2012 asked 1 2 3 4 5 6, 2014 asked 1 2 3 4 5 6
-        df[f'immigration_composite_2010'] = (np.sum(df.loc[:, df.columns.str.contains('CC10_322_[1-4]')], axis=1) + df['CC10_322_7']) / 5
+        # 2010 has data for 1-3, 2012 and 2014 have data for 1-6
+        df[f'immigration_composite_2010'] = np.sum(df.loc[:, df.columns.str.contains('CC10_322_[1-3]')], axis=1) / 3
         df[f'immigration_composite_2012'] = np.sum(df.loc[:, df.columns.str.contains('CC12_322_[1-6]')], axis=1) / 6
         df[f'immigration_composite_2014'] = np.sum(df.loc[:, df.columns.str.contains('CC14_322_[1-6]')], axis=1) / 6
-
-        df = self._add_continuous(df, 'climate_composite_20XX', 'climate_composite')
-        df = self._add_continuous(df, 'gay_composite_20XX', 'gay_composite')
-        df = self._add_continuous(df, 'ideo_composite_20XX', 'ideo_composite')
-        df = self._add_continuous(df, 'military_composite_20XX', 'military_composite')
-        df = self._add_continuous(df, 'immigration_composite_20XX', 'immigration_composite')
-
         return df
 
-    def _add_before_after(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
+    def add_before_after(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
         df = df.assign(**{
             f'{issue}_before': lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
@@ -300,8 +348,8 @@ class CESPanel(ParentsPoliticsPanel):
         df = self.nan_out_of_bounds(df, f'{issue}_after', lower_bound, upper_bound)
         return df
 
-    def _add_continuous(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
-        df = self._add_before_after(df, before_pattern, issue, lower_bound, upper_bound)
+    def _add_issue(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
+        df = self.add_before_after(df, before_pattern, issue, lower_bound, upper_bound)
 
         df = df.assign(**{
             f'{issue}_delta': lambda x: x[f'{issue}_after'] - x[f'{issue}_before'],
@@ -328,29 +376,6 @@ class CESPanel(ParentsPoliticsPanel):
             df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{issue}_persists'] = np.nan  # Can't calculate unless all waves are available
         df[f'{issue}_persists_abs'] = np.abs(df[f'{issue}_persists'])
 
-        self.CONTINUOUS_ISSUES.add(issue)
-
-        return df
-
-    def _add_categorical(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
-        df = self._add_before_after(df, before_pattern, issue)
-
-        df[f'{issue}_change'] = np.where(df[f'{issue}_before'] == df[f'{issue}_after'], 0, 1)
-        # distinguish between False and NaN
-        for metric in ('before', 'after'):
-            df.loc[np.isnan(df[f'{issue}_{metric}']), f'{issue}_change'] = np.nan
-
-        df = df.assign(**{f'{issue}_persists': lambda x: np.select(
-            [x.start_wave == w for w in self.start_waves],
-            [np.where(np.logical_and(
-                x[before_pattern.replace('XX', str(w))] != x[before_pattern.replace('XX', str(self.end_waves[i]))], # change in start vs end
-                x[before_pattern.replace('XX', str(self.end_waves[i]))] == x[before_pattern.replace('XX', str(self.end_waves[-1]))]  # kept end value in final wave
-            ), 1, 0) for i, w in enumerate(self.start_waves)]
-        )})
-        for wave in self.waves:
-            df.loc[df['start_wave'] == self.start_waves[-1], f'{issue}_persists'] = np.nan  # Can't calculate when there are only two waves
-            df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{issue}_persists'] = np.nan  # Can't calulate unless all waves are available
-
-        self.CATEGORICAL_ISSUES.add(issue)
+        self.ISSUES.add(issue)
 
         return df
