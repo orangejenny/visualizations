@@ -308,7 +308,7 @@ class CESPanel(ParentsPoliticsPanel):
 
     def add_ideo_composite(self, df, year):
         # Ideology composite that combines ideo and pid
-        df[f'ideo_composite_20{year}'] = ((df[f'ideo5_{year}'] - 1) * 6 + (df[f'pid7_{year}'] - 1) * 4) / 4 / 2 + 1  # 5-point composite scale
+        df[f'ideo_composite_20{year}'] = (df[f'ideo5_{year}'] * 7 + df[f'pid7_{year}'] * 5) / 7 / 2  # ~5-point composite scale
         return df
 
     def add_immigration_composite(self, df):

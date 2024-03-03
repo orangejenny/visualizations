@@ -142,6 +142,14 @@ class TestCESPanel(unittest.TestCase):
         df = self.data.add_military_composite(df, 10)
         self.assertListEqual([round(x, 2) for x in df['military_composite_2010'].to_list()], [1, 1.43])
 
+    def test_add_ideo_composite(self):
+        df = pd.DataFrame(data={
+            'ideo5_10': [5, 1, 2, 3, 4],
+            'pid7_10': [7, 1, 2, 4, 5],
+        })
+        df = self.data.add_ideo_composite(df, 10)
+        self.assertListEqual([round(x, 2) for x in df['ideo_composite_2010'].to_list()], [5, 0.86, 1.71, 2.93, 3.79])
+
     def test_parenting_counts(self):
         counts = self.data.get_paired_waves().groupby('new_child', as_index=False).count()
         self.assertListEqual(counts.loc[:, 'caseid'].to_list(), [18499, 436])
@@ -159,7 +167,7 @@ class TestCESPanel(unittest.TestCase):
 
         data = self.data.get_paired_waves()
         _test_t_test(0.0113, data, 'ideo_delta')
-        _test_t_test(0.4035, data, 'ideo_composite_delta')
+        _test_t_test(0.4132, data, 'ideo_composite_delta')
         _test_t_test(0.8079, data, 'pid_delta')
 
         young_adults = data.loc[np.less(data['age'], 30),:]
