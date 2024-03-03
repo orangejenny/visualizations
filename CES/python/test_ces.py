@@ -124,6 +124,15 @@ class TestCESPanel(unittest.TestCase):
     #def summarize_issues_non_response(self, df):
     #def summarize_demographics_non_response(self, df):
 
+    def test_add_climate_composite(self):
+        df = pd.DataFrame(data={
+            'CC10_321': [1, 3, 5],
+            'CC10_325': [2, 1, 4],
+            'CC10_330C': [1, 2, 1],
+        })
+        df = self.data.add_climate_composite(df, 10)
+        self.assertListEqual([round(x, 2) for x in df['climate_composite_2010'].to_list()], [1.33, 3, 3.33])
+
     def test_add_gay_composite(self):
         #df[f'gay_composite_20{year}'] = (df[f'CC{year}_326'] + df[f'CC{year}_330G']) / 2
         df = pd.DataFrame(data={

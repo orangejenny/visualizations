@@ -288,7 +288,7 @@ class CESPanel(ParentsPoliticsPanel):
     def add_climate_composite(self, df, year):
         # CC10_321 is climate change: 1-5 with 1 liberal
         # CC10_325 is jobs vs environment: 1-5 with 1 liberal
-        # CC10_330C is clean energy act, with 1 support, 2, oppose, and other values invalid
+        # CC10_330C is clean energy act, with 1 support, 2, oppose, and other values invalid: count 1 as 1, 2, as 5
         # Composite is 1-5, with lower values more liberal
         df = self.nan_out_of_bounds(df, f'CC{year}_330C', 1, 2)
         df[f'climate_composite_20{year}'] = (df[f'CC{year}_321'] + df[f'CC{year}_325'] + ((df[f'CC{year}_330C'] - 1) * 4 + 1)) / 3
