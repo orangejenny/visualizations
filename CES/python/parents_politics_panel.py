@@ -20,7 +20,7 @@ class ParentsPoliticsPanelException(Exception):
 
 class ParentsPoliticsPanel():
     OUTPUT_DIR = 'output'
-    OUTPUT_FILES = ['significant.log', 'all.log', 'two_stars.log', 'three_stars.log']
+    OUTPUT_FILES = ['significant.log', 'all.log', 'two_stars.log', 'three_stars.log', 'substantive.log']
 
     METRICS = ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']
     waves = []
@@ -75,11 +75,14 @@ class ParentsPoliticsPanel():
 
     def log_findings(self, data, description=''):
         self._output('all.log', data, description)
-        self._output('significant.log', self._limit_to_significant(data), description)
-        self._output('two_stars.log', self._limit_to_significant(data, level=2), description)
-        self._output('three_stars.log', self._limit_to_significant(data, level=3), description)
+        significant = self._limit_to_significant(data)
+        self._output('significant.log', significant, description)
+        self._output('substantive.log', self._limit_to_substantive(significant), description)
+        self._output('two_stars.log', self._limit_to_significant(significant, level=2), description)
+        self._output('three_stars.log', self._limit_to_significant(significant, level=3), description)
 
     def _limit_to_significant(self, data, level=1):
+        data = data.copy()
         key = '*' * level
         if 'pvalue' in data:
             data = data.astype({'pvalue': pd.StringDtype()})
@@ -92,6 +95,20 @@ class ParentsPoliticsPanel():
             data.drop([col for col in data.columns if col.endswith("?")], axis=1, inplace=True)
         data = data.loc[data['sig'],:]
         data = data.drop(['sig'], axis=1)
+        return data
+
+    def _limit_to_substantive(self, data, threshold=0.1):
+        data = data.copy()
+        if 'diff' in data:
+            data['sub'] = np.abs(data['diff']) >= threshold
+        else:
+            for col in data.columns:
+                if col.endswith('-'):
+                    data[col.replace('-', '?')] = np.abs(data[col]) >= threshold
+            data['sub'] = data.any(axis=1, bool_only=True)
+            data.drop([col for col in data.columns if col.endswith("?")], axis=1, inplace=True)
+        data = data.loc[data['sub'],:]
+        data = data.drop(['sub'], axis=1)
         return data
 
     def _output(self, filename, data, description=''):

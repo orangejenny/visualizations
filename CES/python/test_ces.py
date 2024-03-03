@@ -123,6 +123,8 @@ class TestCESPanel(unittest.TestCase):
     #def get_matched_outcomes(self, df, formula):
     #def summarize_issues_non_response(self, df):
     #def summarize_demographics_non_response(self, df):
+    #def _limit_to_significant(self, data, level=1):
+    #def _limit_to_substantive(self, data, threshold=0.1):
 
     def test_add_budget_composite(self):
         df = pd.DataFrame(data={
