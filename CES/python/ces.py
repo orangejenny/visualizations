@@ -263,26 +263,43 @@ class CESPanel(ParentsPoliticsPanel):
 
     def add_all_composite_issues(self, df):
         for year in self.waves:
+            df = self.add_budget_composite(df, year)
             df = self.add_climate_composite(df, year)
             df = self.add_gay_composite(df, year)
             df = self.add_military_composite(df, year)
             df = self.add_ideo_composite(df, year)
 
-            # TODO: budget composite that combines SCHIP, budget, budget_avoid, and tax_or_spend
-            # Should anything else go in it?
-            # How to code budget & budget avoid? Maybe do pairwise comparisons, a 1-3 scale:
-            # raise_taxes vs cut_military: ambiguous
-            # raise_taxes vs cut_domestic: more liberal to raise taxes
-            # cut_military vs cut_domestic: more liberal to cut military
-
         df = self.add_immigration_composite(df)
 
+        df = self._add_issue(df, 'budget_composite_20XX', 'budget_composite')
         df = self._add_issue(df, 'climate_composite_20XX', 'climate_composite')
         df = self._add_issue(df, 'gay_composite_20XX', 'gay_composite')
         df = self._add_issue(df, 'ideo_composite_20XX', 'ideo_composite')
         df = self._add_issue(df, 'military_composite_20XX', 'military_composite')
         df = self._add_issue(df, 'immigration_composite_20XX', 'immigration_composite')
 
+        return df
+
+    def add_budget_composite(self, df, year):
+        # CC10_415r is taxes vs spending (examples given are of domestic spending): 0 to 100 (0 is raise taxes, 100 is cut all spending)
+        # CC10_330B is SCHIP renewal: 1 renew, 2 expire
+        # CC10_328 and CC10_329 are budget actions to take/avoid, respectively: 1 cut defense spending, 2 cut domestic spending, 3 raise taxes
+        # Final scale is 1-2, with 1 more liberal
+        df = df.assign(**{
+            f'budget_strategy_{year}': lambda x: np.select(
+                [
+                    np.logical_and(x[f'CC{year}_328'] == 2, x[f'CC{year}_329'] != 2),
+                    np.logical_and(x[f'CC{year}_329'] == 2, x[f'CC{year}_328'] != 2),
+                ],
+                [
+                    2,  # conservative: prefer cut domestic spending, avoid anything else
+                    1,  # liberal: avoid cut domestic spending, prefer anything else
+                ],
+                default=1.5,  # not na to avoid discarding these rows
+            ),
+            f'temp{year}': (df[f'CC{year}_415r'] / 100 + 1),
+        })
+        df[f'budget_composite_20{year}'] = ((df[f'CC{year}_415r'] / 100 + 1) + df[f'CC{year}_330B'] + df[f'budget_strategy_{year}']) / 3
         return df
 
     def add_climate_composite(self, df, year):

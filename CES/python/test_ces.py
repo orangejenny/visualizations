@@ -124,6 +124,18 @@ class TestCESPanel(unittest.TestCase):
     #def summarize_issues_non_response(self, df):
     #def summarize_demographics_non_response(self, df):
 
+    def test_add_budget_composite(self):
+        df = pd.DataFrame(data={
+            'CC10_415r': [100, 0, 50, 80, 25, 10, 60, 30, 0],
+            'CC10_330B': [1, 2, 1, 2, 1, 2, 1, 1, 1],
+            'CC10_328': [1, 1, 1, 2, 2, 2, 3, 3, 3],
+            'CC10_329': [1, 2, 3, 1, 2, 3, 1, 2, 3],
+        })
+        df = self.data.add_budget_composite(df, 10)
+        self.assertListEqual([round(x, 2) for x in df['budget_composite_2010'].to_list()], [
+            1.5, 1.33, 1.33, 1.93, 1.25, 1.7, 1.37, 1.1, 1.17
+        ])
+
     def test_add_climate_composite(self):
         df = pd.DataFrame(data={
             'CC10_321': [1, 3, 5],
