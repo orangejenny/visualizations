@@ -150,6 +150,19 @@ class TestCESPanel(unittest.TestCase):
         df = self.data.add_ideo_composite(df, 10)
         self.assertListEqual([round(x, 2) for x in df['ideo_composite_2010'].to_list()], [5, 0.86, 1.71, 2.93, 3.79])
 
+    def test_add_immigration_composite(self):
+        df = pd.DataFrame(data={
+            'CC10_322_1': [1, 2], 'CC10_322_2': [2, 1], 'CC10_322_3': [1, 1],
+            'CC12_322_1': [1, 2], 'CC12_322_2': [1, 1], 'CC12_322_3': [1, 1],
+            'CC12_322_4': [2, 2], 'CC12_322_5': [2, 2], 'CC12_322_6': [1, 2], 'CC12_322_8': [1, 1],
+            'CC14_322_1': [2, 1], 'CC14_322_2': [2, 1], 'CC14_322_3': [2, 2],
+            'CC14_322_4': [2, 2], 'CC14_322_5': [1, 2], 'CC14_322_6': [1, 1], 'CC14_322_7': [1, 1],
+        })
+        df = self.data.add_immigration_composite(df)
+        self.assertListEqual([round(x, 2) for x in df['immigration_composite_2010'].to_list()], [1.33, 1.33])
+        self.assertListEqual([round(x, 2) for x in df['immigration_composite_2012'].to_list()], [1.33, 1.67])
+        self.assertListEqual([round(x, 2) for x in df['immigration_composite_2014'].to_list()], [1.67, 1.5])
+
     def test_parenting_counts(self):
         counts = self.data.get_paired_waves().groupby('new_child', as_index=False).count()
         self.assertListEqual(counts.loc[:, 'caseid'].to_list(), [18499, 436])
