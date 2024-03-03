@@ -254,11 +254,8 @@ class CESPanel(ParentsPoliticsPanel):
     def _add_all_single_issues(self, df):
         df = self._add_issue(df, 'ideo5_XX', 'ideo', 1, 5)
         df = self._add_issue(df, 'pid7_XX', 'pid', 1, 7)
-        df = self._add_issue(df, 'CCXX_321', 'climate_change', 1, 5)
-        df = self._add_issue(df, 'CCXX_325', 'jobs_env', 1, 5)
         df = self._add_issue(df, 'CCXX_327', 'aff_action', 1, 4)
         df = self._add_issue(df, 'CCXX_320', 'guns', 1, 3)
-        df = self._add_issue(df, 'CCXX_415r', 'tax_or_spend', 0, 100)
         return df
 
     def add_all_composite_issues(self, df):

@@ -217,21 +217,21 @@ class TestCESPanel(unittest.TestCase):
         _test_t_test(0.0005, data, 'climate_composite_after')
         _test_t_test(0.0012, data, 'immigration_composite_delta')
         _test_t_test(0.0035, data, 'military_composite_delta')
-        _test_t_test(0.6504, data, 'jobs_env_delta', 'firstborn')
-        _test_t_test(0.5963, data, 'jobs_env_delta_abs', 'firstborn')
+        _test_t_test(0.8794, data, 'budget_composite_delta', 'firstborn')
+        _test_t_test(0.136, data, 'budget_composite_delta_abs', 'firstborn')
 
     def test_t_tests(self):
         results = self.data.t_tests(self.data.get_paired_waves(), 'delta')
 
-        jobs_env = {
+        budget_composite = {
             k: list(v.values())[0]  # v will have a single value
-            for k, v in results.loc[results['issue'] == 'jobs_env',:].to_dict().items()
+            for k, v in results.loc[results['issue'] == 'budget_composite',:].to_dict().items()
         }
-        self.assertEqual(jobs_env['issue'], 'jobs_env')
-        self.assertEqual(jobs_env['metric'], 'jobs_env_delta')
-        self.assertEqual(round(float(jobs_env['statistic']), 3), -1.051)
-        self.assertEqual(round(float(jobs_env['df']), 1), 759.4)
-        self.assertEqual(round(float(jobs_env['pvalue']), 4), 0.2937)
+        self.assertEqual(budget_composite['issue'], 'budget_composite')
+        self.assertEqual(budget_composite['metric'], 'budget_composite_delta')
+        self.assertEqual(round(float(budget_composite['statistic']), 3), -1.512)
+        self.assertEqual(round(float(budget_composite['df']), 1), 853.6)
+        self.assertEqual(round(float(budget_composite['pvalue']), 4), 0.1309)
 
         pid = {
             k: list(v.values())[0]
