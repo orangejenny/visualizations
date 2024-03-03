@@ -116,17 +116,23 @@ class TestCESPanel(unittest.TestCase):
 
     # TODO: add tests
     #def _weighted_averages(self, df, group_by_labels, columns):
-    #def _recode_issues(self, df):
+    #def _recode_issues(self, df): incorporate this into other tests, including the composites
     #def _consolidate_demographics(self, df):
     #def _add_parenting(self, df):
     #def _add_issue(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
     #def get_matched_outcomes(self, df, formula):
     #def summarize_issues_non_response(self, df):
     #def summarize_demographics_non_response(self, df):
-    #def add_climate_composite(self, df, year):
-    #def add_gay_composite(self, df, year):
-    #def add_ideo_composite(self, df, year):
-    #def add_immigration_composite(self, df):
+
+    def test_add_gay_composite(self):
+        #df[f'gay_composite_20{year}'] = (df[f'CC{year}_326'] + df[f'CC{year}_330G']) / 2
+        df = pd.DataFrame(data={
+            'CC10_326': [1, 2, 1],
+            'CC10_330G': [2, 1, 3],
+        })
+        df = self.data.add_gay_composite(df, 10)
+        self.assertListEqual([round(x, 2) for x in df['gay_composite_2010'].to_list()[:-1]], [1.5, 1.5])
+        self.assertTrue(np.isnan(df['gay_composite_2010'][2]))
 
     def test_add_military_composite(self):
         df = pd.DataFrame(data={
