@@ -413,7 +413,10 @@ class ParentsPoliticsPanel():
                 logit = smf.glm(formula=formula,
                                 family=sm.families.Binomial(),
                                 data=df).fit()
-                models[formula] = (formula, logit.pseudo_rsquared(), logit.aic, logit)
+                df['score'] = logit.predict(df)
+                unscored_count = len(df.loc[np.isnan(df['score'])])
+                unscored_percentage = f'{round(unscored_count * 100 / len(df))}%'
+                models[formula] = (formula, logit.pseudo_rsquared(), logit.aic, unscored_percentage, logit)
 
         by_r_squared = sorted(models.values(), key=lambda t: t[1]) # higher is better
         by_aic = sorted(models.values(), key=lambda t: t[2]) # lower is better
@@ -427,6 +430,7 @@ class ParentsPoliticsPanel():
             'formula': [re.sub(r'.*~\s*', '', f) for f in decent_formulas],
             'r_squared': [models[f][1] for f in decent_formulas],
             'aic': [models[f][2] for f in decent_formulas],
+            'unscored': [models[f][3] for f in decent_formulas],
         })
         summary.sort_values('aic', inplace=True)
         return summary
