@@ -25,6 +25,10 @@ waves_1214 = two_years.loc[two_years['start_wave'] == 12,:].copy()
 ces.log_findings(ces.get_matched_outcomes(waves_1012, "age"), f"Comparison of outcomes between new parents and a control group matched on age")
 ces.log_findings(ces.get_matched_outcomes(waves_1012, "age + marstat"), f"Comparison of outcomes between new parents and a control group matched on age & marital status")
 ces.log_findings(ces.get_matched_outcomes(waves_1012, "age + marstat + ideo_before"), f"Comparison of outcomes between new parents and a control group matched on age & marital status & ideology")
+ces.log_findings(ces.get_matched_outcomes(waves_1012, "marstat + pew_religimp + age + income_quintile + educ"),
+                 f"Comparison of outcomes between new parents and a control group matched on lots of things")
+
+# TODO: add matching for subsets (gender, income)
 
 ces.log_header('''
 ############
