@@ -101,9 +101,9 @@ ces.log_verbose(ces.count_percentages(two_years, 'new_child', 'ideo_direction'),
 ces.log_verbose(ces.count_percentages(two_years, 'new_child', 'pid_direction'), "Party direction change")
 
 ces.log_verbose('''
-#######################################################################################################
-# Analysis: Count flippers: How often do people change ideology/party between two waves? (unweighted) #
-#######################################################################################################''')
+#############################################################################################
+# Count flippers: How often do people change ideology/party between two waves? (unweighted) #
+#############################################################################################''')
 
 def log_flippers(issue, start_wave, end_wave, lower_bound, upper_bound):
     ces.log_verbose(f"Percentage of {issue} changing from 20{start_wave} to 20{end_wave}: "
@@ -119,9 +119,9 @@ log_flippers("ideo5", 12, 14, 1, 5)
 log_flippers("ideo5", 10, 14, 1, 5)
 
 ces.log_header('''
-#######################
-# Analysis: Attitudes #
-#######################''')
+#############################
+# Panel analysis: Attitudes #
+#############################''')
 
 ces.log_findings(ces.all_t_test_pvalues(ces.paired_waves), "T test p values, all paired data")
 
@@ -140,9 +140,9 @@ ces.log_verbose(ces.summarize_all_issues(two_years, 'firstborn'), "Summary of is
 ces.log_verbose(ces.summarize_all_persistence(), "Summary of persistent change frequency")
 
 ces.log_header('''
-#################
-# Analysis: Age #
-#################''')
+#######################
+# Panel analysis: Age #
+#######################''')
 
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
 ces.log_findings(ces.all_t_test_pvalues(young_adults), "T test p values, respondents under 30 years old")
@@ -150,9 +150,9 @@ ces.log_findings(ces.all_t_test_pvalues(young_adults), "T test p values, respond
 ces.log_verbose(ces.summarize_all_issues(young_adults, 'new_child'), "Summary of issues, respondents under 30 years old")
 
 ces.log_header('''
-####################
-# Analysis: Gender #
-####################''')
+##########################
+# Panel analysis: Gender #
+##########################''')
 two_years_new_parents = two_years.loc[np.equal(two_years['new_child'], 1),:]
 two_years_men = two_years.loc[np.equal(two_years['gender'], 1),:]
 two_years_women = two_years.loc[np.equal(two_years['gender'], 2),:]
@@ -166,9 +166,9 @@ ces.log_findings(ces.all_t_test_pvalues(two_years_new_parents, demographic_label
 ces.log_verbose(ces.summarize_all_issues(two_years, ['new_child', 'gender']), "Summary of issues by new_child and gender")
 
 ces.log_header('''
-####################
-# Analysis: Income #
-####################''')
+##########################
+# Panel analysis: Income #
+##########################''')
 
 ces.log_verbose(panel.loc[:, ['caseid', 'faminc_14']].groupby("faminc_14").count(), "Income distribution across panel")
 ces.log_verbose(two_years.loc[:,['income', 'new_child', 'caseid']].groupby(['new_child', 'income']).count(), "Income distribution, new parents and others")
@@ -189,9 +189,9 @@ ces.log_findings(ces.all_t_test_pvalues(two_years_new_parents, demographic_label
 ces.log_verbose(ces.summarize_all_issues(two_years, ['new_child', 'high_income']), "Summary of issues by new_child and income")
 
 ces.log_verbose('''
-#######################################
-# Analysis: Non-response (unweighted) #
-#######################################''')
+#############################
+# Non-response (unweighted) #
+#############################''')
 
 # TODO: Do non-response rates differ for parents and non-parents?
 ces.log_verbose(ces.summarize_issues_non_response(two_years), "Non-response rates for issues")
