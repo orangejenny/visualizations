@@ -358,12 +358,18 @@ class ParentsPoliticsPanel():
         if "~" not in formula:
             formula = f"{treatment} ~ {formula}"
         df = self._add_score(df, formula)
-        new_parents = df.loc[df[treatment] == treatment_value, columns].copy()
+        new_parents = df.loc[df[treatment] == treatment_value, columns].copy()  # TODO: rename var
         candidates = df.loc[df[treatment] == control_value, columns].copy()
 
         # Match up treatment and control groups
-        # TODO: error/note if any of new_parents didn't match: ultimately implement nearest neighbor & record distance, noting bias
         matched_set = new_parents.merge(candidates, on='score', how='left', suffixes=('_treatment', ''))
+        match_counts = matched_set.groupby('caseid_treatment').count().loc[:,['score']]
+        match_counts.rename(columns={'score':'control_count'}, inplace=True)
+        unmatched = match_counts.loc[match_counts['control_count'] == 0,:]
+        # TODO: error/note if any of new_parents didn't match: ultimately implement nearest neighbor & record distance, noting bias
+        # Currently not matching 5-15% of cases with exact matching
+        if len(unmatched):
+            print(f"Could not match {len(unmatched)} of {len(new_parents)} treatment cases ({round(len(unmatched) * 100 / len(new_parents))}%)")
 
         # Group on treatment caseid, averaging all relevant control matches
         matched_outcomes = self._weighted_averages(matched_set, 'caseid_treatment', outcomes)
