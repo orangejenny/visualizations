@@ -44,22 +44,22 @@ ces.log_header('''
 ############''')
 
 formulas = [
-    "age",
-    "age + marstat",
     "marstat + pew_religimp + age + income_quintile + educ",
 ]
 
 parenthood_01_1012 = waves_1012.loc[waves_1012['parenthood'] < 2,:].copy()
 under_40_parenthood_01_1012 = parenthood_01_1012.loc[parenthood_01_1012['age'] < 40,:].copy()
 
-# TODO: should subsets be using 01 matching?
 for formula in formulas:
-    ces.log_findings(ces.get_matched_outcomes(waves_1012, formula), f"Comparison of outcomes between new parents and all others, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(parents_1012, formula), f"Comparison of outcomes between new parents and other parents, matched on {formula}")
-
+    # Treatment is firstborn, control is non-parents
     ces.log_findings(ces.get_matched_outcomes(parenthood_01_1012, formula, treatment='firstborn'), f"Comparison of outcomes between firstborn and non-parents, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(parenthood_01_1012, formula, treatment='firstborn'), f"Same, but only respondents under 40")
+    ces.log_findings(ces.get_matched_outcomes(under_40_parenthood_01_1012, formula, treatment='firstborn'), f"Same, but only respondents under 40")
 
+    # Treatment is new_child, control is other parents
+    ces.log_findings(ces.get_matched_outcomes(parents_1012, formula), f"Comparison of outcomes between new parents and other parents, matched on {formula}")
+    ces.log_findings(ces.get_matched_outcomes(parents_under_40_1012, formula), f"Same, but only respondents under 40")
+
+    # Treatment is is_parent, control is non-parents
     ces.log_findings(ces.get_matched_outcomes(waves_1012, formula, treatment='is_parent'), f"Comparison of outcomes between is_parent and non-parents, matched on {formula}")
     ces.log_findings(ces.get_matched_outcomes(under_40_1012, formula, treatment='is_parent'), f"Same, but only respondents under 40")
 
@@ -68,6 +68,7 @@ ces.log_header('''
 # Matching: Gender #
 ####################''')
 # TODO: Look at PerfectSeparationWarning
+# TODO: make sure these are doing the same 3 treatments, with same 3 controls, as overall matching analysis
 
 def matching_for_subset(demo_label, demo_a, demo_b):
     demo_a_1012 = _filter_demographic(waves_1012, demo_label, demo_a)
