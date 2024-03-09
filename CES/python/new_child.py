@@ -11,6 +11,9 @@ def _filter_dummy(df, dummy):
 def _filter_under_40(df):
     return df.loc[df['age'] < 40,:].copy()
 
+def _filter_demographic(df, label, value):
+    return df.loc[df[label] == value,:].copy()
+
  
 parser = argparse.ArgumentParser(description="Analyze parenting political data")
 parser.add_argument('-o', '--output', help='Suffix for output directory')
@@ -64,32 +67,38 @@ ces.log_header('''
 # Matching: Gender #
 ####################''')
 
-men_1012 = waves_1012.loc[waves_1012['gender'] == 1,:].copy()
-men_under_40_1012 = _filter_under_40(men_1012)
-women_1012 = waves_1012.loc[waves_1012['gender'] == 2,:].copy()
-women_under_40_1012 = _filter_under_40(women_1012)
+demo_label = "gender"
+demo_a = 1
+demo_b = 2
+
+demo_a_1012 = _filter_demographic(waves_1012, demo_label, demo_a)
+demo_a_under_40_1012 = _filter_under_40(demo_a_1012)
+demo_b_1012 = _filter_demographic(waves_1012, demo_label, demo_b)
+demo_b_under_40_1012 = _filter_under_40(demo_b_1012)
+
+treatment_1012 = {}
+under_40_treatment_1012 = {}
+for treatment in ('new_child', 'firstborn', 'is_parent'):
+    treatment_1012[treatment] = _filter_dummy(waves_1012, treatment)
+    under_40_treatment_1012[treatment] = _filter_under_40(treatment_1012[treatment])
 
 for formula in formulas:
-    ces.log_findings(ces.get_matched_outcomes(new_child_1012, f"new_child ~ {formula}", "gender", 1, 2), f"Comparison of outcomes, new mothers and fathers, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(new_child_under_40_1012, f"new_child ~ {formula}", "gender", 1, 2), f"Comparison of outcomes, new mothers and fathers under 40, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(firstborn_1012, f"firstborn ~ {formula}", "gender", 1, 2), f"Comparison of outcomes, firstborn mothers and fathers, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(firstborn_under_40_1012, f"firstborn ~ {formula}", "gender", 1, 2), f"Comparison of outcomes, firstborn mothers and fathers under 40, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(parents_1012, f"is_parent ~ {formula}", "gender", 1, 2), f"Comparison of outcomes, mothers and fathers, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(parents_under_40_1012, f"is_parent ~ {formula}", "gender", 1, 2), f"Comparison of outcomes, mothers and fathers under 40, matched on {formula}")
+    for treatment in ('new_child', 'firstborn', 'is_parent'):
+        ces.log_findings(ces.get_matched_outcomes(treatment_1012[treatment], f"{treatment} ~ {formula}", demo_label, demo_a, demo_b),
+                         f"Comparison of outcomes when {treatment}=1, split by {demo_label}, matched on {formula}")
+        ces.log_findings(ces.get_matched_outcomes(under_40_treatment_1012[treatment], f"{treatment} ~ {formula}", demo_label, demo_a, demo_b),
+                         f"Comparison of outcomes when {treatment}=1, respondents under 40, split by {demo_label}, matched on {formula}")
 
-    ces.log_findings(ces.get_matched_outcomes(women_1012, formula,), f"Comparison of outcomes, new mothers and other women, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(women_under_40_1012, formula), f"Comparison of outcomes, new mothers and other women under 40, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(women_1012, f"firstborn ~ {formula}", treatment="firstborn"), f"Comparison of outcomes, firstborn mothers and other women, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(women_under_40_1012, f"firstborn ~ {formula}", treatment="firstborn"), f"Comparison of outcomes, firstborn mothers and other women under 40, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(women_1012, f"is_parent ~ {formula}", treatment="is_parent"), f"Comparison of outcomes, mothers and other women, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(women_under_40_1012, f"is_parent ~ {formula}", treatment="is_parent"), f"Comparison of outcomes, mothers and other women under 40, matched on {formula}")
+    for demo_value, demo_subset, demo_subset_under_40 in (
+        (demo_a, demo_a_1012, demo_a_under_40_1012),
+        (demo_b, demo_b_1012, demo_b_under_40_1012),
+    ):
+        for treatment in ('new_child', 'firstborn', 'is_parent'):
+            ces.log_findings(ces.get_matched_outcomes(demo_subset, f"{treatment} ~ {formula}", treatment=treatment),
+                             f"Comparison of outcomes, {demo_label}={demo_value}, treatment={treatment}, matched on {formula}")
+            ces.log_findings(ces.get_matched_outcomes(demo_subset_under_40, f"{treatment} ~ {formula}", treatment=treatment),
+                             f"Comparison of outcomes, {demo_label}={demo_value}, respondents under 40, treatment={treatment}, matched on {formula}")
 
-    ces.log_findings(ces.get_matched_outcomes(men_1012, formula), f"Comparison of outcomes, new fathers and other men, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(men_under_40_1012, formula), f"Comparison of outcomes, new fathers and other men under 40, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(men_1012, f"firstborn ~ {formula}", treatment="firstborn"), f"Comparison of outcomes, firstborn fathers and other men, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(men_under_40_1012, f"firstborn ~ {formula}", treatment="firstborn"), f"Comparison of outcomes, firstborn fathers and other men under 40, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(men_1012, f"is_parent ~ {formula}", treatment="is_parent"), f"Comparison of outcomes, fathers and other men, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(men_under_40_1012, f"is_parent ~ {formula}", treatment="is_parent"), f"Comparison of outcomes, fathers and other men under 40, matched on {formula}")
 
 ces.log_header('''
 ############
