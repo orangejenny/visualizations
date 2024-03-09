@@ -403,7 +403,6 @@ class ParentsPoliticsPanel():
         TODO
         - Combine pew_religimp with pew_churatd and/or pew_prayer?
         - Urban/rural? Need to cross-reference zip code with some other dataset: map countyfips_XX to USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
-        - Some of these can vary (esp employment), should use year-specific value
         '''
         models = {}
         for choose_count in range(1, len(self.demographics) + 1):

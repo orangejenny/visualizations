@@ -70,12 +70,15 @@ class TestCESPanel(unittest.TestCase):
         self.assertEqual(filter_three['one'][3], 4)
 
     def test_add_age(self):
-        df = pd.DataFrame(data={'birthyr_10': [1990, 9999, 1978]})
+        df = pd.DataFrame(data={
+            'birthyr_10': [1990, 9999, 1978],
+            'start_wave': [10, 10, 12],
+        })
         df = self.data.add_age(df)
         self.assertEqual(len(df), 3)
         self.assertEqual(df['age'][0], 20)
         self.assertTrue(np.isnan(df['age'][1]))
-        self.assertEqual(df['age'][2], 32)
+        self.assertEqual(df['age'][2], 34)
         self.assertEqual(df['age_zscore'][0], -1)
         self.assertTrue(np.isnan(df['age_zscore'][1]))
         self.assertEqual(df['age_zscore'][2], 1)
@@ -213,8 +216,8 @@ class TestCESPanel(unittest.TestCase):
         _test_t_test(0.8079, data, 'pid_delta')
 
         young_adults = data.loc[np.less(data['age'], 30),:]
-        _test_t_test(0.8714, young_adults, 'pid_delta')
-        _test_t_test(0.0451, young_adults, 'military_composite_delta_abs')
+        _test_t_test(0.853, young_adults, 'pid_delta')
+        _test_t_test(0.739, young_adults, 'military_composite_delta_abs')
 
         _test_t_test(0.0005, data, 'climate_composite_after')
         _test_t_test(0.0012, data, 'immigration_composite_delta')

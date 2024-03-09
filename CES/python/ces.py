@@ -30,7 +30,6 @@ class CESPanel(ParentsPoliticsPanel):
         if not len(self.waves):
             raise Exception("Must contain at least one wave")
         df = df.assign(start_wave=self.waves[0], end_wave=self.waves[-1])
-        df = self.add_age(df)
         df = self._recode_issues(df)
         df = self.add_income_brackets(df)
 
@@ -40,7 +39,9 @@ class CESPanel(ParentsPoliticsPanel):
                 end_wave=self.end_waves[i],
             ) for i, w in enumerate(self.start_waves)
         ], ignore_index=True)
+        df = self.add_age(df)   # age depends on start_wave
         df = self._consolidate_demographics(df)
+
         return df
 
     def _trimmed_panel(self):
@@ -90,7 +91,7 @@ class CESPanel(ParentsPoliticsPanel):
         ].copy()
 
     def add_age(self, df):
-        df = df.assign(age=lambda x: 2010 - x.birthyr_10)
+        df = df.assign(age=lambda x: 2000 + x.start_wave - x.birthyr_10)
         df = self.nan_out_of_bounds(df, 'age', 1, 200)
         df['age_zscore'] = zscore(df['age'], nan_policy='omit')
         return df
