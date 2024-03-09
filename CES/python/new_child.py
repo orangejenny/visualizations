@@ -13,6 +13,13 @@ args = parser.parse_args()
 ces = CESPanel(args.output)
 panel = ces.get_panel()
 two_years = ces.get_paired_waves()
+under_40_two_years = two_years.loc[two_years['age'] < 40,:].copy()
+
+waves_1012 = two_years.loc[two_years['start_wave'] == 10,:].copy()
+waves_1214 = two_years.loc[two_years['start_wave'] == 12,:].copy()
+parents_1012 = waves_1012.loc[waves_1012['is_parent'] == 1,:].copy()
+under_40_1012 = waves_1012.loc[waves_1012['age'] < 40,:].copy()
+parents_under_40_1012 = under_40_1012.loc[under_40_1012['is_parent'] == 1,:].copy()
 
 ces.log_header('''
 ############
@@ -35,15 +42,17 @@ ces.log_header('''
 # Modeling #
 ############''')
 
-ces.log_verbose(ces.consider_models(ces.get_paired_waves()), f"Comparison of models to predict new_child")
-ces.log_verbose(ces.consider_models(ces.get_paired_waves(), treatment='firstborn'), f"Comparison of models to predict firstborn")
+ces.log_verbose(ces.consider_models(two_years), f"Comparison of models to predict new_child")
+ces.log_verbose(ces.consider_models(two_years, treatment='firstborn'), f"Comparison of models to predict firstborn")
+ces.log_verbose(ces.consider_models(two_years, treatment='is_parent'), f"Comparison of models to predict is_parent")
 
-waves_1012_all_parents = waves_1012.loc[waves_1012['is_parent'] == 1,:].copy()
-ces.log_verbose(ces.consider_models(ces.get_paired_waves()), f"Comparison of models to predict new parenthood, limited to parents")
+ces.log_verbose(ces.consider_models(parents_1012), f"Comparison of models to predict new_child, limited to parents")
 
-waves_1012_under_40 = waves_1012.loc[waves_1012['age'] < 40,:].copy()
-ces.log_verbose(ces.consider_models(waves_1012_under_40), f"Comparison of models to predict new_child, limited to respondents under 40")
-ces.log_verbose(ces.consider_models(waves_1012_under_40, treatment='is_parent'), f"Comparison of models to predict is_parent, limited to respondents under 40")
+ces.log_verbose(ces.consider_models(under_40_1012), f"Comparison of models to predict new_child, limited to respondents under 40")
+ces.log_verbose(ces.consider_models(under_40_1012, treatment='firstborn'), f"Comparison of models to predict firstborn, limited to respondents under 40")
+ces.log_verbose(ces.consider_models(under_40_1012, treatment='is_parent'), f"Comparison of models to predict is_parent, limited to respondents under 40")
+
+ces.log_verbose(ces.consider_models(parents_1012), f"Comparison of models to predict new_child, limited to parents under 40")
 
 ces.log_verbose('''
 ######################################
