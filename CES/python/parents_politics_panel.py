@@ -346,18 +346,18 @@ class ParentsPoliticsPanel():
     # Matching functions #
     ######################
     # TODO: Make weighting an option, not default
-    def get_matched_outcomes(self, df, formula):
+    def get_matched_outcomes(self, df, formula, treatment='new_child', control_value=0, treatment_value=1):
         outcomes = [
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
-        columns = ['caseid', 'new_child', 'score', 'weight'] + outcomes
+        columns = ['caseid', treatment, 'score', 'weight'] + outcomes
 
         if len(df['caseid'].unique()) != len(df['caseid']):
             raise ParentsPoliticsPanelException("Data frame gives to get_matched_outcomes does not have unique cases")
 
-        df = self._add_score(df, formula)
-        new_parents = df.loc[df['new_child'] == 1, columns].copy()  # TODO: use parenthood status instead of new parenthood? consider parenthood status in matching
-        candidates = df.loc[df['new_child'] == 0, columns].copy()
+        df = self._add_score(df, formula, treatment)
+        new_parents = df.loc[df[treatment] == treatment_value, columns].copy()
+        candidates = df.loc[df[treatment] == control_value, columns].copy()
 
         # Match up treatment and control groups
         # TODO: error/note if any of new_parents didn't match: ultimately implement nearest neighbor & record distance, noting bias
@@ -372,12 +372,12 @@ class ParentsPoliticsPanel():
         # Reduce matches to a single control row per treatment to t test
         # TODO: matched_outcomes outcomes are weighted, but new_parents are not
         # Is doing weighting myself for t tests legit?
-        matched_outcomes['new_child'] = 0
+        matched_outcomes[treatment] = control_value
         matched_outcomes['weight'] = 1  # Outcomes have been weighted, so set weight to 1
         reduced_df = pd.concat([new_parents, matched_outcomes])
         pvalues = []
         for o in outcomes:
-            result = self.t_test(reduced_df, o)
+            result = self.t_test(reduced_df, o, demographic_label=treatment, a_value=control_value, b_value=treatment_value)
             pvalues.append(str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue))
 
         summary = pd.DataFrame(data={
@@ -389,8 +389,8 @@ class ParentsPoliticsPanel():
         summary.sort_index(inplace=True)
         return summary
 
-    def _add_score(self, df, formula):
-        logit = smf.glm(formula="new_child ~ " + formula,
+    def _add_score(self, df, formula, predict='new_child'):
+        logit = smf.glm(formula=f"{predict} ~ {formula}",
                         family=sm.families.Binomial(),
                         data=df).fit()
         df['score'] = logit.predict(df)

@@ -4,7 +4,7 @@ import pandas as pd
 
 from ces import CESPanel
 
-
+ 
 parser = argparse.ArgumentParser(description="Analyze parenting political data")
 parser.add_argument('-o', '--output', help='Suffix for output directory')
 args = parser.parse_args()
@@ -28,15 +28,18 @@ ces.log_header('''
 
 formulas = ["age", "age + marstat", "marstat + pew_religimp + age + income_quintile + educ"]
 
+parenthood_01_1012 = waves_1012.loc[waves_1012['parenthood'] < 2,:].copy()
+under_40_parenthood_01_1012 = parenthood_01_1012.loc[parenthood_01_1012['age'] < 40,:].copy()
+
 for formula in formulas:
     ces.log_findings(ces.get_matched_outcomes(waves_1012, formula), f"Comparison of outcomes between new parents and all others, matched on {formula}")
     ces.log_findings(ces.get_matched_outcomes(parents_1012, formula), f"Comparison of outcomes between new parents and other parents, matched on {formula}")
-    # TODO: match using a dataset of only non-parents and firstborn
-    # TODO: match using a dataset of only non-parents and firstborn, dataset under 40
-    # TODO: match using firstborn as the treatment and a control group of non-parents
-    # TODO: match using firstborn as the treatment and a control group of non-parents, dataset under 40
-    # TODO: match using is_parent as the treatment
-    # TODO: match using is_parent as the treatment, dataset under 40
+
+    ces.log_findings(ces.get_matched_outcomes(parenthood_01_1012, formula, treatment='firstborn'), f"Comparison of outcomes between firstborn and non-parents, matched on {formula}")
+    ces.log_findings(ces.get_matched_outcomes(parenthood_01_1012, formula, treatment='firstborn'), f"Same, but only respondents under 40")
+
+    ces.log_findings(ces.get_matched_outcomes(waves_1012, formula, treatment='is_parent'), f"Comparison of outcomes between is_parent and non-parents, matched on {formula}")
+    ces.log_findings(ces.get_matched_outcomes(under_40_1012, formula, treatment='is_parent'), f"Same, but only respondents under 40")
 
 # TODO: add matching for subsets: filter on each parenthood status (new_child, firstborn, is_parent), then use demographic (gender, high_income, low_income) as treatment
 # ...but what about formula? Use same formula for now. Even if it inclues the demographic.
