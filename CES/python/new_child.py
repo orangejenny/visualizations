@@ -5,6 +5,16 @@ import pandas as pd
 from ces import CESPanel
 
 
+def _filter_dummy(df, dummy):
+    return df.loc[df[dummy] == 1,:].copy()
+
+def _filter_under_40(df):
+    return df.loc[df['age'] < 40,:].copy()
+
+def _filter_demographic(df, label, value):
+    return df.loc[df[label] == value,:].copy()
+
+ 
 parser = argparse.ArgumentParser(description="Analyze parenting political data")
 parser.add_argument('-o', '--output', help='Suffix for output directory')
 args = parser.parse_args()
@@ -13,33 +23,107 @@ args = parser.parse_args()
 ces = CESPanel(args.output)
 panel = ces.get_panel()
 two_years = ces.get_paired_waves()
+under_40_two_years = _filter_under_40(two_years)
+
+waves_1012 = two_years.loc[two_years['start_wave'] == 10,:].copy()
+waves_1214 = two_years.loc[two_years['start_wave'] == 12,:].copy()
+
+under_40_1012 = _filter_under_40(waves_1012)
+
+parents_1012 = _filter_dummy(waves_1012, 'is_parent')
+parents_under_40_1012 = _filter_under_40(parents_1012)
+
+new_child_1012 = _filter_dummy(waves_1012, 'new_child')
+new_child_under_40_1012 = _filter_under_40(new_child_1012)
+firstborn_1012 = _filter_dummy(waves_1012, 'firstborn')
+firstborn_under_40_1012 = _filter_under_40(firstborn_1012)
 
 ces.log_header('''
 ############
 # Matching #
 ############''')
 
-waves_1012 = two_years.loc[two_years['start_wave'] == 10,:].copy()
-waves_1214 = two_years.loc[two_years['start_wave'] == 12,:].copy()
+formulas = [
+    "age",
+    "age + marstat",
+    "marstat + pew_religimp + age + income_quintile + educ",
+]
 
-ces.log_findings(ces.get_matched_outcomes(waves_1012, "age"), f"Comparison of outcomes between new parents and a control group matched on age")
-ces.log_findings(ces.get_matched_outcomes(waves_1012, "age + marstat"), f"Comparison of outcomes between new parents and a control group matched on age & marital status")
-ces.log_findings(ces.get_matched_outcomes(waves_1012, "age + marstat + ideo_before"), f"Comparison of outcomes between new parents and a control group matched on age & marital status & ideology")
+parenthood_01_1012 = waves_1012.loc[waves_1012['parenthood'] < 2,:].copy()
+under_40_parenthood_01_1012 = parenthood_01_1012.loc[parenthood_01_1012['age'] < 40,:].copy()
+
+# TODO: should subsets be using 01 matching?
+for formula in formulas:
+    ces.log_findings(ces.get_matched_outcomes(waves_1012, formula), f"Comparison of outcomes between new parents and all others, matched on {formula}")
+    ces.log_findings(ces.get_matched_outcomes(parents_1012, formula), f"Comparison of outcomes between new parents and other parents, matched on {formula}")
+
+    ces.log_findings(ces.get_matched_outcomes(parenthood_01_1012, formula, treatment='firstborn'), f"Comparison of outcomes between firstborn and non-parents, matched on {formula}")
+    ces.log_findings(ces.get_matched_outcomes(parenthood_01_1012, formula, treatment='firstborn'), f"Same, but only respondents under 40")
+
+    ces.log_findings(ces.get_matched_outcomes(waves_1012, formula, treatment='is_parent'), f"Comparison of outcomes between is_parent and non-parents, matched on {formula}")
+    ces.log_findings(ces.get_matched_outcomes(under_40_1012, formula, treatment='is_parent'), f"Same, but only respondents under 40")
+
+ces.log_header('''
+####################
+# Matching: Gender #
+####################''')
+# TODO: Look at PerfectSeparationWarning
+
+def matching_for_subset(demo_label, demo_a, demo_b):
+    demo_a_1012 = _filter_demographic(waves_1012, demo_label, demo_a)
+    demo_a_under_40_1012 = _filter_under_40(demo_a_1012)
+    demo_b_1012 = _filter_demographic(waves_1012, demo_label, demo_b)
+    demo_b_under_40_1012 = _filter_under_40(demo_b_1012)
+
+    treatment_1012 = {}
+    under_40_treatment_1012 = {}
+    for treatment in ('new_child', 'firstborn', 'is_parent'):
+        treatment_1012[treatment] = _filter_dummy(waves_1012, treatment)
+        under_40_treatment_1012[treatment] = _filter_under_40(treatment_1012[treatment])
+
+    for formula in formulas:
+        for treatment in ('new_child', 'firstborn', 'is_parent'):
+            ces.log_findings(ces.get_matched_outcomes(treatment_1012[treatment], f"{treatment} ~ {formula}", demo_label, demo_a, demo_b),
+                             f"Comparison of outcomes when {treatment}=1, split by {demo_label}, matched on {formula}")
+            ces.log_findings(ces.get_matched_outcomes(under_40_treatment_1012[treatment], f"{treatment} ~ {formula}", demo_label, demo_a, demo_b),
+                             f"Comparison of outcomes when {treatment}=1, respondents under 40, split by {demo_label}, matched on {formula}")
+
+        for demo_value, demo_subset, demo_subset_under_40 in (
+            (demo_a, demo_a_1012, demo_a_under_40_1012),
+            (demo_b, demo_b_1012, demo_b_under_40_1012),
+        ):
+            for treatment in ('new_child', 'firstborn', 'is_parent'):
+                ces.log_findings(ces.get_matched_outcomes(demo_subset, f"{treatment} ~ {formula}", treatment=treatment),
+                                 f"Comparison of outcomes, {demo_label}={demo_value}, treatment={treatment}, matched on {formula}")
+                ces.log_findings(ces.get_matched_outcomes(demo_subset_under_40, f"{treatment} ~ {formula}", treatment=treatment),
+                                 f"Comparison of outcomes, {demo_label}={demo_value}, respondents under 40, treatment={treatment}, matched on {formula}")
+
+matching_for_subset("gender", 1, 2)
+
+ces.log_header('''
+####################
+# Matching: Income #
+####################''')
+
+matching_for_subset("high_income", 0, 1)    # Top 20% vs bottom 80%
+matching_for_subset("low_income", 0, 1)     # Bottom 40% vs top 60%
 
 ces.log_header('''
 ############
 # Modeling #
 ############''')
 
-ces.log_verbose(ces.consider_models(ces.get_paired_waves()), f"Comparison of models to predict new_child")
-ces.log_verbose(ces.consider_models(ces.get_paired_waves(), treatment='firstborn'), f"Comparison of models to predict firstborn")
+ces.log_verbose(ces.consider_models(two_years), f"Comparison of models to predict new_child")
+ces.log_verbose(ces.consider_models(two_years, treatment='firstborn'), f"Comparison of models to predict firstborn")
+ces.log_verbose(ces.consider_models(two_years, treatment='is_parent'), f"Comparison of models to predict is_parent")
 
-waves_1012_all_parents = waves_1012.loc[waves_1012['is_parent'] == 1,:].copy()
-ces.log_verbose(ces.consider_models(ces.get_paired_waves()), f"Comparison of models to predict new parenthood, limited to parents")
+ces.log_verbose(ces.consider_models(parents_1012), f"Comparison of models to predict new_child, limited to parents")
 
-waves_1012_under_40 = waves_1012.loc[waves_1012['age'] < 40,:].copy()
-ces.log_verbose(ces.consider_models(waves_1012_under_40), f"Comparison of models to predict new_child, limited to respondents under 40")
-ces.log_verbose(ces.consider_models(waves_1012_under_40, treatment='is_parent'), f"Comparison of models to predict is_parent, limited to respondents under 40")
+ces.log_verbose(ces.consider_models(under_40_1012), f"Comparison of models to predict new_child, limited to respondents under 40")
+ces.log_verbose(ces.consider_models(under_40_1012, treatment='firstborn'), f"Comparison of models to predict firstborn, limited to respondents under 40")
+ces.log_verbose(ces.consider_models(under_40_1012, treatment='is_parent'), f"Comparison of models to predict is_parent, limited to respondents under 40")
+
+ces.log_verbose(ces.consider_models(parents_1012), f"Comparison of models to predict new_child, limited to parents under 40")
 
 ces.log_verbose('''
 ######################################
@@ -79,9 +163,9 @@ ces.log_verbose(ces.count_percentages(two_years, 'new_child', 'ideo_direction'),
 ces.log_verbose(ces.count_percentages(two_years, 'new_child', 'pid_direction'), "Party direction change")
 
 ces.log_verbose('''
-#######################################################################################################
-# Analysis: Count flippers: How often do people change ideology/party between two waves? (unweighted) #
-#######################################################################################################''')
+#############################################################################################
+# Count flippers: How often do people change ideology/party between two waves? (unweighted) #
+#############################################################################################''')
 
 def log_flippers(issue, start_wave, end_wave, lower_bound, upper_bound):
     ces.log_verbose(f"Percentage of {issue} changing from 20{start_wave} to 20{end_wave}: "
@@ -97,9 +181,9 @@ log_flippers("ideo5", 12, 14, 1, 5)
 log_flippers("ideo5", 10, 14, 1, 5)
 
 ces.log_header('''
-#######################
-# Analysis: Attitudes #
-#######################''')
+#############################
+# Panel analysis: Attitudes #
+#############################''')
 
 ces.log_findings(ces.all_t_test_pvalues(ces.paired_waves), "T test p values, all paired data")
 
@@ -118,9 +202,9 @@ ces.log_verbose(ces.summarize_all_issues(two_years, 'firstborn'), "Summary of is
 ces.log_verbose(ces.summarize_all_persistence(), "Summary of persistent change frequency")
 
 ces.log_header('''
-#################
-# Analysis: Age #
-#################''')
+#######################
+# Panel analysis: Age #
+#######################''')
 
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
 ces.log_findings(ces.all_t_test_pvalues(young_adults), "T test p values, respondents under 30 years old")
@@ -128,9 +212,9 @@ ces.log_findings(ces.all_t_test_pvalues(young_adults), "T test p values, respond
 ces.log_verbose(ces.summarize_all_issues(young_adults, 'new_child'), "Summary of issues, respondents under 30 years old")
 
 ces.log_header('''
-####################
-# Analysis: Gender #
-####################''')
+##########################
+# Panel analysis: Gender #
+##########################''')
 two_years_new_parents = two_years.loc[np.equal(two_years['new_child'], 1),:]
 two_years_men = two_years.loc[np.equal(two_years['gender'], 1),:]
 two_years_women = two_years.loc[np.equal(two_years['gender'], 2),:]
@@ -144,9 +228,9 @@ ces.log_findings(ces.all_t_test_pvalues(two_years_new_parents, demographic_label
 ces.log_verbose(ces.summarize_all_issues(two_years, ['new_child', 'gender']), "Summary of issues by new_child and gender")
 
 ces.log_header('''
-####################
-# Analysis: Income #
-####################''')
+##########################
+# Panel analysis: Income #
+##########################''')
 
 ces.log_verbose(panel.loc[:, ['caseid', 'faminc_14']].groupby("faminc_14").count(), "Income distribution across panel")
 ces.log_verbose(two_years.loc[:,['income', 'new_child', 'caseid']].groupby(['new_child', 'income']).count(), "Income distribution, new parents and others")
@@ -167,9 +251,9 @@ ces.log_findings(ces.all_t_test_pvalues(two_years_new_parents, demographic_label
 ces.log_verbose(ces.summarize_all_issues(two_years, ['new_child', 'high_income']), "Summary of issues by new_child and income")
 
 ces.log_verbose('''
-#######################################
-# Analysis: Non-response (unweighted) #
-#######################################''')
+#############################
+# Non-response (unweighted) #
+#############################''')
 
 # TODO: Do non-response rates differ for parents and non-parents?
 ces.log_verbose(ces.summarize_issues_non_response(two_years), "Non-response rates for issues")

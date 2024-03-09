@@ -20,7 +20,7 @@ class ParentsPoliticsPanelException(Exception):
 
 class ParentsPoliticsPanel():
     OUTPUT_DIR = 'output'
-    OUTPUT_FILES = ['significant.log', 'all.log', 'two_stars.log', 'three_stars.log']
+    OUTPUT_FILES = ['significant.log', 'all.log', 'two_stars.log', 'three_stars.log', 'substantive.log']
 
     METRICS = ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']
     waves = []
@@ -75,11 +75,14 @@ class ParentsPoliticsPanel():
 
     def log_findings(self, data, description=''):
         self._output('all.log', data, description)
-        self._output('significant.log', self._limit_to_significant(data), description)
-        self._output('two_stars.log', self._limit_to_significant(data, level=2), description)
-        self._output('three_stars.log', self._limit_to_significant(data, level=3), description)
+        significant = self._limit_to_significant(data)
+        self._output('significant.log', significant, description)
+        self._output('substantive.log', self._limit_to_substantive(significant), description)
+        self._output('two_stars.log', self._limit_to_significant(significant, level=2), description)
+        self._output('three_stars.log', self._limit_to_significant(significant, level=3), description)
 
     def _limit_to_significant(self, data, level=1):
+        data = data.copy()
         key = '*' * level
         if 'pvalue' in data:
             data = data.astype({'pvalue': pd.StringDtype()})
@@ -92,6 +95,20 @@ class ParentsPoliticsPanel():
             data.drop([col for col in data.columns if col.endswith("?")], axis=1, inplace=True)
         data = data.loc[data['sig'],:]
         data = data.drop(['sig'], axis=1)
+        return data
+
+    def _limit_to_substantive(self, data, threshold=0.1):
+        data = data.copy()
+        if 'diff' in data:
+            data['sub'] = np.abs(data['diff']) >= threshold
+        else:
+            for col in data.columns:
+                if col.endswith('-'):
+                    data[col.replace('-', '?')] = np.abs(data[col]) >= threshold
+            data['sub'] = data.any(axis=1, bool_only=True)
+            data.drop([col for col in data.columns if col.endswith("?")], axis=1, inplace=True)
+        data = data.loc[data['sub'],:]
+        data = data.drop(['sub'], axis=1)
         return data
 
     def _output(self, filename, data, description=''):
@@ -329,18 +346,20 @@ class ParentsPoliticsPanel():
     # Matching functions #
     ######################
     # TODO: Make weighting an option, not default
-    def get_matched_outcomes(self, df, formula):
+    def get_matched_outcomes(self, df, formula, treatment='new_child', control_value=0, treatment_value=1):
         outcomes = [
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
-        columns = ['caseid', 'new_child', 'score', 'weight'] + outcomes
+        columns = ['caseid', treatment, 'score', 'weight'] + outcomes
 
         if len(df['caseid'].unique()) != len(df['caseid']):
             raise ParentsPoliticsPanelException("Data frame gives to get_matched_outcomes does not have unique cases")
 
+        if "~" not in formula:
+            formula = f"{treatment} ~ {formula}"
         df = self._add_score(df, formula)
-        new_parents = df.loc[df['new_child'] == 1, columns].copy()  # TODO: use parenthood status instead of new parenthood? consider parenthood status in matching
-        candidates = df.loc[df['new_child'] == 0, columns].copy()
+        new_parents = df.loc[df[treatment] == treatment_value, columns].copy()
+        candidates = df.loc[df[treatment] == control_value, columns].copy()
 
         # Match up treatment and control groups
         # TODO: error/note if any of new_parents didn't match: ultimately implement nearest neighbor & record distance, noting bias
@@ -355,12 +374,12 @@ class ParentsPoliticsPanel():
         # Reduce matches to a single control row per treatment to t test
         # TODO: matched_outcomes outcomes are weighted, but new_parents are not
         # Is doing weighting myself for t tests legit?
-        matched_outcomes['new_child'] = 0
+        matched_outcomes[treatment] = control_value
         matched_outcomes['weight'] = 1  # Outcomes have been weighted, so set weight to 1
         reduced_df = pd.concat([new_parents, matched_outcomes])
         pvalues = []
         for o in outcomes:
-            result = self.t_test(reduced_df, o)
+            result = self.t_test(reduced_df, o, demographic_label=treatment, a_value=control_value, b_value=treatment_value)
             pvalues.append(str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue))
 
         summary = pd.DataFrame(data={
@@ -373,7 +392,7 @@ class ParentsPoliticsPanel():
         return summary
 
     def _add_score(self, df, formula):
-        logit = smf.glm(formula="new_child ~ " + formula,
+        logit = smf.glm(formula=formula,
                         family=sm.families.Binomial(),
                         data=df).fit()
         df['score'] = logit.predict(df)
@@ -382,12 +401,9 @@ class ParentsPoliticsPanel():
     def consider_models(self, df, treatment='new_child'):
         '''
         TODO
-        - Remove investor? It's just a yes/no
-        - income_quintile instead of income?
         - Combine pew_religimp with pew_churatd and/or pew_prayer?
-        - Add employment status and maybe home ownership
-        - Urban/rural? Need to cross-reference zip code with some other dataset.
-        - Z-score for age? Doesn't seem to make a difference compared to age
+        - Urban/rural? Need to cross-reference zip code with some other dataset: map countyfips_XX to USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
+        - Some of these can vary (esp employment), should use year-specific value
         '''
         models = {}
         for choose_count in range(1, len(self.demographics) + 1):
@@ -396,11 +412,16 @@ class ParentsPoliticsPanel():
                 logit = smf.glm(formula=formula,
                                 family=sm.families.Binomial(),
                                 data=df).fit()
-                models[formula] = (formula, logit.pseudo_rsquared(), logit.aic, logit)
+                df['score'] = logit.predict(df)
+                unscored_count = len(df.loc[np.isnan(df['score'])])
+                unscored_percentage = f'{round(unscored_count * 100 / len(df))}%'
+                models[formula] = (formula, logit.pseudo_rsquared(), logit.aic, unscored_percentage, logit)
 
         by_r_squared = sorted(models.values(), key=lambda t: t[1]) # higher is better
         by_aic = sorted(models.values(), key=lambda t: t[2]) # lower is better
 
+        # Note two_years returns stuff, and waves_1214, but not waves_1012
+        # TODO: How good are the models? Like, how much of the sample do they correctly predict?
         max_models = int(len(models) * 0.05)
         decent_r_squared = by_r_squared[-max_models:]
         decent_aic = by_aic[:max_models]
@@ -410,6 +431,7 @@ class ParentsPoliticsPanel():
             'formula': [re.sub(r'.*~\s*', '', f) for f in decent_formulas],
             'r_squared': [models[f][1] for f in decent_formulas],
             'aic': [models[f][2] for f in decent_formulas],
+            'unscored': [models[f][3] for f in decent_formulas],
         })
         summary.sort_values('aic', inplace=True)
         return summary
