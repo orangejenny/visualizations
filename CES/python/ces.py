@@ -10,10 +10,12 @@ class CESPanel(ParentsPoliticsPanel):
     demographics_with_bounds = [
         ('gender', 1, 2),
         ('race', 1, 8),
-        ('investor', 1, 2),
+        ('employ', 1, 8),
+        #('investor', 1, 2),
         ('educ', 1, 6),
         ('marstat', 1, 6),
         ('pew_religimp', 1, 4),
+        ('ownhome', 1, 3),
 
         # constructed
         ('age', None, None),
@@ -82,7 +84,9 @@ class CESPanel(ParentsPoliticsPanel):
             self.panel.columns.str.startswith("race_") + # Limit to 1-8, categorical
             self.panel.columns.str.startswith("educ_") + # Limit to 1-6, categorical
             self.panel.columns.str.startswith("marstat_") + # Limit to 1-6, categorical
-            self.panel.columns.str.startswith("pew_religimp_") # Limit to 1-4, 1 is "very important" - there are other religious measures, so a composite would help
+            self.panel.columns.str.startswith("pew_religimp_") + # Limit to 1-4, 1 is "very important" - there are other religious measures, so a composite would help
+            self.panel.columns.str.startswith("employ_") + # Limit to 1-8, categorical
+            self.panel.columns.str.startswith("ownhome_")  # Limit to 1-3, categorical
         ].copy()
 
     def add_age(self, df):
