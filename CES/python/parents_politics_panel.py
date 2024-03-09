@@ -355,7 +355,9 @@ class ParentsPoliticsPanel():
         if len(df['caseid'].unique()) != len(df['caseid']):
             raise ParentsPoliticsPanelException("Data frame gives to get_matched_outcomes does not have unique cases")
 
-        df = self._add_score(df, formula, treatment)
+        if "~" not in formula:
+            formula = f"{treatment} ~ {formula}"
+        df = self._add_score(df, formula)
         new_parents = df.loc[df[treatment] == treatment_value, columns].copy()
         candidates = df.loc[df[treatment] == control_value, columns].copy()
 
@@ -389,8 +391,8 @@ class ParentsPoliticsPanel():
         summary.sort_index(inplace=True)
         return summary
 
-    def _add_score(self, df, formula, predict='new_child'):
-        logit = smf.glm(formula=f"{predict} ~ {formula}",
+    def _add_score(self, df, formula):
+        logit = smf.glm(formula=formula,
                         family=sm.families.Binomial(),
                         data=df).fit()
         df['score'] = logit.predict(df)
