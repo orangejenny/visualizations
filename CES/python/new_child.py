@@ -26,16 +26,22 @@ ces.log_header('''
 # Matching #
 ############''')
 
-waves_1012 = two_years.loc[two_years['start_wave'] == 10,:].copy()
-waves_1214 = two_years.loc[two_years['start_wave'] == 12,:].copy()
+formulas = ["age", "age + marstat", "marstat + pew_religimp + age + income_quintile + educ"]
 
-ces.log_findings(ces.get_matched_outcomes(waves_1012, "age"), f"Comparison of outcomes between new parents and a control group matched on age")
-ces.log_findings(ces.get_matched_outcomes(waves_1012, "age + marstat"), f"Comparison of outcomes between new parents and a control group matched on age & marital status")
-ces.log_findings(ces.get_matched_outcomes(waves_1012, "age + marstat + ideo_before"), f"Comparison of outcomes between new parents and a control group matched on age & marital status & ideology")
-ces.log_findings(ces.get_matched_outcomes(waves_1012, "marstat + pew_religimp + age + income_quintile + educ"),
-                 f"Comparison of outcomes between new parents and a control group matched on lots of things")
+for formula in formulas:
+    ces.log_findings(ces.get_matched_outcomes(waves_1012, formula), f"Comparison of outcomes between new parents and all others, matched on {formula}")
+    ces.log_findings(ces.get_matched_outcomes(parents_1012, formula), f"Comparison of outcomes between new parents and other parents, matched on {formula}")
+    # TODO: match using a dataset of only non-parents and firstborn
+    # TODO: match using a dataset of only non-parents and firstborn, dataset under 40
+    # TODO: match using firstborn as the treatment and a control group of non-parents
+    # TODO: match using firstborn as the treatment and a control group of non-parents, dataset under 40
+    # TODO: match using is_parent as the treatment
+    # TODO: match using is_parent as the treatment, dataset under 40
 
-# TODO: add matching for subsets (gender, income)
+# TODO: add matching for subsets: filter on each parenthood status (new_child, firstborn, is_parent), then use demographic (gender, high_income, low_income) as treatment
+# ...but what about formula? Use same formula for now. Even if it inclues the demographic.
+# But note this will mean updating get_matched_outcomes to indicate which parenting status the formula should use
+# It'll also mean updating get_matched_outcomes to accept values for treatment and control (1/2 for gender vs 0/1 for probably everything else)
 
 ces.log_header('''
 ############

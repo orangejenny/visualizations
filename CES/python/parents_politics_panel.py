@@ -418,6 +418,8 @@ class ParentsPoliticsPanel():
         by_r_squared = sorted(models.values(), key=lambda t: t[1]) # higher is better
         by_aic = sorted(models.values(), key=lambda t: t[2]) # lower is better
 
+        # Note two_years returns stuff, and waves_1214, but not waves_1012
+        # TODO: How good are the models? Like, how much of the sample do they correctly predict?
         max_models = int(len(models) * 0.05)
         decent_r_squared = by_r_squared[-max_models:]
         decent_aic = by_aic[:max_models]
