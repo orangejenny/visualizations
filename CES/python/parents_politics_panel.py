@@ -440,3 +440,11 @@ class ParentsPoliticsPanel():
         })
         summary.sort_values('aic', inplace=True)
         return summary
+
+    def evaluate_scores(self, df, formula, treatment='new_child'):
+        self._add_score(df, f"{treatment} ~ {formula}")
+        scores = df.loc[:,['score', treatment]].copy()
+        scores.sort_values('score', inplace=True)
+        scores = scores.loc[pd.notna(scores['score']),:]
+        scores = scores.assign(rounded=lambda x: round(x['score'], 1))
+        return scores.groupby([treatment, 'rounded']).count()

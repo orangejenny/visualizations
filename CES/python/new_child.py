@@ -51,6 +51,9 @@ parenthood_01_1012 = waves_1012.loc[waves_1012['parenthood'] < 2,:].copy()
 under_40_parenthood_01_1012 = parenthood_01_1012.loc[parenthood_01_1012['age'] < 40,:].copy()
 
 for formula in formulas:
+    for treatment in ("firstborn", "new_child", "is_parent"):
+        ces.log_findings(ces.evaluate_scores(waves_1012, formula, treatment), f"Evaluate scoring of {treatment} ~ {formula}")
+
     # Treatment is firstborn, control is non-parents
     ces.log_findings(ces.get_matched_outcomes(parenthood_01_1012, formula, treatment='firstborn'), f"Comparison of outcomes between firstborn and non-parents, matched on {formula}")
     ces.log_findings(ces.get_matched_outcomes(under_40_parenthood_01_1012, formula, treatment='firstborn'), f"Same, but only respondents under 40")
