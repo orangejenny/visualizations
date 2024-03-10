@@ -188,7 +188,6 @@ ces.log_header('''
 #############################
 # Panel analysis: Attitudes #
 #############################''')
-
 ces.log_findings(ces.all_t_test_pvalues(ces.paired_waves), "T test p values, all paired data")
 
 # How different do things look for a single pair of waves? Should I treat these as two different data sets?
@@ -196,6 +195,8 @@ ces.log_findings(ces.all_t_test_pvalues(waves_1012), "T test p values, 2010/2012
 ces.log_findings(ces.all_t_test_pvalues(waves_1214), "T test p values, 2012/2014 only")
 
 ces.log_findings(ces.all_t_test_pvalues(ces.paired_waves, demographic_label="firstborn"), "T test p values, all paired data, firstborn")
+ces.log_findings(ces.all_t_test_pvalues(waves_1012, demographic_label="firstborn"), "T test p values, 2010/2012 only, firstborn")
+ces.log_findings(ces.all_t_test_pvalues(waves_1214, demographic_label="firstborn"), "T test p values, 2012/2014 only, firstborn")
 
 ces.log_verbose(ces.summarize_all_issues(two_years, 'new_child'), "Summary of issues, all paired data")
 ces.log_verbose(ces.summarize_all_issues(two_years, 'firstborn'), "Summary of issues, all paired data, firstborn child versus all others")
@@ -210,6 +211,7 @@ ces.log_header('''
 # Panel analysis: Age #
 #######################''')
 
+# Change to 40 to match matching?
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
 ces.log_findings(ces.all_t_test_pvalues(young_adults), "T test p values, respondents under 30 years old")
 
