@@ -405,11 +405,6 @@ class ParentsPoliticsPanel():
         return df
 
     def consider_models(self, df, treatment='new_child'):
-        '''
-        TODO
-        - Combine pew_religimp with pew_churatd and/or pew_prayer?
-        - Urban/rural? Need to cross-reference zip code with some other dataset: map countyfips_XX to USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
-        '''
         models = {}
         for choose_count in range(1, len(self.demographics) + 1):
             for chosen in list(combinations(self.demographics, choose_count)):
@@ -426,7 +421,6 @@ class ParentsPoliticsPanel():
         by_aic = sorted(models.values(), key=lambda t: t[2]) # lower is better
 
         # Note two_years returns stuff, and waves_1214, but not waves_1012
-        # TODO: How good are the models? Like, how much of the sample do they correctly predict?
         max_models = int(len(models) * 0.05)
         decent_r_squared = by_r_squared[-max_models:]
         decent_aic = by_aic[:max_models]
@@ -438,7 +432,9 @@ class ParentsPoliticsPanel():
             'aic': [models[f][2] for f in decent_formulas],
             'unscored': [models[f][3] for f in decent_formulas],
         })
-        summary.sort_values('aic', inplace=True)
+        summary['aic_rank'] = summary.rank()['aic']
+        summary.set_index('aic_rank', inplace=True)
+        summary.sort_values('aic_rank', inplace=True)
         return summary
 
     def evaluate_scores(self, df, formula, treatment='new_child'):

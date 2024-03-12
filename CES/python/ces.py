@@ -14,13 +14,14 @@ class CESPanel(ParentsPoliticsPanel):
         #('investor', 1, 2),
         ('educ', 1, 6),
         ('marstat', 1, 6),
-        ('pew_religimp', 1, 4),
+        ('pew_religimp', 1, 4),  # TODO: make composite with pew_churatd and/or pew_prayer?
         ('ownhome', 1, 3),
 
         # constructed
+        ('RUCC_2023', None, None),  # From USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
         ('age', None, None),
         ('income', None, None),
-        ('income_quintile', None, None),
+        #('income_quintile', None, None),   # Duplicative with income and less granular
     ]
 
     def _load_panel(cls):
@@ -40,6 +41,7 @@ class CESPanel(ParentsPoliticsPanel):
             ) for i, w in enumerate(self.start_waves)
         ], ignore_index=True)
         df = self.add_age(df)   # age depends on start_wave
+        df = self.add_rural_urban(df)
         df = self._consolidate_demographics(df)
 
         return df
@@ -87,7 +89,8 @@ class CESPanel(ParentsPoliticsPanel):
             self.panel.columns.str.startswith("marstat_") + # Limit to 1-6, categorical
             self.panel.columns.str.startswith("pew_religimp_") + # Limit to 1-4, 1 is "very important" - there are other religious measures, so a composite would help
             self.panel.columns.str.startswith("employ_") + # Limit to 1-8, categorical
-            self.panel.columns.str.startswith("ownhome_")  # Limit to 1-3, categorical
+            self.panel.columns.str.startswith("ownhome_") + # Limit to 1-3, categorical
+            self.panel.columns.str.startswith("countyfips_")
         ].copy()
 
     def add_age(self, df):
@@ -147,6 +150,17 @@ class CESPanel(ParentsPoliticsPanel):
             )})
             df.drop(old_labels, axis=1, inplace=True)
         return df
+
+    def add_rural_urban(self, df):
+        codes = pd.read_csv("~/Documents/visualizations/midterm/ruralurbancontinuumcodes2023/rural_urban.csv")
+        df = df.assign(
+            countyfips_before=lambda x:np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [x[f'countyfips_{w}'] for w in self.start_waves],
+            )
+        )
+        df = df.astype({'countyfips_before': 'int64'})
+        return df.merge(codes, how='left', left_on='countyfips_before', right_on='FIPS')
 
     def add_income_brackets(self, df):
         # Income: Start with faminc_14 because the buckets vary by year, and the 2014 buckets are more granular

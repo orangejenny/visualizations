@@ -117,17 +117,15 @@ ces.log_header('''
 # Modeling #
 ############''')
 
-ces.log_verbose(ces.consider_models(two_years), f"Comparison of models to predict new_child")
-ces.log_verbose(ces.consider_models(two_years, treatment='firstborn'), f"Comparison of models to predict firstborn")
-ces.log_verbose(ces.consider_models(two_years, treatment='is_parent'), f"Comparison of models to predict is_parent")
-
-ces.log_verbose(ces.consider_models(parents_1012), f"Comparison of models to predict new_child, limited to parents")
-
-ces.log_verbose(ces.consider_models(under_40_1012), f"Comparison of models to predict new_child, limited to respondents under 40")
-ces.log_verbose(ces.consider_models(under_40_1012, treatment='firstborn'), f"Comparison of models to predict firstborn, limited to respondents under 40")
-ces.log_verbose(ces.consider_models(under_40_1012, treatment='is_parent'), f"Comparison of models to predict is_parent, limited to respondents under 40")
-
-ces.log_verbose(ces.consider_models(parents_1012), f"Comparison of models to predict new_child, limited to parents under 40")
+for df, addendum in [
+    (two_years, ""),
+    (under_40_1012, ", limited to respondents under 40"),
+]:
+    for treatment in ("firstborn", "new_child", "is_parent"):
+        models = ces.consider_models(df, treatment=treatment)
+        ces.log_verbose(models, f"Comparison of models to predict {treatment}{addendum}")
+        top_formula = models['formula'][1]  # 1 because these are indexed pased on DataFrame.rank
+        ces.log_verbose(ces.evaluate_scores(df, top_formula, treatment=treatment), f"Score evaluation for top model: {top_formula}")
 
 ces.log_verbose('''
 ######################################
