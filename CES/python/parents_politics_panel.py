@@ -358,31 +358,31 @@ class ParentsPoliticsPanel():
         if "~" not in formula:
             formula = f"{treatment} ~ {formula}"
         df = self._add_score(df, formula)
-        new_parents = df.loc[df[treatment] == treatment_value, columns].copy()  # TODO: rename var
+        treatment_cases = df.loc[df[treatment] == treatment_value, columns].copy()
         candidates = df.loc[df[treatment] == control_value, columns].copy()
 
         # Match up treatment and control groups
-        matched_set = new_parents.merge(candidates, on='score', how='left', suffixes=('_treatment', ''))
+        matched_set = treatment_cases.merge(candidates, on='score', how='left', suffixes=('_treatment', ''))
         match_counts = matched_set.groupby('caseid_treatment').count().loc[:,['score']]
         match_counts.rename(columns={'score':'control_count'}, inplace=True)
         unmatched = match_counts.loc[match_counts['control_count'] == 0,:]
-        # TODO: error/note if any of new_parents didn't match: ultimately implement nearest neighbor & record distance, noting bias
+        # TODO: error/note if any of treatment_cases didn't match: ultimately implement nearest neighbor & record distance, noting bias
         # Currently not matching 5-15% of cases with exact matching
         if len(unmatched):
-            print(f"Could not match {len(unmatched)} of {len(new_parents)} treatment cases ({round(len(unmatched) * 100 / len(new_parents))}%)")
+            print(f"Could not match {len(unmatched)} of {len(treatment_cases)} treatment cases ({round(len(unmatched) * 100 / len(treatment_cases))}%)")
 
         # Group on treatment caseid, averaging all relevant control matches
         matched_outcomes = self._weighted_averages(matched_set, 'caseid_treatment', outcomes)
         matched_outcomes = matched_outcomes.drop(['caseid_treatment'], axis=1)
         agg_matched_outcomes = matched_outcomes.mean()
-        agg_treatment_outcomes = self._weighted_averages(new_parents, None, outcomes)
+        agg_treatment_outcomes = self._weighted_averages(treatment_cases, None, outcomes)
 
         # Reduce matches to a single control row per treatment to t test
-        # TODO: matched_outcomes outcomes are weighted, but new_parents are not
+        # TODO: matched_outcomes outcomes are weighted, but treatment_cases are not
         # Is doing weighting myself for t tests legit?
         matched_outcomes[treatment] = control_value
         matched_outcomes['weight'] = 1  # Outcomes have been weighted, so set weight to 1
-        reduced_df = pd.concat([new_parents, matched_outcomes])
+        reduced_df = pd.concat([treatment_cases, matched_outcomes])
         pvalues = []
         for o in outcomes:
             result = self.t_test(reduced_df, o, demographic_label=treatment, a_value=control_value, b_value=treatment_value)
