@@ -19,6 +19,7 @@ class CESPanel(ParentsPoliticsPanel):
 
         # constructed
         ('RUCC_2023', None, None),  # From USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
+        ('division', None, None),  # Census division: https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
         ('age', None, None),
         ('income', None, None),
         #('income_quintile', None, None),   # Duplicative with income and less granular
@@ -160,7 +161,23 @@ class CESPanel(ParentsPoliticsPanel):
             )
         )
         df = df.astype({'countyfips_before': 'int64'})
-        return df.merge(codes, how='left', left_on='countyfips_before', right_on='FIPS')
+        df = df.merge(codes, how='left', left_on='countyfips_before', right_on='FIPS')
+        # https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
+        states = [
+            ['CT', 'ME', 'MA', 'NH', 'RI', 'VT'],
+            ['NJ', 'NY', 'PA'],
+            ['IN', 'IL', 'MI', 'OH', 'WI'],
+            ['IA', 'KS', 'MN', 'MO', 'NE', 'ND', 'SD'],
+            ['DE', 'DC', 'FL', 'GA', 'MD', 'NC', 'SC', 'VA', 'WV'],
+            ['AL', 'KY', 'MS', 'TN'],
+            ['AR', 'LA', 'OK', 'TX'],
+            ['AZ', 'CO', 'ID', 'NM', 'MY', 'UT', 'NV', 'WY'],
+            ['AK', 'CA', 'HI', 'OR', 'WA'],
+        ]
+        divisions = pd.DataFrame(data=[(a, i + 1) for i, abbreviations in enumerate(states) for a in abbreviations])
+        divisions.rename(columns={0: 'state', 1: 'division'}, inplace=True)
+        df = df.merge(divisions, how='left', left_on='State', right_on='state')
+        return df
 
     def add_income_brackets(self, df):
         # Income: Start with faminc_14 because the buckets vary by year, and the 2014 buckets are more granular
