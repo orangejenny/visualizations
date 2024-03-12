@@ -190,21 +190,18 @@ class ParentsPoliticsPanel():
     def filter_na(self, df, label):
         return df.loc[pd.notna(df[label]),:].copy()
 
-    def all_t_test_pvalues(self, df, **test_kwargs):
-        return self._all_test_pvalues(df, self.ISSUES, self.METRICS, self.t_tests, **test_kwargs)
-
-    def _all_test_pvalues(self, df, issues, metrics, test, **test_kwargs):
-        issues = list(issues)
+    def all_t_test_pvalues(self, df, demographic_label, **test_kwargs):
+        issues = list(self.ISSUES)
         issues.sort()
         all_results = pd.DataFrame(data={'issue': issues})
-        for metric in metrics:
-            issue_results = test(df, metric, **test_kwargs)
+        for metric in self.METRICS:
+            issue_results = self.t_tests(df, metric, demographic_label, **test_kwargs)
             all_results = all_results.merge(issue_results.loc[:,['issue', 'diff', 'pvalue']], on='issue')
             all_results.rename(columns={'diff': f'{metric}-', 'pvalue': f'{metric}*'}, inplace=True)
         return all_results
 
     # TODO: Make weighting an option, not default
-    def t_tests(self, df, metric, demographic_label='new_child', a_value=0, b_value=1):
+    def t_tests(self, df, metric, demographic_label, a_value=0, b_value=1):
         results = {
             'metric': [],
             'diff': [],
@@ -237,7 +234,7 @@ class ParentsPoliticsPanel():
         df.sort_values('metric', inplace=True)
         return df
 
-    def t_test(self, df, issue_label, demographic_label='new_child', a_value=0, b_value=1):
+    def t_test(self, df, issue_label, demographic_label, a_value=0, b_value=1):
         filtered = self.filter_na(self.filter_na(df, demographic_label), issue_label)
         group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), ['weight', issue_label]]
         group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), ['weight', issue_label]]
@@ -385,7 +382,7 @@ class ParentsPoliticsPanel():
         reduced_df = pd.concat([treatment_cases, matched_outcomes])
         pvalues = []
         for o in outcomes:
-            result = self.t_test(reduced_df, o, demographic_label=treatment, a_value=control_value, b_value=treatment_value)
+            result = self.t_test(reduced_df, o, treatment, a_value=control_value, b_value=treatment_value)
             pvalues.append(str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue))
 
         summary = pd.DataFrame(data={

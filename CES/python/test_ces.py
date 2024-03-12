@@ -226,7 +226,7 @@ class TestCESPanel(unittest.TestCase):
         _test_t_test(0.136, data, 'budget_composite_delta_abs', 'firstborn')
 
     def test_t_tests(self):
-        results = self.data.t_tests(self.data.get_paired_waves(), 'delta')
+        results = self.data.t_tests(self.data.get_paired_waves(), 'delta', 'new_child')
 
         budget_composite = {
             k: list(v.values())[0]  # v will have a single value

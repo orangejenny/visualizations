@@ -186,15 +186,15 @@ ces.log_header('''
 #############################
 # Panel analysis: Attitudes #
 #############################''')
-ces.log_findings(ces.all_t_test_pvalues(ces.paired_waves), "T test p values, all paired data")
+ces.log_findings(ces.all_t_test_pvalues(ces.paired_waves, "new_child"), "T test p values, all paired data")
 
 # How different do things look for a single pair of waves? Should I treat these as two different data sets?
-ces.log_findings(ces.all_t_test_pvalues(waves_1012), "T test p values, 2010/2012 only")
-ces.log_findings(ces.all_t_test_pvalues(waves_1214), "T test p values, 2012/2014 only")
+ces.log_findings(ces.all_t_test_pvalues(waves_1012, "new_child"), "T test p values, 2010/2012 only")
+ces.log_findings(ces.all_t_test_pvalues(waves_1214, "new_child"), "T test p values, 2012/2014 only")
 
-ces.log_findings(ces.all_t_test_pvalues(ces.paired_waves, demographic_label="firstborn"), "T test p values, all paired data, firstborn")
-ces.log_findings(ces.all_t_test_pvalues(waves_1012, demographic_label="firstborn"), "T test p values, 2010/2012 only, firstborn")
-ces.log_findings(ces.all_t_test_pvalues(waves_1214, demographic_label="firstborn"), "T test p values, 2012/2014 only, firstborn")
+ces.log_findings(ces.all_t_test_pvalues(ces.paired_waves, "firstborn"), "T test p values, all paired data, firstborn")
+ces.log_findings(ces.all_t_test_pvalues(waves_1012, "firstborn"), "T test p values, 2010/2012 only, firstborn")
+ces.log_findings(ces.all_t_test_pvalues(waves_1214, "firstborn"), "T test p values, 2012/2014 only, firstborn")
 
 ces.log_verbose(ces.summarize_all_issues(two_years, 'new_child'), "Summary of issues, all paired data")
 ces.log_verbose(ces.summarize_all_issues(two_years, 'firstborn'), "Summary of issues, all paired data, firstborn child versus all others")
@@ -211,7 +211,7 @@ ces.log_header('''
 
 # Change to 40 to match matching?
 young_adults = two_years.loc[np.less(two_years['age'], 30),:]
-ces.log_findings(ces.all_t_test_pvalues(young_adults), "T test p values, respondents under 30 years old")
+ces.log_findings(ces.all_t_test_pvalues(young_adults, "new_child"), "T test p values, respondents under 30 years old")
 
 ces.log_verbose(ces.summarize_all_issues(young_adults, 'new_child'), "Summary of issues, respondents under 30 years old")
 
@@ -223,11 +223,11 @@ two_years_new_parents = two_years.loc[np.equal(two_years['new_child'], 1),:]
 two_years_men = two_years.loc[np.equal(two_years['gender'], 1),:]
 two_years_women = two_years.loc[np.equal(two_years['gender'], 2),:]
 
-ces.log_findings(ces.all_t_test_pvalues(two_years_men), "T test p values, new fathers versus other men")
+ces.log_findings(ces.all_t_test_pvalues(two_years_men, "new_child"), "T test p values, new fathers versus other men")
 
-ces.log_findings(ces.all_t_test_pvalues(two_years_women), "T test p values, new mothers versus other women")
+ces.log_findings(ces.all_t_test_pvalues(two_years_women, "new_child"), "T test p values, new mothers versus other women")
 
-ces.log_findings(ces.all_t_test_pvalues(two_years_new_parents, demographic_label='gender', a_value=1, b_value=2), "T test p values, new fathers versus new mothers")
+ces.log_findings(ces.all_t_test_pvalues(two_years_new_parents, 'gender', a_value=1, b_value=2), "T test p values, new fathers versus new mothers")
 
 ces.log_verbose(ces.summarize_all_issues(two_years, ['new_child', 'gender']), "Summary of issues by new_child and gender")
 
@@ -244,13 +244,13 @@ two_years_bottom_80 = two_years.loc[np.equal(two_years['high_income'], 0),:]  # 
 two_years_bottom_40 = two_years.loc[np.equal(two_years['low_income'], 1),:]
 two_years_top_20 = two_years.loc[np.equal(two_years['high_income'], 1),:]
 
-ces.log_findings(ces.all_t_test_pvalues(two_years_bottom_80), "T test p values, bottom 80% new parents versus other bottom 80% respondents")
+ces.log_findings(ces.all_t_test_pvalues(two_years_bottom_80, "new_child"), "T test p values, bottom 80% new parents versus other bottom 80% respondents")
 
-ces.log_findings(ces.all_t_test_pvalues(two_years_bottom_40), "T test p values, bottom 40% new parents versus other bottom 40% respondents")
+ces.log_findings(ces.all_t_test_pvalues(two_years_bottom_40, "new_child"), "T test p values, bottom 40% new parents versus other bottom 40% respondents")
 
-ces.log_findings(ces.all_t_test_pvalues(two_years_top_20), "T test p values, top 20% new parents versus other top 20% respondents")
+ces.log_findings(ces.all_t_test_pvalues(two_years_top_20, "new_child"), "T test p values, top 20% new parents versus other top 20% respondents")
 
-ces.log_findings(ces.all_t_test_pvalues(two_years_new_parents, demographic_label='high_income'), "T test p values, top 20% new parents versus bottom 80% new parents")
+ces.log_findings(ces.all_t_test_pvalues(two_years_new_parents, 'high_income'), "T test p values, top 20% new parents versus bottom 80% new parents")
 
 ces.log_verbose(ces.summarize_all_issues(two_years, ['new_child', 'high_income']), "Summary of issues by new_child and income")
 
