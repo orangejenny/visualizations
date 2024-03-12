@@ -124,8 +124,9 @@ for df, addendum in [
     for treatment in ("firstborn", "new_child", "is_parent"):
         models = ces.consider_models(df, treatment)
         ces.log_verbose(models, f"Comparison of models to predict {treatment}{addendum}")
-        top_formula = models['formula'][1]  # 1 because these are indexed pased on DataFrame.rank
-        ces.log_verbose(ces.evaluate_scores(df, top_formula, treatment), f"Score evaluation for top model: {top_formula}")
+        if len(models):
+            top_formula = models['formula'][1]  # 1 because these are indexed pased on DataFrame.rank
+            ces.log_verbose(ces.evaluate_scores(df, top_formula, treatment), f"Score evaluation for top model: {top_formula}")
 
 ces.log_verbose('''
 ######################################
