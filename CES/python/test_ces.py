@@ -123,7 +123,7 @@ class TestCESPanel(unittest.TestCase):
     #def _consolidate_demographics(self, df):
     #def _add_parenting(self, df):
     #def _add_issue(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
-    #def get_matched_outcomes(self, df, formula):
+    #def get_matched_outcomes(self, df, formula, treatment):
     #def summarize_issues_non_response(self, df):
     #def summarize_demographics_non_response(self, df):
     #def _limit_to_significant(self, data, level=1):
@@ -207,21 +207,21 @@ class TestCESPanel(unittest.TestCase):
         self.assertEqual(expected, round(result.pvalue, 4))
 
     def test_t_test(self):
-        def _test_t_test(expected, data, label, demographic='new_child'):
+        def _test_t_test(expected, data, label, demographic):
             self._test_pvalue(expected, self.data.t_test(data, label, demographic))
 
         data = self.data.get_paired_waves()
-        _test_t_test(0.0113, data, 'ideo_delta')
-        _test_t_test(0.4132, data, 'ideo_composite_delta')
-        _test_t_test(0.8079, data, 'pid_delta')
+        _test_t_test(0.0113, data, 'ideo_delta', 'new_child')
+        _test_t_test(0.4132, data, 'ideo_composite_delta', 'new_child')
+        _test_t_test(0.8079, data, 'pid_delta', 'new_child')
 
         young_adults = data.loc[np.less(data['age'], 30),:]
-        _test_t_test(0.853, young_adults, 'pid_delta')
-        _test_t_test(0.739, young_adults, 'military_composite_delta_abs')
+        _test_t_test(0.853, young_adults, 'pid_delta', 'new_child')
+        _test_t_test(0.739, young_adults, 'military_composite_delta_abs', 'new_child')
 
-        _test_t_test(0.0005, data, 'climate_composite_after')
-        _test_t_test(0.0012, data, 'immigration_composite_delta')
-        _test_t_test(0.0035, data, 'military_composite_delta')
+        _test_t_test(0.0005, data, 'climate_composite_after', 'new_child')
+        _test_t_test(0.0012, data, 'immigration_composite_delta', 'new_child')
+        _test_t_test(0.0035, data, 'military_composite_delta', 'new_child')
         _test_t_test(0.8794, data, 'budget_composite_delta', 'firstborn')
         _test_t_test(0.136, data, 'budget_composite_delta_abs', 'firstborn')
 

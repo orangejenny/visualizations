@@ -55,16 +55,16 @@ for formula in formulas:
         ces.log_findings(ces.evaluate_scores(waves_1012, formula, treatment), f"Evaluate scoring of {treatment} ~ {formula}")
 
     # Treatment is firstborn, control is non-parents
-    ces.log_findings(ces.get_matched_outcomes(parenthood_01_1012, formula, treatment='firstborn'), f"Comparison of outcomes between firstborn and non-parents, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(under_40_parenthood_01_1012, formula, treatment='firstborn'), f"Same, but only respondents under 40")
+    ces.log_findings(ces.get_matched_outcomes(parenthood_01_1012, formula, 'firstborn'), f"Comparison of outcomes between firstborn and non-parents, matched on {formula}")
+    ces.log_findings(ces.get_matched_outcomes(under_40_parenthood_01_1012, formula, 'firstborn'), f"Same, but only respondents under 40")
 
     # Treatment is new_child, control is other parents
-    ces.log_findings(ces.get_matched_outcomes(parents_1012, formula), f"Comparison of outcomes between new parents and other parents, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(parents_under_40_1012, formula), f"Same, but only respondents under 40")
+    ces.log_findings(ces.get_matched_outcomes(parents_1012, formula, 'new_child'), f"Comparison of outcomes between new parents and other parents, matched on {formula}")
+    ces.log_findings(ces.get_matched_outcomes(parents_under_40_1012, formula, 'new_child'), f"Same, but only respondents under 40")
 
     # Treatment is is_parent, control is non-parents
-    ces.log_findings(ces.get_matched_outcomes(waves_1012, formula, treatment='is_parent'), f"Comparison of outcomes between is_parent and non-parents, matched on {formula}")
-    ces.log_findings(ces.get_matched_outcomes(under_40_1012, formula, treatment='is_parent'), f"Same, but only respondents under 40")
+    ces.log_findings(ces.get_matched_outcomes(waves_1012, formula, 'is_parent'), f"Comparison of outcomes between is_parent and non-parents, matched on {formula}")
+    ces.log_findings(ces.get_matched_outcomes(under_40_1012, formula, 'is_parent'), f"Same, but only respondents under 40")
 
 ces.log_header('''
 ####################
@@ -97,9 +97,9 @@ def matching_for_subset(demo_label, demo_a, demo_b):
             (demo_b, demo_b_1012, demo_b_under_40_1012),
         ):
             for treatment in ('new_child', 'firstborn', 'is_parent'):
-                ces.log_findings(ces.get_matched_outcomes(demo_subset, f"{treatment} ~ {formula}", treatment=treatment),
+                ces.log_findings(ces.get_matched_outcomes(demo_subset, f"{treatment} ~ {formula}", treatment),
                                  f"Comparison of outcomes, {demo_label}={demo_value}, treatment={treatment}, matched on {formula}")
-                ces.log_findings(ces.get_matched_outcomes(demo_subset_under_40, f"{treatment} ~ {formula}", treatment=treatment),
+                ces.log_findings(ces.get_matched_outcomes(demo_subset_under_40, f"{treatment} ~ {formula}", treatment),
                                  f"Comparison of outcomes, {demo_label}={demo_value}, respondents under 40, treatment={treatment}, matched on {formula}")
 
 matching_for_subset("gender", 1, 2)
@@ -122,10 +122,10 @@ for df, addendum in [
     (under_40_1012, ", limited to respondents under 40"),
 ]:
     for treatment in ("firstborn", "new_child", "is_parent"):
-        models = ces.consider_models(df, treatment=treatment)
+        models = ces.consider_models(df, treatment)
         ces.log_verbose(models, f"Comparison of models to predict {treatment}{addendum}")
         top_formula = models['formula'][1]  # 1 because these are indexed pased on DataFrame.rank
-        ces.log_verbose(ces.evaluate_scores(df, top_formula, treatment=treatment), f"Score evaluation for top model: {top_formula}")
+        ces.log_verbose(ces.evaluate_scores(df, top_formula, treatment), f"Score evaluation for top model: {top_formula}")
 
 ces.log_verbose('''
 ######################################

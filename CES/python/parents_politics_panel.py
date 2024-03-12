@@ -346,7 +346,7 @@ class ParentsPoliticsPanel():
     # Matching functions #
     ######################
     # TODO: Make weighting an option, not default
-    def get_matched_outcomes(self, df, formula, treatment='new_child', control_value=0, treatment_value=1):
+    def get_matched_outcomes(self, df, formula, treatment, control_value=0, treatment_value=1):
         outcomes = [
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
@@ -404,7 +404,7 @@ class ParentsPoliticsPanel():
         df['score'] = logit.predict(df)
         return df
 
-    def consider_models(self, df, treatment='new_child'):
+    def consider_models(self, df, treatment):
         models = {}
         for choose_count in range(1, len(self.demographics) + 1):
             for chosen in list(combinations(self.demographics, choose_count)):
@@ -437,7 +437,7 @@ class ParentsPoliticsPanel():
         summary.sort_values('aic_rank', inplace=True)
         return summary
 
-    def evaluate_scores(self, df, formula, treatment='new_child'):
+    def evaluate_scores(self, df, formula, treatment):
         self._add_score(df, f"{treatment} ~ {formula}")
         scores = df.loc[:,['score', treatment]].copy()
         scores.sort_values('score', inplace=True)
