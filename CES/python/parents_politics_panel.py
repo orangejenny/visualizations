@@ -424,7 +424,7 @@ class ParentsPoliticsPanel():
         max_models = int(len(models) * 0.05)
         decent_r_squared = by_r_squared[-max_models:]
         decent_aic = by_aic[:max_models]
-        decent_formulas = list(set([x[0] for x in decent_r_squared]) & set([x[0] for x in decent_aic]))
+        decent_formulas = list(set([x[0] for x in decent_r_squared]) & set([x[0] for x in decent_aic]))[:10]
 
         summary = pd.DataFrame(data={
             'formula': [re.sub(r'.*~\s*', '', f) for f in decent_formulas],
