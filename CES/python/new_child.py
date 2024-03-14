@@ -44,7 +44,7 @@ ces.log_header('''
 ############''')
 
 formulas = [
-    "marstat + pew_religimp + age + income_quintile + educ",
+    "marstat + pew_churatd + age + income_quintile + educ",
 ]
 
 parenthood_01_1012 = waves_1012.loc[waves_1012['parenthood'] < 2,:].copy()
