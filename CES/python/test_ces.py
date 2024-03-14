@@ -197,7 +197,7 @@ class TestCESPanel(unittest.TestCase):
 
     def test_parenting_counts(self):
         counts = self.data.get_paired_waves().groupby('new_child', as_index=False).count()
-        self.assertListEqual(counts.loc[:, 'caseid'].to_list(), [18499, 436])
+        self.assertListEqual(counts.loc[:, 'caseid'].to_list(), [18721, 214])
 
     def test_flippers(self):
         self.assertEqual(25.2, self.data.count_flippers("pid7_10", "pid7_14", 1, 7))
@@ -211,17 +211,17 @@ class TestCESPanel(unittest.TestCase):
             self._test_pvalue(expected, self.data.t_test(data, label, demographic))
 
         data = self.data.get_paired_waves()
-        _test_t_test(0.0113, data, 'ideo_delta', 'new_child')
-        _test_t_test(0.4132, data, 'ideo_composite_delta', 'new_child')
-        _test_t_test(0.8079, data, 'pid_delta', 'new_child')
+        _test_t_test(0.6841, data, 'ideo_delta', 'new_child')
+        _test_t_test(0.0417, data, 'ideo_composite_delta', 'new_child')
+        _test_t_test(0.0943, data, 'pid_delta', 'new_child')
 
         young_adults = data.loc[np.less(data['age'], 30),:]
-        _test_t_test(0.853, young_adults, 'pid_delta', 'new_child')
-        _test_t_test(0.739, young_adults, 'military_composite_delta_abs', 'new_child')
+        _test_t_test(0.0015, young_adults, 'pid_delta', 'new_child')
+        _test_t_test(0.7775, young_adults, 'military_composite_delta_abs', 'new_child')
 
-        _test_t_test(0.0005, data, 'climate_composite_after', 'new_child')
-        _test_t_test(0.0012, data, 'immigration_composite_delta', 'new_child')
-        _test_t_test(0.0035, data, 'military_composite_delta', 'new_child')
+        _test_t_test(0.2216, data, 'climate_composite_after', 'new_child')
+        _test_t_test(0.0213, data, 'immigration_composite_delta', 'new_child')
+        _test_t_test(0.835, data, 'military_composite_delta', 'new_child')
         _test_t_test(0.8794, data, 'budget_composite_delta', 'firstborn')
         _test_t_test(0.136, data, 'budget_composite_delta_abs', 'firstborn')
 
@@ -234,9 +234,9 @@ class TestCESPanel(unittest.TestCase):
         }
         self.assertEqual(budget_composite['issue'], 'budget_composite')
         self.assertEqual(budget_composite['metric'], 'budget_composite_delta')
-        self.assertEqual(round(float(budget_composite['statistic']), 3), -1.512)
-        self.assertEqual(round(float(budget_composite['df']), 1), 853.6)
-        self.assertEqual(round(float(budget_composite['pvalue']), 4), 0.1309)
+        self.assertEqual(round(float(budget_composite['statistic']), 3), 0.152)
+        self.assertEqual(round(float(budget_composite['df']), 1), 334.0)
+        self.assertEqual(round(float(budget_composite['pvalue']), 4), 0.8794)
 
         pid = {
             k: list(v.values())[0]
@@ -244,20 +244,20 @@ class TestCESPanel(unittest.TestCase):
         }
         self.assertEqual(pid['issue'], 'pid')
         self.assertEqual(pid['metric'], 'pid_delta')
-        self.assertEqual(round(float(pid['statistic']), 3), 0.243)
-        self.assertEqual(round(float(pid['df']), 1), 777.7)
-        self.assertEqual(round(float(pid['pvalue']), 4), 0.8079)
+        self.assertEqual(round(float(pid['statistic']), 3), -1.678)
+        self.assertEqual(round(float(pid['df']), 1), 314.3)
+        self.assertEqual(round(float(pid['pvalue']), 4), 0.0943)
 
     def test_summarize_issue(self):
         data = self.data.get_paired_waves()
         guns = self.data.summarize_issue(data, "new_child", "guns")
-        self.assertListEqual([round(v, 2) for v in guns.iloc[1, 1:].values], [1.7, 1.68, -0.0, 0.31, -0.04, 0.09])
+        self.assertListEqual([round(v, 2) for v in guns.iloc[1, 1:].values], [1.66, 1.56, -0.05, 0.32, -0.06, 0.11])
         military = self.data.summarize_issue(data, "new_child", "military_composite")
-        self.assertListEqual([round(v, 2) for v in military.iloc[1, 1:].values], [1.49, 1.53, 0.04, 0.16, 0.04, 0.07])
+        self.assertListEqual([round(v, 2) for v in military.iloc[1, 1:].values], [1.48, 1.50, 0.020, 0.16, 0.05, 0.06])
 
     def test_count_percentages(self):
         data = self.data.get_paired_waves()
 
         counts = self.data.count_percentages(data, 'new_child', 'gender')
-        self.assertListEqual(counts.loc[np.equal(counts['new_child'], True), 'percent'].to_list(), [48.4, 51.6])
-        self.assertListEqual(counts.loc[np.equal(counts['new_child'], False), 'percent'].to_list(), [55.7, 44.3])
+        self.assertListEqual(counts.loc[np.equal(counts['new_child'], True), 'percent'].to_list(), [49.1, 50.9])
+        self.assertListEqual(counts.loc[np.equal(counts['new_child'], False), 'percent'].to_list(), [55.6, 44.4])

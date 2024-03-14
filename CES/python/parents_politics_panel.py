@@ -313,10 +313,10 @@ class ParentsPoliticsPanel():
         summary = summary.drop(['weight'], axis=(1 if type(summary) == pd.DataFrame else 0))
         return summary
 
-    def summarize_all_persistence(self):
-        all_issues = pd.DataFrame({k: [] for k in ['issue', 'new_child', 'persistence_flag', 'count', 'total', 'percent']})
+    def summarize_all_persistence(self, treatment):
+        all_issues = pd.DataFrame({k: [] for k in ['issue', treatment, 'persistence_flag', 'count', 'total', 'percent']})
         for issue in sorted(self.ISSUES):
-            issue_summary = self.summarize_persistence(issue)
+            issue_summary = self.summarize_persistence(issue, treatment)
             issue_summary['issue'] = issue
             issue_summary.rename(columns={f'{issue}_persistence_flag': 'persistence_flag'}, inplace=True)
             all_issues = pd.concat([all_issues, issue_summary])
@@ -325,11 +325,11 @@ class ParentsPoliticsPanel():
         return all_issues
 
     # Note this is unweighted
-    def summarize_persistence(self, issue):
+    def summarize_persistence(self, issue, treatment):
         flags = self.filter_na(self.paired_waves, f'{issue}_persists')
         flags[f'{issue}_persistence_flag'] = np.int32(np.bool_(flags[f'{issue}_persists']))
-        flags.groupby(['new_child', f'{issue}_persistence_flag']).count()
-        return self.count_percentages(flags, 'new_child', f'{issue}_persistence_flag')
+        flags.groupby([treatment, f'{issue}_persistence_flag']).count()
+        return self.count_percentages(flags, treatment, f'{issue}_persistence_flag')
 
     def count_percentages(self, df, group_by_label, metric_label):
         counts = df.loc[:,['caseid', group_by_label, metric_label]].groupby([group_by_label, metric_label], as_index=False).count() # roughly pd.crosstab

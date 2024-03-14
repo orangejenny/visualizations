@@ -260,7 +260,7 @@ class CESPanel(ParentsPoliticsPanel):
         Additional boolean columns based on parenthood
         - childless: 0     ...recall this is only about minor children
         - firstborn: 1
-        - new_child: 1 or 2
+        - new_child: 2
         - is_parent: 1, 2, or 3
 
         - 0 no children
@@ -279,7 +279,7 @@ class CESPanel(ParentsPoliticsPanel):
             ),
             'new_child': lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
-                [np.where(np.logical_or(x.parenthood == 1, x.parenthood == 2), 1, 0) for w in self.start_waves],
+                [np.where(x.parenthood == 1, 1, 0) for w in self.start_waves],
             ),
             'is_parent': lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
