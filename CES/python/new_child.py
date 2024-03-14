@@ -51,7 +51,7 @@ parenthood_01_1012 = waves_1012.loc[waves_1012['parenthood'] < 2,:].copy()
 under_40_parenthood_01_1012 = parenthood_01_1012.loc[parenthood_01_1012['age'] < 40,:].copy()
 
 for formula in formulas:
-    for treatment in ("firstborn", "new_child", "is_parent"):
+    for treatment in ces.treatments:
         ces.log_findings(ces.evaluate_scores(waves_1012, formula, treatment), f"Evaluate scoring of {treatment} ~ {formula}")
 
     # Treatment is firstborn, control is non-parents
@@ -81,12 +81,12 @@ def matching_for_subset(demo_label, demo_a, demo_b):
 
     treatment_1012 = {}
     under_40_treatment_1012 = {}
-    for treatment in ('new_child', 'firstborn', 'is_parent'):
+    for treatment in ces.treatments:
         treatment_1012[treatment] = _filter_dummy(waves_1012, treatment)
         under_40_treatment_1012[treatment] = _filter_under_40(treatment_1012[treatment])
 
     for formula in formulas:
-        for treatment in ('new_child', 'firstborn', 'is_parent'):
+        for treatment in ces.treatments:
             ces.log_findings(ces.get_matched_outcomes(treatment_1012[treatment], f"{treatment} ~ {formula}", demo_label, demo_a, demo_b),
                              f"Comparison of outcomes when {treatment}=1, split by {demo_label}, matched on {formula}")
             ces.log_findings(ces.get_matched_outcomes(under_40_treatment_1012[treatment], f"{treatment} ~ {formula}", demo_label, demo_a, demo_b),
@@ -96,7 +96,7 @@ def matching_for_subset(demo_label, demo_a, demo_b):
             (demo_a, demo_a_1012, demo_a_under_40_1012),
             (demo_b, demo_b_1012, demo_b_under_40_1012),
         ):
-            for treatment in ('new_child', 'firstborn', 'is_parent'):
+            for treatment in ces.treatments:
                 ces.log_findings(ces.get_matched_outcomes(demo_subset, f"{treatment} ~ {formula}", treatment),
                                  f"Comparison of outcomes, {demo_label}={demo_value}, treatment={treatment}, matched on {formula}")
                 ces.log_findings(ces.get_matched_outcomes(demo_subset_under_40, f"{treatment} ~ {formula}", treatment),
@@ -121,7 +121,7 @@ for df, addendum in [
     (two_years, ""),
     (under_40_1012, ", limited to respondents under 40"),
 ]:
-    for treatment in ("firstborn", "new_child", "is_parent"):
+    for treatment in ces.treatments:
         models = ces.consider_models(df, treatment)
         ces.log_verbose(models, f"Comparison of models to predict {treatment}{addendum}")
         if len(models):
