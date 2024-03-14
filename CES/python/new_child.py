@@ -256,6 +256,5 @@ ces.log_verbose('''
 # Non-response (unweighted) #
 #############################''')
 
-# TODO: Do non-response rates differ for parents and non-parents?
 ces.log_verbose(ces.summarize_issues_non_response(two_years), "Non-response rates for issues")
 ces.log_verbose(ces.summarize_demographics_non_response(two_years), "Non-response rates for demographics")  # income is 13%
