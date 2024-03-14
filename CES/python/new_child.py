@@ -70,26 +70,27 @@ ces.log_header('''
 ####################
 # Matching: Gender #
 ####################''')
-# TODO: Look at PerfectSeparationWarning
-# TODO: make sure these are doing the same 3 treatments, with same 3 controls, as overall matching analysis
-
 def matching_for_subset(demo_label, demo_a, demo_b):
+    # Split data by demographic
     demo_a_1012 = _filter_demographic(waves_1012, demo_label, demo_a)
     demo_a_under_40_1012 = _filter_under_40(demo_a_1012)
     demo_b_1012 = _filter_demographic(waves_1012, demo_label, demo_b)
     demo_b_under_40_1012 = _filter_under_40(demo_b_1012)
 
-    treatment_1012 = {}
-    under_40_treatment_1012 = {}
+    # Build samples for matching: treatment group plus the relevant control, which may not be the full dataset
+    sample_1012 = {}
+    sample_1012['firstborn'] = pd.concat([_filter_dummy(waves_1012, 'firstborn'), _filter_dummy(waves_1012, 'childless')])  # Treatment is firstborn, control is non-parents
+    sample_1012['new_child'] = _filter_dummy(waves_1012, 'is_parent')  # Treatment is new_child, control is other parents
+    sample_1012['is_parent'] = waves_1012  # Treatment is is_parent, control is non-parents, which is the whole sample
+    under_40_sample_1012 = {}
     for treatment in ces.treatments:
-        treatment_1012[treatment] = _filter_dummy(waves_1012, treatment)
-        under_40_treatment_1012[treatment] = _filter_under_40(treatment_1012[treatment])
+        under_40_sample_1012[treatment] = _filter_under_40(sample_1012[treatment])
 
     for formula in formulas:
         for treatment in ces.treatments:
-            ces.log_findings(ces.get_matched_outcomes(treatment_1012[treatment], f"{treatment} ~ {formula}", demo_label, demo_a, demo_b),
+            ces.log_findings(ces.get_matched_outcomes(sample_1012[treatment], f"{treatment} ~ {formula}", demo_label, demo_a, demo_b),
                              f"Comparison of outcomes when {treatment}=1, split by {demo_label}, matched on {formula}")
-            ces.log_findings(ces.get_matched_outcomes(under_40_treatment_1012[treatment], f"{treatment} ~ {formula}", demo_label, demo_a, demo_b),
+            ces.log_findings(ces.get_matched_outcomes(under_40_sample_1012[treatment], f"{treatment} ~ {formula}", demo_label, demo_a, demo_b),
                              f"Comparison of outcomes when {treatment}=1, respondents under 40, split by {demo_label}, matched on {formula}")
 
         for demo_value, demo_subset, demo_subset_under_40 in (
