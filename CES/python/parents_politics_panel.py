@@ -352,14 +352,17 @@ class ParentsPoliticsPanel():
     # Matching functions #
     ######################
     # TODO: Make weighting an option, not default
-    def get_matched_outcomes(self, df, formula, treatment, control_value=0, treatment_value=1):
+    def get_matched_outcomes(self, df, formula, treatment, control_value=0, treatment_value=1, age_limit=None):
         outcomes = [
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
         columns = ['caseid', treatment, 'score', 'weight'] + outcomes
 
         if len(df['caseid'].unique()) != len(df['caseid']):
-            raise ParentsPoliticsPanelException("Data frame gives to get_matched_outcomes does not have unique cases")
+            raise ParentsPoliticsPanelException("Data frame given to get_matched_outcomes does not have unique cases")
+
+        if age_limit is not None:
+            df = self.filter_age(df, age_limit)
 
         if "~" not in formula:
             formula = f"{treatment} ~ {formula}"
