@@ -52,7 +52,7 @@ class ParentsPoliticsPanel():
         self.paired_waves = self._build_paired_waves(self._trimmed_panel())
 
         self.paired_waves = self._add_parenting(self.paired_waves)
-        self.paired_waves = self.paired_waves.astype({'new_child': 'int32', 'firstborn': 'int32'})
+        self.paired_waves = self.paired_waves.astype({t: 'int32' for t in self.treatments})
 
         self.paired_waves = self._add_all_single_issues(self.paired_waves)
         self.paired_waves = self.add_all_composite_issues(self.paired_waves)
@@ -190,21 +190,18 @@ class ParentsPoliticsPanel():
     def filter_na(self, df, label):
         return df.loc[pd.notna(df[label]),:].copy()
 
-    def all_t_test_pvalues(self, df, **test_kwargs):
-        return self._all_test_pvalues(df, self.ISSUES, self.METRICS, self.t_tests, **test_kwargs)
-
-    def _all_test_pvalues(self, df, issues, metrics, test, **test_kwargs):
-        issues = list(issues)
+    def all_t_test_pvalues(self, df, demographic_label, **test_kwargs):
+        issues = list(self.ISSUES)
         issues.sort()
         all_results = pd.DataFrame(data={'issue': issues})
-        for metric in metrics:
-            issue_results = test(df, metric, **test_kwargs)
+        for metric in self.METRICS:
+            issue_results = self.t_tests(df, metric, demographic_label, **test_kwargs)
             all_results = all_results.merge(issue_results.loc[:,['issue', 'diff', 'pvalue']], on='issue')
             all_results.rename(columns={'diff': f'{metric}-', 'pvalue': f'{metric}*'}, inplace=True)
         return all_results
 
     # TODO: Make weighting an option, not default
-    def t_tests(self, df, metric, demographic_label='new_child', a_value=0, b_value=1):
+    def t_tests(self, df, metric, demographic_label, a_value=0, b_value=1):
         results = {
             'metric': [],
             'diff': [],
@@ -237,7 +234,7 @@ class ParentsPoliticsPanel():
         df.sort_values('metric', inplace=True)
         return df
 
-    def t_test(self, df, issue_label, demographic_label='new_child', a_value=0, b_value=1):
+    def t_test(self, df, issue_label, demographic_label, a_value=0, b_value=1):
         filtered = self.filter_na(self.filter_na(df, demographic_label), issue_label)
         group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), ['weight', issue_label]]
         group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), ['weight', issue_label]]
@@ -316,10 +313,10 @@ class ParentsPoliticsPanel():
         summary = summary.drop(['weight'], axis=(1 if type(summary) == pd.DataFrame else 0))
         return summary
 
-    def summarize_all_persistence(self):
-        all_issues = pd.DataFrame({k: [] for k in ['issue', 'new_child', 'persistence_flag', 'count', 'total', 'percent']})
+    def summarize_all_persistence(self, treatment):
+        all_issues = pd.DataFrame({k: [] for k in ['issue', treatment, 'persistence_flag', 'count', 'total', 'percent']})
         for issue in sorted(self.ISSUES):
-            issue_summary = self.summarize_persistence(issue)
+            issue_summary = self.summarize_persistence(issue, treatment)
             issue_summary['issue'] = issue
             issue_summary.rename(columns={f'{issue}_persistence_flag': 'persistence_flag'}, inplace=True)
             all_issues = pd.concat([all_issues, issue_summary])
@@ -328,11 +325,11 @@ class ParentsPoliticsPanel():
         return all_issues
 
     # Note this is unweighted
-    def summarize_persistence(self, issue):
+    def summarize_persistence(self, issue, treatment):
         flags = self.filter_na(self.paired_waves, f'{issue}_persists')
         flags[f'{issue}_persistence_flag'] = np.int32(np.bool_(flags[f'{issue}_persists']))
-        flags.groupby(['new_child', f'{issue}_persistence_flag']).count()
-        return self.count_percentages(flags, 'new_child', f'{issue}_persistence_flag')
+        flags.groupby([treatment, f'{issue}_persistence_flag']).count()
+        return self.count_percentages(flags, treatment, f'{issue}_persistence_flag')
 
     def count_percentages(self, df, group_by_label, metric_label):
         counts = df.loc[:,['caseid', group_by_label, metric_label]].groupby([group_by_label, metric_label], as_index=False).count() # roughly pd.crosstab
@@ -346,7 +343,7 @@ class ParentsPoliticsPanel():
     # Matching functions #
     ######################
     # TODO: Make weighting an option, not default
-    def get_matched_outcomes(self, df, formula, treatment='new_child', control_value=0, treatment_value=1):
+    def get_matched_outcomes(self, df, formula, treatment, control_value=0, treatment_value=1):
         outcomes = [
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
@@ -358,28 +355,34 @@ class ParentsPoliticsPanel():
         if "~" not in formula:
             formula = f"{treatment} ~ {formula}"
         df = self._add_score(df, formula)
-        new_parents = df.loc[df[treatment] == treatment_value, columns].copy()
+        treatment_cases = df.loc[df[treatment] == treatment_value, columns].copy()
         candidates = df.loc[df[treatment] == control_value, columns].copy()
 
         # Match up treatment and control groups
-        # TODO: error/note if any of new_parents didn't match: ultimately implement nearest neighbor & record distance, noting bias
-        matched_set = new_parents.merge(candidates, on='score', how='left', suffixes=('_treatment', ''))
+        matched_set = treatment_cases.merge(candidates, on='score', how='left', suffixes=('_treatment', ''))
+        match_counts = matched_set.groupby('caseid_treatment').count().loc[:,['score']]
+        match_counts.rename(columns={'score':'control_count'}, inplace=True)
+        unmatched = match_counts.loc[match_counts['control_count'] == 0,:]
+        # TODO: error/note if any of treatment_cases didn't match: ultimately implement nearest neighbor & record distance, noting bias
+        # Currently not matching 5-15% of cases with exact matching
+        if len(unmatched):
+            print(f"Could not match {len(unmatched)} of {len(treatment_cases)} treatment cases ({round(len(unmatched) * 100 / len(treatment_cases))}%)")
 
         # Group on treatment caseid, averaging all relevant control matches
         matched_outcomes = self._weighted_averages(matched_set, 'caseid_treatment', outcomes)
         matched_outcomes = matched_outcomes.drop(['caseid_treatment'], axis=1)
         agg_matched_outcomes = matched_outcomes.mean()
-        agg_treatment_outcomes = self._weighted_averages(new_parents, None, outcomes)
+        agg_treatment_outcomes = self._weighted_averages(treatment_cases, None, outcomes)
 
         # Reduce matches to a single control row per treatment to t test
-        # TODO: matched_outcomes outcomes are weighted, but new_parents are not
+        # TODO: matched_outcomes outcomes are weighted, but treatment_cases are not
         # Is doing weighting myself for t tests legit?
         matched_outcomes[treatment] = control_value
         matched_outcomes['weight'] = 1  # Outcomes have been weighted, so set weight to 1
-        reduced_df = pd.concat([new_parents, matched_outcomes])
+        reduced_df = pd.concat([treatment_cases, matched_outcomes])
         pvalues = []
         for o in outcomes:
-            result = self.t_test(reduced_df, o, demographic_label=treatment, a_value=control_value, b_value=treatment_value)
+            result = self.t_test(reduced_df, o, treatment, a_value=control_value, b_value=treatment_value)
             pvalues.append(str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue))
 
         summary = pd.DataFrame(data={
@@ -398,13 +401,7 @@ class ParentsPoliticsPanel():
         df['score'] = logit.predict(df)
         return df
 
-    def consider_models(self, df, treatment='new_child'):
-        '''
-        TODO
-        - Combine pew_religimp with pew_churatd and/or pew_prayer?
-        - Urban/rural? Need to cross-reference zip code with some other dataset: map countyfips_XX to USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
-        - Some of these can vary (esp employment), should use year-specific value
-        '''
+    def consider_models(self, df, treatment):
         models = {}
         for choose_count in range(1, len(self.demographics) + 1):
             for chosen in list(combinations(self.demographics, choose_count)):
@@ -421,11 +418,10 @@ class ParentsPoliticsPanel():
         by_aic = sorted(models.values(), key=lambda t: t[2]) # lower is better
 
         # Note two_years returns stuff, and waves_1214, but not waves_1012
-        # TODO: How good are the models? Like, how much of the sample do they correctly predict?
         max_models = int(len(models) * 0.05)
         decent_r_squared = by_r_squared[-max_models:]
         decent_aic = by_aic[:max_models]
-        decent_formulas = list(set([x[0] for x in decent_r_squared]) & set([x[0] for x in decent_aic]))
+        decent_formulas = list(set([x[0] for x in decent_r_squared]) & set([x[0] for x in decent_aic]))[:10]
 
         summary = pd.DataFrame(data={
             'formula': [re.sub(r'.*~\s*', '', f) for f in decent_formulas],
@@ -433,5 +429,15 @@ class ParentsPoliticsPanel():
             'aic': [models[f][2] for f in decent_formulas],
             'unscored': [models[f][3] for f in decent_formulas],
         })
-        summary.sort_values('aic', inplace=True)
+        summary['aic_rank'] = summary.rank()['aic']
+        summary.set_index('aic_rank', inplace=True)
+        summary.sort_values('aic_rank', inplace=True)
         return summary
+
+    def evaluate_scores(self, df, formula, treatment):
+        self._add_score(df, f"{treatment} ~ {formula}")
+        scores = df.loc[:,['score', treatment]].copy()
+        scores.sort_values('score', inplace=True)
+        scores = scores.loc[pd.notna(scores['score']),:]
+        scores = scores.assign(rounded=lambda x: round(x['score'], 1))
+        return scores.groupby([treatment, 'rounded']).count()

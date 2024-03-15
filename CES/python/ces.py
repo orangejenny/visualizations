@@ -7,6 +7,7 @@ from parents_politics_panel import ParentsPoliticsPanel
 
 class CESPanel(ParentsPoliticsPanel):
     waves = [10, 12, 14]
+    treatments = ['firstborn', 'new_child', 'is_parent']
     demographics_with_bounds = [
         ('gender', 1, 2),
         ('race', 1, 8),
@@ -14,13 +15,15 @@ class CESPanel(ParentsPoliticsPanel):
         #('investor', 1, 2),
         ('educ', 1, 6),
         ('marstat', 1, 6),
-        ('pew_religimp', 1, 4),
+        ('pew_churatd', 1, 6),  # There are other religion questions, but this one is used in CES's own sample matching
         ('ownhome', 1, 3),
 
         # constructed
+        ('RUCC_2023', None, None),  # From USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
+        ('division', None, None),  # Census division: https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
         ('age', None, None),
         ('income', None, None),
-        ('income_quintile', None, None),
+        #('income_quintile', None, None),   # Duplicative with income and less granular
     ]
 
     def _load_panel(cls):
@@ -30,7 +33,6 @@ class CESPanel(ParentsPoliticsPanel):
         if not len(self.waves):
             raise Exception("Must contain at least one wave")
         df = df.assign(start_wave=self.waves[0], end_wave=self.waves[-1])
-        df = self.add_age(df)
         df = self._recode_issues(df)
         df = self.add_income_brackets(df)
 
@@ -40,7 +42,10 @@ class CESPanel(ParentsPoliticsPanel):
                 end_wave=self.end_waves[i],
             ) for i, w in enumerate(self.start_waves)
         ], ignore_index=True)
+        df = self.add_age(df)   # age depends on start_wave
+        df = self.add_rural_urban(df)
         df = self._consolidate_demographics(df)
+
         return df
 
     def _trimmed_panel(self):
@@ -84,13 +89,14 @@ class CESPanel(ParentsPoliticsPanel):
             self.panel.columns.str.startswith("race_") + # Limit to 1-8, categorical
             self.panel.columns.str.startswith("educ_") + # Limit to 1-6, categorical
             self.panel.columns.str.startswith("marstat_") + # Limit to 1-6, categorical
-            self.panel.columns.str.startswith("pew_religimp_") + # Limit to 1-4, 1 is "very important" - there are other religious measures, so a composite would help
+            self.panel.columns.str.startswith("pew_churatd") + # Limit to 1-6, 1 is "more than once a week"
             self.panel.columns.str.startswith("employ_") + # Limit to 1-8, categorical
-            self.panel.columns.str.startswith("ownhome_")  # Limit to 1-3, categorical
+            self.panel.columns.str.startswith("ownhome_") + # Limit to 1-3, categorical
+            self.panel.columns.str.startswith("countyfips_")
         ].copy()
 
     def add_age(self, df):
-        df = df.assign(age=lambda x: 2010 - x.birthyr_10)
+        df = df.assign(age=lambda x: 2000 + x.start_wave - x.birthyr_10)
         df = self.nan_out_of_bounds(df, 'age', 1, 200)
         df['age_zscore'] = zscore(df['age'], nan_policy='omit')
         return df
@@ -145,6 +151,33 @@ class CESPanel(ParentsPoliticsPanel):
                 ) for i, w in enumerate(self.end_waves)],
             )})
             df.drop(old_labels, axis=1, inplace=True)
+        return df
+
+    def add_rural_urban(self, df):
+        codes = pd.read_csv("~/Documents/visualizations/midterm/ruralurbancontinuumcodes2023/rural_urban.csv")
+        df = df.assign(
+            countyfips_before=lambda x:np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [x[f'countyfips_{w}'] for w in self.start_waves],
+            )
+        )
+        df = df.astype({'countyfips_before': 'int64'})
+        df = df.merge(codes, how='left', left_on='countyfips_before', right_on='FIPS')
+        # https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
+        states = [
+            ['CT', 'ME', 'MA', 'NH', 'RI', 'VT'],
+            ['NJ', 'NY', 'PA'],
+            ['IN', 'IL', 'MI', 'OH', 'WI'],
+            ['IA', 'KS', 'MN', 'MO', 'NE', 'ND', 'SD'],
+            ['DE', 'DC', 'FL', 'GA', 'MD', 'NC', 'SC', 'VA', 'WV'],
+            ['AL', 'KY', 'MS', 'TN'],
+            ['AR', 'LA', 'OK', 'TX'],
+            ['AZ', 'CO', 'ID', 'NM', 'MY', 'UT', 'NV', 'WY'],
+            ['AK', 'CA', 'HI', 'OR', 'WA'],
+        ]
+        divisions = pd.DataFrame(data=[(a, i + 1) for i, abbreviations in enumerate(states) for a in abbreviations])
+        divisions.rename(columns={0: 'state', 1: 'division'}, inplace=True)
+        df = df.merge(divisions, how='left', left_on='State', right_on='state')
         return df
 
     def add_income_brackets(self, df):
@@ -227,7 +260,7 @@ class CESPanel(ParentsPoliticsPanel):
         Additional boolean columns based on parenthood
         - childless: 0     ...recall this is only about minor children
         - firstborn: 1
-        - new_child: 1 or 2
+        - new_child: 2
         - is_parent: 1, 2, or 3
 
         - 0 no children
@@ -246,7 +279,7 @@ class CESPanel(ParentsPoliticsPanel):
             ),
             'new_child': lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
-                [np.where(np.logical_or(x.parenthood == 1, x.parenthood == 2), 1, 0) for w in self.start_waves],
+                [np.where(x.parenthood == 1, 1, 0) for w in self.start_waves],
             ),
             'is_parent': lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
