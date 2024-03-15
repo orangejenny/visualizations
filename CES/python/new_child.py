@@ -62,7 +62,7 @@ if _should_run("match"):
 
     for formula in formulas:
         for treatment in ces.treatments:
-            ces.log_findings(ces.evaluate_scores(waves_1012, formula, treatment), f"Evaluate scoring of {treatment} ~ {formula}")
+            ces.log_findings(ces.scores_histogram_table(waves_1012, formula, treatment), f"Score histogram of {treatment} ~ {formula}")
             ces.log_findings(ces.get_matched_outcomes(sample_1012[treatment], formula, treatment), f"Comparison of outcomes, treatment={treatment}, matched on {formula}")
             ces.log_findings(ces.get_matched_outcomes(ces.filter_under_40(sample_1012[treatment]), formula, treatment), f"Same, but only respondents under 40")
 
@@ -111,7 +111,7 @@ if _should_run("model"):
             ces.log_verbose(models, f"Comparison of models to predict {treatment}{addendum}")
             if len(models):
                 top_formula = models['formula'][1]  # 1 because these are indexed based on DataFrame.rank
-                ces.log_verbose(ces.evaluate_scores(df, top_formula, treatment), f"Score evaluation for top model: {top_formula}")
+                ces.log_verbose(ces.scores_histogram_table(df, top_formula, treatment), f"Score histogram for top model: {top_formula}")
                 top_formulas[tag] = [
                     models['formula'][1],
                     models['formula'][2],

@@ -443,7 +443,7 @@ class ParentsPoliticsPanel():
         summary.sort_values('aic_rank', inplace=True)
         return summary
 
-    def evaluate_scores(self, df, formula, treatment):
+    def scores_histogram_table(self, df, formula, treatment):
         self._add_score(df, f"{treatment} ~ {formula}")
         scores = df.loc[:,['score', treatment]].copy()
         scores.sort_values('score', inplace=True)
