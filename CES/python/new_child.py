@@ -118,16 +118,26 @@ ces.log_header('''
 # Modeling #
 ############''')
 
+top_formulas = {}
 for df, addendum in [
     (two_years, ""),
     (under_40_1012, ", limited to respondents under 40"),
 ]:
     for treatment in ces.treatments:
+        tag = f"{treatment}{addendum}"
+        print("Looking at " + tag)
         models = ces.consider_models(df, treatment)
         ces.log_verbose(models, f"Comparison of models to predict {treatment}{addendum}")
         if len(models):
-            top_formula = models['formula'][1]  # 1 because these are indexed pased on DataFrame.rank
+            top_formula = models['formula'][1]  # 1 because these are indexed based on DataFrame.rank
             ces.log_verbose(ces.evaluate_scores(df, top_formula, treatment), f"Score evaluation for top model: {top_formula}")
+            top_formulas[tag] = [
+                models['formula'][1],
+                models['formula'][2],
+                models['formula'][3],
+                models['formula'][4],
+                models['formula'][5],
+            ]
 
 ces.log_verbose('''
 ######################################
