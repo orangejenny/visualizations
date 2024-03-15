@@ -39,99 +39,70 @@ def _should_run(section):
 
 
 ces = CESPanel(args.output)
-panel = ces.get_panel()
 two_years = ces.get_paired_waves()
-under_40_two_years = _filter_under_40(two_years)
-
 waves_1012 = two_years.loc[two_years['start_wave'] == 10,:].copy()
 waves_1214 = two_years.loc[two_years['start_wave'] == 12,:].copy()
 
-under_40_1012 = ces.filter_under_40(waves_1012)
-
-parents_1012 = ces.filter_dummy(waves_1012, 'is_parent')
-parents_under_40_1012 = ces.filter_under_40(parents_1012)
-
-new_child_1012 = ces.filter_dummy(waves_1012, 'new_child')
-new_child_under_40_1012 = ces.filter_under_40(new_child_1012)
-firstborn_1012 = ces.filter_dummy(waves_1012, 'firstborn')
-firstborn_under_40_1012 = ces.filter_under_40(firstborn_1012)
-
 if _should_run("match"):
     formulas = [
-        "marstat + pew_churatd + age + income_quintile + educ",
+        "gender + race + employ + educ + marstat + pew_churatd + division + age + income",
     ]
 
-    parenthood_01_1012 = waves_1012.loc[waves_1012['parenthood'] < 2,:].copy()
-    under_40_parenthood_01_1012 = parenthood_01_1012.loc[parenthood_01_1012['age'] < 40,:].copy()
+    ### Build samples for matching: treatment group plus the relevant control
+    sample_1012 = {}
+
+    # Treatment is firstborn, control is non-parents
+    sample_1012['firstborn'] = pd.concat([ces.filter_dummy(waves_1012, 'firstborn'), ces.filter_dummy(waves_1012, 'childless')])
+
+    # Treatment is new_child, control is parents not experiencing a new child
+    sample_1012['new_child'] = pd.concat([ces.filter_dummy(waves_1012, 'new_child'), ces.filter_dummy(waves_1012, 'steady_parent')])
+
+    # Treatment is is_parent, control is non-parents, which is the whole sample
+    sample_1012['is_parent'] = waves_1012
 
     for formula in formulas:
         for treatment in ces.treatments:
             ces.log_findings(ces.evaluate_scores(waves_1012, formula, treatment), f"Evaluate scoring of {treatment} ~ {formula}")
+            ces.log_findings(ces.get_matched_outcomes(sample_1012[treatment], formula, treatment), f"Comparison of outcomes, treatment={treatment}, matched on {formula}")
+            ces.log_findings(ces.get_matched_outcomes(ces.filter_under_40(sample_1012[treatment]), formula, treatment), f"Same, but only respondents under 40")
 
-        # Treatment is firstborn, control is non-parents
-        ces.log_findings(ces.get_matched_outcomes(parenthood_01_1012, formula, 'firstborn'), f"Comparison of outcomes between firstborn and non-parents, matched on {formula}")
-        ces.log_findings(ces.get_matched_outcomes(under_40_parenthood_01_1012, formula, 'firstborn'), f"Same, but only respondents under 40")
-
-        # Treatment is new_child, control is other parents
-        ces.log_findings(ces.get_matched_outcomes(parents_1012, formula, 'new_child'), f"Comparison of outcomes between new_child and other parents, matched on {formula}")
-        ces.log_findings(ces.get_matched_outcomes(parents_under_40_1012, formula, 'new_child'), f"Same, but only respondents under 40")
-
-        # Treatment is is_parent, control is non-parents
-        ces.log_findings(ces.get_matched_outcomes(waves_1012, formula, 'is_parent'), f"Comparison of outcomes between is_parent and non-parents, matched on {formula}")
-        ces.log_findings(ces.get_matched_outcomes(under_40_1012, formula, 'is_parent'), f"Same, but only respondents under 40")
-
-    ces.log_header('''
-    ####################
-    # Matching: Gender #
-    ####################''')
     def matching_for_subset(demo_label, demo_a, demo_b):
-        # Split data by demographic
+        # Split data by demographic: men vs women, etc.
         demo_a_1012 = ces.filter_demographic(waves_1012, demo_label, demo_a)
-        demo_a_under_40_1012 = ces.filter_under_40(demo_a_1012)
         demo_b_1012 = ces.filter_demographic(waves_1012, demo_label, demo_b)
-        demo_b_under_40_1012 = ces.filter_under_40(demo_b_1012)
-
-        # Build samples for matching: treatment group plus the relevant control, which may not be the full dataset
-        sample_1012 = {}
-        sample_1012['firstborn'] = pd.concat([ces.filter_dummy(waves_1012, 'firstborn'), ces.filter_dummy(waves_1012, 'childless')])  # Treatment is firstborn, control is non-parents
-        sample_1012['new_child'] = ces.filter_dummy(waves_1012, 'is_parent')  # Treatment is new_child, control is other parents
-        sample_1012['is_parent'] = waves_1012  # Treatment is is_parent, control is non-parents, which is the whole sample
-        under_40_sample_1012 = {}
-        for treatment in ces.treatments:
-            under_40_sample_1012[treatment] = ces.filter_under_40(sample_1012[treatment])
 
         for formula in formulas:
             for treatment in ces.treatments:
                 ces.log_findings(ces.get_matched_outcomes(sample_1012[treatment], f"{treatment} ~ {formula}", demo_label, demo_a, demo_b),
                                  f"Comparison of outcomes when {treatment}=1, split by {demo_label}, matched on {formula}")
-                ces.log_findings(ces.get_matched_outcomes(under_40_sample_1012[treatment], f"{treatment} ~ {formula}", demo_label, demo_a, demo_b),
+                ces.log_findings(ces.get_matched_outcomes(ces.filter_under_40(sample_1012[treatment]), f"{treatment} ~ {formula}", demo_label, demo_a, demo_b),
                                  f"Comparison of outcomes when {treatment}=1, respondents under 40, split by {demo_label}, matched on {formula}")
 
-            for demo_value, demo_subset, demo_subset_under_40 in (
-                (demo_a, demo_a_1012, demo_a_under_40_1012),
-                (demo_b, demo_b_1012, demo_b_under_40_1012),
-            ):
+            for demo_value, demo_subset in ((demo_a, demo_a_1012), (demo_b, demo_b_1012)):
                 for treatment in ces.treatments:
                     ces.log_findings(ces.get_matched_outcomes(demo_subset, f"{treatment} ~ {formula}", treatment),
                                      f"Comparison of outcomes, {demo_label}={demo_value}, treatment={treatment}, matched on {formula}")
-                    ces.log_findings(ces.get_matched_outcomes(demo_subset_under_40, f"{treatment} ~ {formula}", treatment),
+                    ces.log_findings(ces.get_matched_outcomes(ces.filter_under_40(demo_subset), f"{treatment} ~ {formula}", treatment),
                                      f"Comparison of outcomes, {demo_label}={demo_value}, respondents under 40, treatment={treatment}, matched on {formula}")
 
+    ces.log_header('''
+    ####################
+    # Matching: Gender #
+    ####################''')
     matching_for_subset("gender", 1, 2)
 
     ces.log_header('''
     ####################
     # Matching: Income #
     ####################''')
-
     matching_for_subset("high_income", 0, 1)    # Top 20% vs bottom 80%
     matching_for_subset("low_income", 0, 1)     # Bottom 40% vs top 60%
 
 if _should_run("model"):
     top_formulas = {}
     for df, addendum in [
-        (two_years, ""),
-        (under_40_1012, ", limited to respondents under 40"),
+        (waves_1012, ""),
+        (ces.filter_under_40(waves_1012), ", limited to respondents under 40"),
     ]:
         for treatment in ces.treatments:
             tag = f"{treatment}{addendum}"
@@ -167,13 +138,13 @@ if _should_run("explore"):
     counts = ces.get_paired_waves().groupby('firstborn', as_index=False).count().rename(columns={'caseid': 'total'})
     ces.log_verbose(counts.loc[:,['firstborn', 'total']], "Total number of new first-time parents and others in sample (all waves)")
 
-    # Ideology distribution across panel: roughly normal, skewing conservative
+    ### Distributions across panel
+    panel = ces.get_panel()
+    # Ideology: roughly normal, skewing conservative
     ces.log_verbose(panel.groupby("ideo5_10").count().loc[:,'caseid'], "Overall distribution of ideo5_10")
-
-    # Party distribution across panel: not normal, but U-shaped, with more strong Democrats but similar total Dem/Rep
+    # Party: not normal, but U-shaped, with more strong Democrats but similar total Dem/Rep
     ces.log_verbose(panel.groupby("pid7_10").count().loc[:,'caseid'],  "Overall distribution of pid7_10")
-
-    # Party distribution among parents: still U-shaped, a little more liberal, also looks like more moderates
+    # Party, among parents: still U-shaped, a little more liberal, also looks like more moderates
     ces.log_verbose(two_years.loc[np.equal(two_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'caseid'], "Distribution of pid7_10 among new_child")
 
     # Counts of liberal/conservative movement, ignoring magnitude
@@ -251,8 +222,7 @@ if _should_run("panel"):
     ##########################
     # Panel analysis: Income #
     ##########################''')
-
-    ces.log_verbose(panel.loc[:, ['caseid', 'faminc_14']].groupby("faminc_14").count(), "Income distribution across panel")
+    ces.log_verbose(ces.get_panel().loc[:, ['caseid', 'faminc_14']].groupby("faminc_14").count(), "Income distribution across panel")
     ces.log_verbose(two_years.loc[:,['income', 'new_child', 'caseid']].groupby(['new_child', 'income']).count(), "Income distribution, new_child and others")
     ces.log_verbose(two_years.loc[:,['new_child', 'income_quintile', 'caseid']].groupby(['new_child', 'income_quintile']).count(), "Income distribution by quintile")
 
