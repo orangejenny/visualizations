@@ -64,7 +64,7 @@ if _should_run("match"):
         for treatment in ces.treatments:
             ces.log_findings(ces.scores_histogram_table(waves_1012, formula, treatment), f"Score histogram of {treatment} ~ {formula}")
             ces.log_findings(ces.get_matched_outcomes(sample_1012[treatment], formula, treatment), f"Comparison of outcomes, treatment={treatment}, matched on {formula}")
-            ces.log_findings(ces.get_matched_outcomes(ces.filter_under_40(sample_1012[treatment]), formula, treatment), f"Same, but only respondents under 40")
+            ces.log_findings(ces.get_matched_outcomes(ces.filter_age(sample_1012[treatment], 40), formula, treatment), f"Same, but only respondents under 40")
 
     def matching_for_subset(demo_label, demo_a, demo_b):
         # Split data by demographic: men vs women, etc.
@@ -75,14 +75,14 @@ if _should_run("match"):
             for treatment in ces.treatments:
                 ces.log_findings(ces.get_matched_outcomes(sample_1012[treatment], f"{treatment} ~ {formula}", demo_label, demo_a, demo_b),
                                  f"Comparison of outcomes when {treatment}=1, split by {demo_label}, matched on {formula}")
-                ces.log_findings(ces.get_matched_outcomes(ces.filter_under_40(sample_1012[treatment]), f"{treatment} ~ {formula}", demo_label, demo_a, demo_b),
+                ces.log_findings(ces.get_matched_outcomes(ces.filter_age(sample_1012[treatment], 40), f"{treatment} ~ {formula}", demo_label, demo_a, demo_b),
                                  f"Comparison of outcomes when {treatment}=1, respondents under 40, split by {demo_label}, matched on {formula}")
 
             for demo_value, demo_subset in ((demo_a, demo_a_1012), (demo_b, demo_b_1012)):
                 for treatment in ces.treatments:
                     ces.log_findings(ces.get_matched_outcomes(demo_subset, f"{treatment} ~ {formula}", treatment),
                                      f"Comparison of outcomes, {demo_label}={demo_value}, treatment={treatment}, matched on {formula}")
-                    ces.log_findings(ces.get_matched_outcomes(ces.filter_under_40(demo_subset), f"{treatment} ~ {formula}", treatment),
+                    ces.log_findings(ces.get_matched_outcomes(ces.filter_age(demo_subset, 40), f"{treatment} ~ {formula}", treatment),
                                      f"Comparison of outcomes, {demo_label}={demo_value}, respondents under 40, treatment={treatment}, matched on {formula}")
 
     ces.log_header('''
@@ -102,7 +102,7 @@ if _should_run("model"):
     top_formulas = {}
     for df, addendum in [
         (waves_1012, ""),
-        (ces.filter_under_40(waves_1012), ", limited to respondents under 40"),
+        (ces.filter_age(waves_1012, 40), ", limited to respondents under 40"),
     ]:
         for treatment in ces.treatments:
             tag = f"{treatment}{addendum}"
@@ -199,7 +199,7 @@ if _should_run("panel"):
     #######################''')
 
     # Change to 40 to match matching?
-    young_adults = two_years.loc[np.less(two_years['age'], 30),:]
+    young_adults = ces.filter_age(two_years, 30)
     for treatment in ces.treatments:
         ces.log_findings(ces.all_t_test_pvalues(young_adults, treatment), f"T test p values, respondents under 30 years old: {treatment}")
         ces.log_verbose(ces.summarize_all_issues(young_adults, treatment), f"Summary of issues, respondents under 30 years old: {treatment}")
