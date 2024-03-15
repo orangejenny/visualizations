@@ -425,14 +425,21 @@ class ParentsPoliticsPanel():
         candidates = df.loc[df[treatment] == control_value, columns].copy()
 
         # Match up treatment and control groups
-        matched_set = treatment_cases.merge(candidates, on='score', how='left', suffixes=('_treatment', ''))
-        match_counts = matched_set.groupby('caseid_treatment').count().loc[:,['score']]
-        match_counts.rename(columns={'score':'control_count'}, inplace=True)
-        unmatched = match_counts.loc[match_counts['control_count'] == 0,:]
-        # TODO: error/note if any of treatment_cases didn't match: ultimately implement nearest neighbor & record distance, noting bias
-        # Currently not matching 5-15% of cases with exact matching
-        if len(unmatched):
-            print(f"Could not match {len(unmatched)} of {len(treatment_cases)} treatment cases ({round(len(unmatched) * 100 / len(treatment_cases))}%)")
+        # TODO: test, and error/note if any of treatment_cases didn't match: ultimately implement nearest neighbor & record distance, noting bias
+        # matched_set = treatment_cases.merge(candidates, on='score', how='left', suffixes=('_treatment', ''))  # exact match
+        treatment_cases.sort_values('score', inplace=True)
+        candidates.sort_values('score', inplace=True)
+
+        before_counts = (len(treatment_cases), len(candidates))
+        treatment_cases = self.filter_na(treatment_cases, 'score')
+        candidates = self.filter_na(candidates, 'score')
+        after_counts = (len(treatment_cases), len(candidates))
+        if any(np.subtract(before_counts, after_counts)):
+            treatment_percent = round((before_counts[0] - after_counts[0]) * 100 / before_counts[0], 1) if before_counts[0] != after_counts[0] else 0
+            candidate_percent = round((before_counts[1] - after_counts[1]) * 100 / before_counts[1], 1) if before_counts[1] != after_counts[1] else 0
+            print(f"Lost {treatment_percent}% of treatment cases and {candidate_percent}% of control cases due to missing score")
+
+        matched_set = pd.merge_asof(treatment_cases, candidates, on='score', suffixes=('_treatment', ''), tolerance=0.05, direction='nearest')
 
         # Group on treatment caseid, averaging all relevant control matches
         matched_outcomes = self._weighted_averages(matched_set, 'caseid_treatment', outcomes)
