@@ -60,18 +60,17 @@ class ParentsPoliticsPanel():
         # De-fragment frames
         self.paired_waves = self.paired_waves.copy()
 
-        # What replicates between matching and panel analysis?
         self.replication = defaultdict(lambda: defaultdict(lambda: np.nan))
 
-    def add_match_for_replication(self, outcome, treatment, pvalue, age_limit=None, demo_desc=None):
+    def add_match_for_replication(self, outcome, treatment, substance, pvalue, age_limit=None, demo_desc=None):
         (issue, metric) = self._parse_outcome(outcome)
         key = (issue, metric, treatment, age_limit, demo_desc)
-        self.replication[key]['match'] = pvalue
+        self.replication[key]['match'] = (substance, pvalue)
 
-    def add_panel_for_replication(self, outcome, treatment, pvalue, age_limit=None, demo_desc=None):
+    def add_panel_for_replication(self, outcome, treatment, substance, pvalue, age_limit=None, demo_desc=None):
         (issue, metric) = self._parse_outcome(outcome)
         key = (issue, metric, treatment, age_limit, demo_desc)
-        self.replication[key]['panel'] = pvalue
+        self.replication[key]['panel'] = (substance, pvalue)
 
     def _parse_outcome(self, outcome):
         for m in self.METRICS:
@@ -89,11 +88,20 @@ class ParentsPoliticsPanel():
             'treatment': [k[2] for k in self.replication.keys()],
             'age cohort': [f"under {k[3]}" if k[3] else "--" for k in self.replication.keys()],
             'demographic': [k[4] if k[4] else "--" for k in self.replication.keys()],
-            'match': [v['match'] for v in self.replication.values()],
-            'panel': [v['panel'] for v in self.replication.values()],
-            'match_level': [_star_count(v['match']) for v in self.replication.values()],
-            'panel_level': [_star_count(v['panel']) for v in self.replication.values()],
+            'match-': [v['match'][0] for v in self.replication.values()],
+            'panel-': [v['panel'][0] for v in self.replication.values()],
+            'match*': [v['match'][1] for v in self.replication.values()],
+            'panel*': [v['panel'][1] for v in self.replication.values()],
+            'match*_level': [_star_count(v['match'][1]) for v in self.replication.values()],
+            'panel*_level': [_star_count(v['panel'][1]) for v in self.replication.values()],
         })
+
+    def filter_replication(self, substance_threshold, pvalue_threshold):
+        matrix = self.get_replication()
+        return matrix.loc[np.logical_and(
+            np.logical_and(matrix['match*_level'] >= pvalue_threshold, matrix['panel*_level'] >= pvalue_threshold),
+            np.logical_and(np.abs(matrix['match-']) >= substance_threshold, np.abs(matrix['panel-']) >= substance_threshold)
+        )]
 
     def _truncate_output(self):
         for filename in self.OUTPUT_FILES:
@@ -278,11 +286,12 @@ class ParentsPoliticsPanel():
             results['metric'].append(label)
             results['statistic'].append(result.statistic)
             results['df'].append(result.df)
-            pvalue = str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue)
-            results['pvalue'].append(pvalue)
+            results['pvalue'].append(str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue))
 
             if 'persist' not in metric:
-                self.add_panel_for_replication(label, replication_treatment or demographic_label, pvalue, age_limit=age_limit, demo_desc=replication_desc)
+                self.add_panel_for_replication(label, replication_treatment or demographic_label,
+                                               results['diff'][-1], results['pvalue'][-1],
+                                               age_limit=age_limit, demo_desc=replication_desc)
 
         df = DataFrame.from_dict(results)
         df.sort_values('metric', inplace=True)
@@ -437,17 +446,22 @@ class ParentsPoliticsPanel():
         matched_outcomes[treatment] = control_value
         matched_outcomes['weight'] = 1  # Outcomes have been weighted, so set weight to 1
         reduced_df = pd.concat([treatment_cases, matched_outcomes])
+        diffs = []
         pvalues = []
         for o in outcomes:
+            diff = round(agg_matched_outcomes[o] - agg_treatment_outcomes[o], 2)
+            diffs.append(diff)
             result = self.t_test(reduced_df, o, treatment, a_value=control_value, b_value=treatment_value)
             pvalue = str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue)
             pvalues.append(pvalue)
-            self.add_match_for_replication(o, replication_treatment or treatment, pvalue, age_limit=age_limit, demo_desc=replication_desc)
+            self.add_match_for_replication(o, replication_treatment or treatment,
+                                           diff, pvalue,
+                                           age_limit=age_limit, demo_desc=replication_desc)
 
         summary = pd.DataFrame(data={
             'control': agg_matched_outcomes,
             'treatment': agg_treatment_outcomes,
-            'diff': round(agg_matched_outcomes - agg_treatment_outcomes, 2),
+            'diff': diffs,
             'pvalue': pvalues,
         })
         summary.sort_index(inplace=True)
