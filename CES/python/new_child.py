@@ -4,17 +4,6 @@ import pandas as pd
 
 from ces import CESPanel
 
-
-def _filter_dummy(df, dummy):
-    return df.loc[df[dummy] == 1,:].copy()
-
-def _filter_under_40(df):
-    return df.loc[df['age'] < 40,:].copy()
-
-def _filter_demographic(df, label, value):
-    return df.loc[df[label] == value,:].copy()
-
-
 parser = argparse.ArgumentParser(description="Analyze parenting political data")
 parser.add_argument('-o', '--output', help='Suffix for output directory')
 parser.add_argument('-m', '--only-match', action='store_true')
@@ -57,15 +46,15 @@ under_40_two_years = _filter_under_40(two_years)
 waves_1012 = two_years.loc[two_years['start_wave'] == 10,:].copy()
 waves_1214 = two_years.loc[two_years['start_wave'] == 12,:].copy()
 
-under_40_1012 = _filter_under_40(waves_1012)
+under_40_1012 = ces.filter_under_40(waves_1012)
 
-parents_1012 = _filter_dummy(waves_1012, 'is_parent')
-parents_under_40_1012 = _filter_under_40(parents_1012)
+parents_1012 = ces.filter_dummy(waves_1012, 'is_parent')
+parents_under_40_1012 = ces.filter_under_40(parents_1012)
 
-new_child_1012 = _filter_dummy(waves_1012, 'new_child')
-new_child_under_40_1012 = _filter_under_40(new_child_1012)
-firstborn_1012 = _filter_dummy(waves_1012, 'firstborn')
-firstborn_under_40_1012 = _filter_under_40(firstborn_1012)
+new_child_1012 = ces.filter_dummy(waves_1012, 'new_child')
+new_child_under_40_1012 = ces.filter_under_40(new_child_1012)
+firstborn_1012 = ces.filter_dummy(waves_1012, 'firstborn')
+firstborn_under_40_1012 = ces.filter_under_40(firstborn_1012)
 
 if _should_run("match"):
     formulas = [
@@ -97,19 +86,19 @@ if _should_run("match"):
     ####################''')
     def matching_for_subset(demo_label, demo_a, demo_b):
         # Split data by demographic
-        demo_a_1012 = _filter_demographic(waves_1012, demo_label, demo_a)
-        demo_a_under_40_1012 = _filter_under_40(demo_a_1012)
-        demo_b_1012 = _filter_demographic(waves_1012, demo_label, demo_b)
-        demo_b_under_40_1012 = _filter_under_40(demo_b_1012)
+        demo_a_1012 = ces.filter_demographic(waves_1012, demo_label, demo_a)
+        demo_a_under_40_1012 = ces.filter_under_40(demo_a_1012)
+        demo_b_1012 = ces.filter_demographic(waves_1012, demo_label, demo_b)
+        demo_b_under_40_1012 = ces.filter_under_40(demo_b_1012)
 
         # Build samples for matching: treatment group plus the relevant control, which may not be the full dataset
         sample_1012 = {}
-        sample_1012['firstborn'] = pd.concat([_filter_dummy(waves_1012, 'firstborn'), _filter_dummy(waves_1012, 'childless')])  # Treatment is firstborn, control is non-parents
-        sample_1012['new_child'] = _filter_dummy(waves_1012, 'is_parent')  # Treatment is new_child, control is other parents
+        sample_1012['firstborn'] = pd.concat([ces.filter_dummy(waves_1012, 'firstborn'), ces.filter_dummy(waves_1012, 'childless')])  # Treatment is firstborn, control is non-parents
+        sample_1012['new_child'] = ces.filter_dummy(waves_1012, 'is_parent')  # Treatment is new_child, control is other parents
         sample_1012['is_parent'] = waves_1012  # Treatment is is_parent, control is non-parents, which is the whole sample
         under_40_sample_1012 = {}
         for treatment in ces.treatments:
-            under_40_sample_1012[treatment] = _filter_under_40(sample_1012[treatment])
+            under_40_sample_1012[treatment] = ces.filter_under_40(sample_1012[treatment])
 
         for formula in formulas:
             for treatment in ces.treatments:

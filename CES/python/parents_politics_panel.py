@@ -139,9 +139,9 @@ class ParentsPoliticsPanel():
     def add_all_composite_issues(self, df):
         raise NotImplementedError()
 
-    ##################
-    # Data accessors #
-    ##################
+    ################################
+    # Data accessors and filtering #
+    ################################
     # panel contains all original data
     def get_panel(self):
         return self.panel
@@ -149,6 +149,18 @@ class ParentsPoliticsPanel():
     # paired_waves contains multiple rows per respondent, one row per pair of waves
     def get_paired_waves(self):
         return self.paired_waves
+
+    def filter_dummy(self, df, dummy):
+        return df.loc[df[dummy] == 1,:].copy()
+
+    def filter_under_40(self, df):
+        return df.loc[df['age'] < 40,:].copy()
+
+    def filter_demographic(self, df, label, value):
+        return df.loc[df[label] == value,:].copy()
+
+    def filter_na(self, df, label):
+        return df.loc[pd.notna(df[label]),:].copy()
 
     ######################
     # Analysis functions #
@@ -186,9 +198,6 @@ class ParentsPoliticsPanel():
         if pvalue < 0.05:
             return '*'
         return ''
-
-    def filter_na(self, df, label):
-        return df.loc[pd.notna(df[label]),:].copy()
 
     def all_t_test_pvalues(self, df, demographic_label, **test_kwargs):
         issues = list(self.ISSUES)
