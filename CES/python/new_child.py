@@ -2,6 +2,8 @@ import argparse
 import numpy as np
 import pandas as pd
 
+from collections import Counter
+
 from ces import CESPanel
 
 parser = argparse.ArgumentParser(description="Analyze parenting political data")
@@ -241,3 +243,6 @@ ces.log_header('''
 ###############''')
 matrix = ces.get_replication()
 ces.log_verbose(matrix)
+findings = ces.filter_replication(0.1, 3, 100)
+ces.log_verbose(findings, "Findings with significance ***, at least 0.1 substantive difference, and at least 100 cases each in treatment and control groups")
+ces.log_verbose(Counter(findings['issue']), "Issue counts in the above table")

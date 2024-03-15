@@ -67,9 +67,10 @@ class ParentsPoliticsPanel():
         key = (issue, metric, treatment, age_limit, demo_desc)
         self.replication[key]['match'] = (substance, pvalue)
 
-    def add_panel_for_replication(self, outcome, treatment, substance, pvalue, age_limit=None, demo_desc=None):
+    def add_panel_for_replication(self, outcome, treatment, smallest_n, substance, pvalue, age_limit=None, demo_desc=None):
         (issue, metric) = self._parse_outcome(outcome)
         key = (issue, metric, treatment, age_limit, demo_desc)
+        self.replication[key]['smallest_n'] = smallest_n
         self.replication[key]['panel'] = (substance, pvalue)
 
     def _parse_outcome(self, outcome):
@@ -88,6 +89,7 @@ class ParentsPoliticsPanel():
             'treatment': [k[2] for k in self.replication.keys()],
             'age cohort': [f"under {k[3]}" if k[3] else "--" for k in self.replication.keys()],
             'demographic': [k[4] if k[4] else "--" for k in self.replication.keys()],
+            'smallest_n': [v['smallest_n'] for v in self.replication.values()],
             'match-': [v['match'][0] for v in self.replication.values()],
             'panel-': [v['panel'][0] for v in self.replication.values()],
             'match*': [v['match'][1] for v in self.replication.values()],
@@ -96,12 +98,15 @@ class ParentsPoliticsPanel():
             'panel*_level': [_star_count(v['panel'][1]) for v in self.replication.values()],
         })
 
-    def filter_replication(self, substance_threshold, pvalue_threshold):
+    def filter_replication(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
         matrix = self.get_replication()
-        return matrix.loc[np.logical_and(
+        matrix = matrix.loc[np.logical_and(
             np.logical_and(matrix['match*_level'] >= pvalue_threshold, matrix['panel*_level'] >= pvalue_threshold),
             np.logical_and(np.abs(matrix['match-']) >= substance_threshold, np.abs(matrix['panel-']) >= substance_threshold)
-        )]
+        )].copy()
+        if smallest_n_threshold:
+            matrix = matrix.loc[matrix['smallest_n'] >= smallest_n_threshold,:]
+        return matrix
 
     def _truncate_output(self):
         for filename in self.OUTPUT_FILES:
@@ -289,7 +294,8 @@ class ParentsPoliticsPanel():
             results['pvalue'].append(str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue))
 
             if 'persist' not in metric:
-                self.add_panel_for_replication(label, replication_treatment or demographic_label,
+                smallest_n = min([len(a_values), len(b_values)])
+                self.add_panel_for_replication(label, replication_treatment or demographic_label, smallest_n,
                                                results['diff'][-1], results['pvalue'][-1],
                                                age_limit=age_limit, demo_desc=replication_desc)
 
