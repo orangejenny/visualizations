@@ -60,6 +60,41 @@ class ParentsPoliticsPanel():
         # De-fragment frames
         self.paired_waves = self.paired_waves.copy()
 
+        # What replicates between matching and panel analysis?
+        self.replication = defaultdict(lambda: defaultdict(lambda: np.nan))
+
+    def add_match_for_replication(self, outcome, treatment, pvalue, age_limit=None, demo_desc=None):
+        (issue, metric) = self._parse_outcome(outcome)
+        key = (issue, metric, treatment, age_limit, demo_desc)
+        self.replication[key]['match'] = pvalue
+
+    def add_panel_for_replication(self, outcome, treatment, pvalue, age_limit=None, demo_desc=None):
+        (issue, metric) = self._parse_outcome(outcome)
+        key = (issue, metric, treatment, age_limit, demo_desc)
+        self.replication[key]['panel'] = pvalue
+
+    def _parse_outcome(self, outcome):
+        for m in self.METRICS:
+            if outcome.endswith(m):
+                return (outcome.replace(f"_{m}", ""), m)
+        raise ParentsPoliticsPanelException(f"Could not parse outcome {outcome}")
+
+    def get_replication(self):
+        def _star_count(string):
+            return len(re.sub(r'[^*]', "", string))
+
+        return pd.DataFrame(data={
+            'issue': [k[0] for k in self.replication.keys()],
+            'metric': [k[1] for k in self.replication.keys()],
+            'treatment': [k[2] for k in self.replication.keys()],
+            'age cohort': [f"under {k[3]}" if k[3] else "--" for k in self.replication.keys()],
+            'demographic': [k[4] if k[4] else "--" for k in self.replication.keys()],
+            'match': [v['match'] for v in self.replication.values()],
+            'panel': [v['panel'] for v in self.replication.values()],
+            'match_level': [_star_count(v['match']) for v in self.replication.values()],
+            'panel_level': [_star_count(v['panel']) for v in self.replication.values()],
+        })
+
     def _truncate_output(self):
         for filename in self.OUTPUT_FILES:
             with open(os.path.join(self.OUTPUT_DIR, filename), 'w') as fh:
@@ -199,18 +234,25 @@ class ParentsPoliticsPanel():
             return '*'
         return ''
 
-    def all_t_test_pvalues(self, df, demographic_label, **test_kwargs):
+    def all_t_test_pvalues(self, df, demographic_label, age_limit=None, replication_args=..., **test_kwargs):
         issues = list(self.ISSUES)
         issues.sort()
         all_results = pd.DataFrame(data={'issue': issues})
         for metric in self.METRICS:
-            issue_results = self.t_tests(df, metric, demographic_label, **test_kwargs)
+            issue_results = self.t_tests(df, metric, demographic_label, age_limit=age_limit, replication_args=replication_args, **test_kwargs)
             all_results = all_results.merge(issue_results.loc[:,['issue', 'diff', 'pvalue']], on='issue')
             all_results.rename(columns={'diff': f'{metric}-', 'pvalue': f'{metric}*'}, inplace=True)
+
         return all_results
 
     # TODO: Make weighting an option, not default
-    def t_tests(self, df, metric, demographic_label, a_value=0, b_value=1):
+    def t_tests(self, df, metric, demographic_label, replication_args=..., a_value=0, b_value=1, age_limit=None):
+        if replication_args is ...:
+            replication_args = {}
+
+        if age_limit is not None:
+            df = self.filter_age(df, age_limit)
+
         results = {
             'metric': [],
             'diff': [],
@@ -238,7 +280,13 @@ class ParentsPoliticsPanel():
             results['metric'].append(label)
             results['statistic'].append(result.statistic)
             results['df'].append(result.df)
-            results['pvalue'].append(str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue))
+            pvalue = str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue)
+            results['pvalue'].append(pvalue)
+
+            if 'persist' not in metric:
+                self.add_panel_for_replication(label, replication_args.get("treatment") or demographic_label, pvalue,
+                                               age_limit=age_limit, demo_desc=replication_args.get("demo_desc"))
+
         df = DataFrame.from_dict(results)
         df.sort_values('metric', inplace=True)
         return df
@@ -352,7 +400,10 @@ class ParentsPoliticsPanel():
     # Matching functions #
     ######################
     # TODO: Make weighting an option, not default
-    def get_matched_outcomes(self, df, formula, treatment, control_value=0, treatment_value=1, age_limit=None):
+    def get_matched_outcomes(self, df, formula, treatment, control_value=0, treatment_value=1, age_limit=None, replication_args=...):
+        if replication_args is ...:
+            replication_args = {}
+
         outcomes = [
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
@@ -395,7 +446,9 @@ class ParentsPoliticsPanel():
         pvalues = []
         for o in outcomes:
             result = self.t_test(reduced_df, o, treatment, a_value=control_value, b_value=treatment_value)
-            pvalues.append(str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue))
+            pvalue = str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue)
+            pvalues.append(pvalue)
+            self.add_match_for_replication(o, replication_args.get("treatment") or treatment, pvalue, age_limit=age_limit, demo_desc=replication_args.get("demo_desc"))
 
         summary = pd.DataFrame(data={
             'control': agg_matched_outcomes,
