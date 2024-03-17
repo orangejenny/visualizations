@@ -294,6 +294,7 @@ class CESPanel(ParentsPoliticsPanel):
         return df
 
     def _add_all_single_issues(self, df):
+        # TODO: drop ideo & pid from replication, since they're in ideo_composite
         df = self._add_issue(df, 'ideo5_XX', 'ideo', 1, 5)
         df = self._add_issue(df, 'pid7_XX', 'pid', 1, 7)
         df = self._add_issue(df, 'CCXX_327', 'aff_action', 1, 4)
