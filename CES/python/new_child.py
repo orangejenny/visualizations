@@ -45,6 +45,11 @@ two_years = ces.get_paired_waves()
 waves_1012 = two_years.loc[two_years['start_wave'] == 10,:].copy()
 waves_1214 = two_years.loc[two_years['start_wave'] == 12,:].copy()
 
+# TODO: support for swapping out different set of waves
+exploratory_data = ces.get_paired_waves()
+panel_data = waves_1012
+matching_data = waves_1012
+
 if _should_run("match"):
     formulas = [
         "gender + race + employ + educ + marstat + pew_churatd + division + age + income",
