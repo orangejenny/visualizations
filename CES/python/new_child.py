@@ -246,3 +246,6 @@ ces.log_verbose(matrix)
 findings = ces.filter_replication(0.1, 3, 100)
 ces.log_verbose(findings, "Findings with significance ***, at least 0.1 substantive difference, and at least 100 cases each in treatment and control groups")
 ces.log_verbose(Counter(findings['issue']), "Issue counts in the above table")
+
+highlights = ces.get_replication(ces.replication_highlights)
+ces.log_verbose(highlights, "Compare matching's after value with panel analysis's delta, limited to young adults")

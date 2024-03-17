@@ -60,12 +60,22 @@ class ParentsPoliticsPanel():
         # De-fragment frames
         self.paired_waves = self.paired_waves.copy()
 
+        # Compare findings from different approaches
+        # TODO: use namedtuple for key and value
         self.replication = defaultdict(lambda: defaultdict(lambda: np.nan))
+
+        # Pairs the "core" metrics: the after value for matching and the delta for panel analysis
+        # Also limit to overall sample (no subset), young adults, and either firstborn/is_parent
+        self.replication_highlights = defaultdict(lambda: defaultdict(lambda: np.nan))
 
     def add_match_for_replication(self, outcome, treatment, substance, pvalue, age_limit=None, demo_desc=None):
         (issue, metric) = self._parse_outcome(outcome)
         key = (issue, metric, treatment, age_limit, demo_desc)
         self.replication[key]['match'] = (substance, pvalue)
+
+        if self._should_highlight(key, 'match'):
+            key = (issue, "--", treatment, age_limit, demo_desc)
+            self.replication_highlights[key]['match'] = (substance, pvalue)
 
     def add_panel_for_replication(self, outcome, treatment, smallest_n, substance, pvalue, age_limit=None, demo_desc=None):
         (issue, metric) = self._parse_outcome(outcome)
@@ -73,33 +83,55 @@ class ParentsPoliticsPanel():
         self.replication[key]['smallest_n'] = smallest_n
         self.replication[key]['panel'] = (substance, pvalue)
 
+        if self._should_highlight(key, 'panel'):
+            key = (issue, "--", treatment, age_limit, demo_desc)
+            self.replication_highlights[key]['smallest_n'] = smallest_n
+            self.replication_highlights[key]['panel'] = (substance, pvalue)
+
+    def _should_highlight(self, key, approach):
+        return all([
+            key[1] == 'after' if approach == 'match' else key[1] == 'delta',
+            key[3] is not None,
+            key[2] in ['firstborn', 'is_parent'],
+            key[4] is None
+        ])
+
     def _parse_outcome(self, outcome):
         for m in self.METRICS:
             if outcome.endswith(m):
                 return (outcome.replace(f"_{m}", ""), m)
         raise ParentsPoliticsPanelException(f"Could not parse outcome {outcome}")
 
-    def get_replication(self):
+    def get_replication(self, matrix=None):
+        if matrix is None:
+            matrix = self.replication
+
         def _star_count(string):
             return len(re.sub(r'[^*]', "", string))
 
         return pd.DataFrame(data={
-            'issue': [k[0] for k in self.replication.keys()],
-            'metric': [k[1] for k in self.replication.keys()],
-            'treatment': [k[2] for k in self.replication.keys()],
-            'age cohort': [f"under {k[3]}" if k[3] else "--" for k in self.replication.keys()],
-            'demographic': [k[4] if k[4] else "--" for k in self.replication.keys()],
-            'smallest_n': [v['smallest_n'] for v in self.replication.values()],
-            'match-': [v['match'][0] for v in self.replication.values()],
-            'panel-': [v['panel'][0] for v in self.replication.values()],
-            'match*': [v['match'][1] for v in self.replication.values()],
-            'panel*': [v['panel'][1] for v in self.replication.values()],
-            'match*_level': [_star_count(v['match'][1]) for v in self.replication.values()],
-            'panel*_level': [_star_count(v['panel'][1]) for v in self.replication.values()],
+            'issue': [k[0] for k in matrix.keys()],
+            'metric': [k[1] for k in matrix.keys()],
+            'treatment': [k[2] for k in matrix.keys()],
+            'age cohort': [f"under {k[3]}" if k[3] else "--" for k in matrix.keys()],
+            'demographic': [k[4] if k[4] else "--" for k in matrix.keys()],
+            'smallest_n': [v['smallest_n'] for v in matrix.values()],
+            'match-': [v['match'][0] for v in matrix.values()],
+            'panel-': [v['panel'][0] for v in matrix.values()],
+            'match*': [v['match'][1] for v in matrix.values()],
+            'panel*': [v['panel'][1] for v in matrix.values()],
+            'match*_level': [_star_count(v['match'][1]) for v in matrix.values()],
+            'panel*_level': [_star_count(v['panel'][1]) for v in matrix.values()],
         })
 
     def filter_replication(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
-        matrix = self.get_replication()
+        return self._filter_replication(self.replication, substance_threshold, pvalue_threshold, smallest_n_threshold)
+
+    def filter_replication_highlights(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
+        return self._filter_replication(self.replication_highlights, substance_threshold, pvalue_threshold, smallest_n_threshold)
+
+    def _filter_replication(self, matrix, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
+        matrix = self.get_replication(matrix)
         matrix = matrix.loc[np.logical_and(
             np.logical_and(matrix['match*_level'] >= pvalue_threshold, matrix['panel*_level'] >= pvalue_threshold),
             np.logical_and(np.abs(matrix['match-']) >= substance_threshold, np.abs(matrix['panel-']) >= substance_threshold)
