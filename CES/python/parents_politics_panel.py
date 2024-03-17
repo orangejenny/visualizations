@@ -109,20 +109,37 @@ class ParentsPoliticsPanel():
         def _star_count(string):
             return len(re.sub(r'[^*]', "", string))
 
-        return pd.DataFrame(data={
+        data = {
             'issue': [k[0] for k in matrix.keys()],
             'metric': [k[1] for k in matrix.keys()],
             'treatment': [k[2] for k in matrix.keys()],
             'age cohort': [f"under {k[3]}" if k[3] else "--" for k in matrix.keys()],
             'demographic': [k[4] if k[4] else "--" for k in matrix.keys()],
             'smallest_n': [v['smallest_n'] for v in matrix.values()],
-            'match-': [v['match'][0] for v in matrix.values()],
-            'panel-': [v['panel'][0] for v in matrix.values()],
-            'match*': [v['match'][1] for v in matrix.values()],
-            'panel*': [v['panel'][1] for v in matrix.values()],
-            'match*_level': [_star_count(v['match'][1]) for v in matrix.values()],
-            'panel*_level': [_star_count(v['panel'][1]) for v in matrix.values()],
-        })
+        }
+
+        # TODO: this is to allow skipping matching analysis, is pretty horrible - bring the only/skip variables into ParentsPoliticsPanel?
+        # Skipping either appraoch also breaks _filter_replication, which expects columns for both
+        (has_match, has_panel) = (True, True)
+        try:
+            data.update({'match-': [v['match'][0] for v in matrix.values()]})
+        except TypeError as e:
+            has_match = False
+        try:
+            data.update({'panel-': [v['panel'][0] for v in matrix.values()]})
+        except TypeError as e:
+            has_panel = False
+
+        if has_match:
+            data.update({'match*': [v['match'][1] for v in matrix.values()]})
+        if has_panel:
+            data.update({'panel*': [v['panel'][1] for v in matrix.values()]})
+        if has_match:
+            data.update({'match*_level': [_star_count(v['match'][1]) for v in matrix.values()]})
+        if has_panel:
+            data.update({'panel*_level': [_star_count(v['panel'][1]) for v in matrix.values()]})
+
+        return pd.DataFrame(data=data)
 
     def filter_replication(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
         return self._filter_replication(self.replication, substance_threshold, pvalue_threshold, smallest_n_threshold)
