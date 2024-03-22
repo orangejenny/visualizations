@@ -40,6 +40,7 @@ class ParentsPoliticsPanel():
 
     def __init__(self, output_suffix=''):
         self.ISSUES = set()
+        self.ISSUE_BOUNDS = {}
 
         if output_suffix:
             self.OUTPUT_DIR = f'{self.OUTPUT_DIR}_{output_suffix}'
@@ -70,6 +71,7 @@ class ParentsPoliticsPanel():
 
     def add_match_for_replication(self, outcome, treatment, substance, pvalue, age_limit=None, demo_desc=None):
         (issue, metric) = self._parse_outcome(outcome)
+        substance = self._normalize_substance(issue, substance)
         key = (issue, metric, treatment, age_limit, demo_desc)
         self.replication[key]['match'] = (substance, pvalue)
 
@@ -79,6 +81,7 @@ class ParentsPoliticsPanel():
 
     def add_panel_for_replication(self, outcome, treatment, smallest_n, substance, pvalue, age_limit=None, demo_desc=None):
         (issue, metric) = self._parse_outcome(outcome)
+        substance = self._normalize_substance(issue, substance)
         key = (issue, metric, treatment, age_limit, demo_desc)
         self.replication[key]['smallest_n'] = smallest_n
         self.replication[key]['panel'] = (substance, pvalue)
@@ -87,6 +90,10 @@ class ParentsPoliticsPanel():
             key = (issue, "--", treatment, age_limit, demo_desc)
             self.replication_highlights[key]['smallest_n'] = smallest_n
             self.replication_highlights[key]['panel'] = (substance, pvalue)
+
+    def _normalize_substance(self, issue, amount):
+        (lower_bound, upper_bound) = self.ISSUE_BOUNDS[issue]
+        return round((amount - lower_bound) * 100 / upper_bound, 1)
 
     def _should_highlight(self, key, approach):
         return all([

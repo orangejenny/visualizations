@@ -315,12 +315,12 @@ class CESPanel(ParentsPoliticsPanel):
 
         df = self.add_immigration_composite(df)
 
-        df = self._add_issue(df, 'budget_composite_20XX', 'budget_composite')
-        df = self._add_issue(df, 'climate_composite_20XX', 'climate_composite')
-        df = self._add_issue(df, 'gay_composite_20XX', 'gay_composite')
-        df = self._add_issue(df, 'ideo_composite_20XX', 'ideo_composite')
-        df = self._add_issue(df, 'military_composite_20XX', 'military_composite')
-        df = self._add_issue(df, 'immigration_composite_20XX', 'immigration_composite')
+        df = self._add_issue(df, 'budget_composite_20XX', 'budget_composite', 1, 2)
+        df = self._add_issue(df, 'climate_composite_20XX', 'climate_composite', 1, 5)
+        df = self._add_issue(df, 'gay_composite_20XX', 'gay_composite', 1, 2)
+        df = self._add_issue(df, 'ideo_composite_20XX', 'ideo_composite', 12 / 14, 5)
+        df = self._add_issue(df, 'military_composite_20XX', 'military_composite', 1, 2)
+        df = self._add_issue(df, 'immigration_composite_20XX', 'immigration_composite', 1, 2)
 
         return df
 
@@ -425,5 +425,6 @@ class CESPanel(ParentsPoliticsPanel):
 
         if not calc_only:
             self.ISSUES.add(issue)
+            self.ISSUE_BOUNDS[issue] = (lower_bound, upper_bound)
 
         return df
