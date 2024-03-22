@@ -187,6 +187,7 @@ if _should_run("explore"):
 if _should_run("panel"):
     young_adults = ces.filter_age(waves_1012, 40)  # TODO: Also do under 30, considering Vaisey and Kiley?
     for treatment in ces.treatments:
+        # TODO: use same "control" groups as in matching?
         ces.log_findings(ces.all_t_test_pvalues(waves_1012, treatment), f"T test p values for {treatment}")
         ces.log_verbose(ces.summarize_all_issues(waves_1012, treatment), f"Summary of issues for {treatment}")
         ces.log_findings(ces.all_t_test_pvalues(young_adults, treatment, age_limit=40), f"T test p values, respondents under 40 years old: {treatment}")
