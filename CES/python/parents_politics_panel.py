@@ -377,7 +377,9 @@ class ParentsPoliticsPanel():
     #####################
     # Summary functions #
     #####################
-    def summarize_all_issues(self, df, group_by_labels):
+    def summarize_all_issues(self, df, group_by_labels, age_limit=None):
+        if age_limit is not None:
+            df = self.filter_age(df, age_limit)
         if type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
         all_issues = pd.DataFrame({k: [] for k in ['issue'] + group_by_labels + self.METRICS})
