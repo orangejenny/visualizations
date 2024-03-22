@@ -294,11 +294,15 @@ class CESPanel(ParentsPoliticsPanel):
         return df
 
     def _add_all_single_issues(self, df):
-        # TODO: drop ideo & pid from replication, since they're in ideo_composite
-        df = self._add_issue(df, 'ideo5_XX', 'ideo', 1, 5)
-        df = self._add_issue(df, 'pid7_XX', 'pid', 1, 7)
+        df = self._add_issue(df, 'ideo5_XX', 'ideo', 1, 5, calc_only=True)
+        df = self._add_issue(df, 'pid7_XX', 'pid', 1, 7, calc_only=True)
         df = self._add_issue(df, 'CCXX_327', 'aff_action', 1, 4)
         df = self._add_issue(df, 'CCXX_320', 'guns', 1, 3)
+        df = self._add_issue(df, 'CCXX_321', 'climate_severity', 1, 5, calc_only=True)
+        df = self._add_issue(df, 'CCXX_325', 'climate_jobs_env', 1, 5, calc_only=True)
+        df = self._add_issue(df, 'CCXX_325', 'climate_clean_energy', 1, 2, calc_only=True)
+        df = self._add_issue(df, 'CCXX_326', 'gay_marriage', 1, 2, calc_only=True)
+        df = self._add_issue(df, 'CCXX_330G', 'gay_dadt', 1, 2, calc_only=True)
         return df
 
     def add_all_composite_issues(self, df):
@@ -391,7 +395,7 @@ class CESPanel(ParentsPoliticsPanel):
         df = self.nan_out_of_bounds(df, f'{issue}_after', lower_bound, upper_bound)
         return df
 
-    def _add_issue(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
+    def _add_issue(self, df, before_pattern, issue, lower_bound=None, upper_bound=None, calc_only=False):
         df = self.add_before_after(df, before_pattern, issue, lower_bound, upper_bound)
 
         df = df.assign(**{
@@ -419,6 +423,7 @@ class CESPanel(ParentsPoliticsPanel):
             df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{issue}_persists'] = np.nan  # Can't calculate unless all waves are available
         df[f'{issue}_persists_abs'] = np.abs(df[f'{issue}_persists'])
 
-        self.ISSUES.add(issue)
+        if not calc_only:
+            self.ISSUES.add(issue)
 
         return df
