@@ -110,7 +110,7 @@ class ParentsPoliticsPanel():
                 return (outcome.replace(f"_{m}", ""), m)
         raise ParentsPoliticsPanelException(f"Could not parse outcome {outcome}")
 
-    def get_replication(self, matrix=None):
+    def get_approach_comparison(self, matrix=None):
         if matrix is None:
             matrix = self.replication
 
@@ -127,7 +127,8 @@ class ParentsPoliticsPanel():
         }
 
         # TODO: this is to allow skipping matching analysis, is pretty horrible - bring the only/skip variables into ParentsPoliticsPanel?
-        # Skipping either appraoch also breaks _filter_replication, which expects columns for both
+        # Also this eerror capture doesn't work now that the values are tuples
+        # Skipping either approach also breaks _filter_replication, which expects columns for both
         (has_match, has_panel) = (True, True)
         try:
             data.update({'match-': [v['match'].diff for v in matrix.values()]})
@@ -151,14 +152,11 @@ class ParentsPoliticsPanel():
 
         return pd.DataFrame(data=data)
 
-    def filter_replication(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
+    def filter_approach_comparison(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
         return self._filter_replication(self.replication, substance_threshold, pvalue_threshold, smallest_n_threshold)
 
-    def filter_replication_highlights(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
-        return self._filter_replication(self.replication_highlights, substance_threshold, pvalue_threshold, smallest_n_threshold)
-
     def _filter_replication(self, matrix, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
-        matrix = self.get_replication(matrix)
+        matrix = self.get_approach_comparison(matrix)
         matrix = matrix.loc[np.logical_and(
             np.logical_and(matrix['match*_level'] >= pvalue_threshold, matrix['panel*_level'] >= pvalue_threshold),
             np.logical_and(np.abs(matrix['match%']) >= substance_threshold, np.abs(matrix['panel%']) >= substance_threshold)
@@ -306,20 +304,20 @@ class ParentsPoliticsPanel():
             return '*'
         return ''
 
-    def all_t_test_pvalues(self, df, demographic_label, age_limit=None, replication_treatment=None, replication_desc=None, **test_kwargs):
+    def all_t_test_pvalues(self, df, demographic_label, age_limit=None, comparator_treatment=None, comparator_desc=None, **test_kwargs):
         issues = list(self.ISSUES)
         issues.sort()
         all_results = pd.DataFrame(data={'issue': issues})
         for metric in self.METRICS:
             issue_results = self.t_tests(df, metric, demographic_label, age_limit=age_limit,
-                                         replication_treatment=replication_treatment, replication_desc=replication_desc, **test_kwargs)
+                                         comparator_treatment=comparator_treatment, comparator_desc=comparator_desc, **test_kwargs)
             all_results = all_results.merge(issue_results.loc[:,['issue', 'diff', 'pvalue']], on='issue')
             all_results.rename(columns={'diff': f'{metric}-', 'pvalue': f'{metric}*'}, inplace=True)
 
         return all_results
 
     # TODO: Make weighting an option, not default
-    def t_tests(self, df, metric, demographic_label, a_value=0, b_value=1, age_limit=None, replication_treatment=None, replication_desc=None):
+    def t_tests(self, df, metric, demographic_label, a_value=0, b_value=1, age_limit=None, comparator_treatment=None, comparator_desc=None):
         if age_limit is not None:
             df = self.filter_age(df, age_limit)
 
@@ -354,9 +352,9 @@ class ParentsPoliticsPanel():
 
             if 'persist' not in metric:
                 smallest_n = min([len(a_values), len(b_values)])
-                self.add_panel_for_replication(label, replication_treatment or demographic_label, smallest_n,
+                self.add_panel_for_replication(label, comparator_treatment or demographic_label, smallest_n,
                                                results['diff'][-1], results['pvalue'][-1],
-                                               age_limit=age_limit, demo_desc=replication_desc)
+                                               age_limit=age_limit, demo_desc=comparator_desc)
 
         df = DataFrame.from_dict(results)
         df.sort_values('metric', inplace=True)
@@ -473,7 +471,7 @@ class ParentsPoliticsPanel():
     # Matching functions #
     ######################
     # TODO: Make weighting an option, not default
-    def get_matched_outcomes(self, df, formula, treatment, control_value=0, treatment_value=1, age_limit=None, replication_treatment=None, replication_desc=None):
+    def get_matched_outcomes(self, df, formula, treatment, control_value=0, treatment_value=1, age_limit=None, comparator_treatment=None, comparator_desc=None):
         outcomes = [
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
@@ -528,9 +526,9 @@ class ParentsPoliticsPanel():
             result = self.t_test(reduced_df, o, treatment, a_value=control_value, b_value=treatment_value)
             pvalue = str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue)
             pvalues.append(pvalue)
-            self.add_match_for_replication(o, replication_treatment or treatment,
+            self.add_match_for_replication(o, comparator_treatment or treatment,
                                            diff, pvalue,
-                                           age_limit=age_limit, demo_desc=replication_desc)
+                                           age_limit=age_limit, demo_desc=comparator_desc)
 
         summary = pd.DataFrame(data={
             'control': agg_matched_outcomes,
