@@ -12,12 +12,110 @@ from pandas import DataFrame
 from statsmodels.stats.weightstats import ttest_ind
 
 Result = namedtuple('Result', ['statistic', 'df', 'pvalue'])
-ReplicationKey = namedtuple('ReplicationKey', ['issue', 'metric', 'treatment', 'age_limit', 'demo_desc'])
-ReplicationValue = namedtuple('ReplicationValue', ['diff', 'norm', 'pvalue'])
+ComparatorKey = namedtuple('ComparatorKey', ['issue', 'metric', 'treatment', 'age_limit', 'demo_desc'])
+ComparatorValue = namedtuple('ComparatorValue', ['diff', 'norm', 'pvalue'])
 
 
 class ParentsPoliticsPanelException(Exception):
     pass
+
+
+class ParentsPoliticsApproachComparator():
+    MATCH = 'match'
+    PANEL = 'panel'
+    approaches = {
+        PANEL: 'delta',
+        MATCH: 'after',
+    }
+
+    def __init__(self, ppp):
+        self.data = {a: {} for a in self.approaches}
+        self.smallest_n = {}
+        self.ppp = ppp
+        self.comparison = None
+
+    def add(self, approach, outcome, treatment, substance, pvalue, age_limit=None, demo_desc=None):
+        assert approach in self.approaches.keys(), f"{approach} is not an approach"
+
+        (issue, metric) = self._parse_outcome(outcome)
+        normalized_substance = self._normalize_substance(issue, substance)
+        key = ComparatorKey(issue, metric, treatment, age_limit, demo_desc)
+        self.data[approach][key] = ComparatorValue(substance, normalized_substance, pvalue)
+
+    def set_smallest_n(self, approach, outcome, treatment, smallest_n, age_limit=None, demo_desc=None):
+        (issue, metric) = self._parse_outcome(outcome)
+        key = ComparatorKey(issue, metric, treatment, age_limit, demo_desc)
+        self.smallest_n[key] = smallest_n
+
+    def _parse_outcome(self, outcome):
+        for m in self.ppp.METRICS:
+            if outcome.endswith(m):
+                return (outcome.replace(f"_{m}", ""), m)
+        raise ParentsPoliticsPanelException(f"Could not parse outcome {outcome}")
+
+    def _normalize_substance(self, issue, amount):
+        (lower_bound, upper_bound) = self.ppp.ISSUE_BOUNDS[issue]
+        return round((amount - lower_bound) * 100 / upper_bound, 1)
+
+    def get_comparison(self):
+        if self.comparison is None:
+            keys = {key for value in self.data.values() for key in value.keys()}
+            data = {
+                'issue': [k.issue for k in keys],
+                'metric': [k.metric for k in keys],
+                'treatment': [k.treatment for k in keys],
+                'age cohort': [f"under {k.age_limit}" if k.age_limit else "--" for k in keys],
+                'demographic': [k.demo_desc if k.demo_desc else "--" for k in keys],
+                'smallest_n': [self.smallest_n.get(k, '?') for k in keys],
+            }
+            blank_value = ComparatorValue("--", "--", "--")
+            for approach in self.approaches.keys():
+                data.update({f'{approach}-': [self.data[approach].get(key, blank_value).diff for key in keys]})
+            for approach in self.approaches.keys():
+                data.update({f'{approach}%': [self.data[approach].get(key, blank_value).norm for key in keys]})
+            for approach in self.approaches.keys():
+                data.update({f'{approach}*': [self.data[approach].get(key, blank_value).pvalue for key in keys]})
+            for approach in self.approaches.keys():
+                data.update({f'{approach}*_level': [self._star_count(self.data[approach].get(key, blank_value).pvalue) for key in keys]})
+            self.comparison = pd.DataFrame(data=data)
+            self.comparison.sort_values(['issue', 'treatment', 'metric'], inplace=True)
+
+        return self.comparison
+
+    # Pairs the "core" metrics: the after value for matching and the delta for panel analysis
+    # Also limit to overall sample (no subset), young adults, and either firstborn/is_parent
+    def get_core_comparison(self):
+        full = self.get_comparison()
+        core = full.loc[
+            np.logical_and(
+                np.logical_and(full['demographic'] == "--", full['age cohort'] == "under 40"),
+                np.logical_or(full['treatment'] == 'firstborn', full['treatment'] == 'is_parent'),
+            )
+        ,:].copy()
+
+        key_columns = ['issue', 'treatment', 'age cohort', 'demographic']
+        adata = {}
+        acols = {}
+        for approach, core_metric in self.approaches.items():
+            acols[approach] = [f'{approach}-', f'{approach}%', f'{approach}*', f'{approach}*_level']
+            adata[approach] = core.loc[core['metric'] == core_metric, key_columns + ['smallest_n'] + acols[approach]].copy()
+
+        # Just access the approaches by name, since merge only supports two
+        recombined = pd.merge(adata['panel'], adata['match'], on=key_columns, suffixes=('', '_match'))
+        return recombined.loc[:,key_columns + ['smallest_n'] + [val for pair in zip(acols['match'], acols['panel']) for val in pair]]
+
+    def _star_count(self, string):
+        return len(re.sub(r'[^*]', "", string))
+
+    def filter(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
+        matrix = self.get_comparison()
+        matrix = matrix.loc[np.logical_and(
+            np.logical_and(matrix['match*_level'] >= pvalue_threshold, matrix['panel*_level'] >= pvalue_threshold),
+            np.logical_and(np.abs(matrix['match%']) >= substance_threshold, np.abs(matrix['panel%']) >= substance_threshold)
+        )].copy()
+        if smallest_n_threshold:
+            matrix = matrix.loc[matrix['smallest_n'] >= smallest_n_threshold,:]
+        return matrix
 
 
 class ParentsPoliticsPanel():
@@ -64,106 +162,16 @@ class ParentsPoliticsPanel():
         self.paired_waves = self.paired_waves.copy()
 
         # Compare findings from different approaches
-        self.replication = defaultdict(lambda: defaultdict(lambda: ReplicationValue))
-
-        # Pairs the "core" metrics: the after value for matching and the delta for panel analysis
-        # Also limit to overall sample (no subset), young adults, and either firstborn/is_parent
-        self.replication_highlights = defaultdict(lambda: defaultdict(lambda: np.nan))
-
-    def add_match_for_replication(self, outcome, treatment, substance, pvalue, age_limit=None, demo_desc=None):
-        (issue, metric) = self._parse_outcome(outcome)
-        normalized_substance = self._normalize_substance(issue, substance)
-        key = ReplicationKey(issue, metric, treatment, age_limit, demo_desc)
-        self.replication[key]['match'] = ReplicationValue(substance, normalized_substance, pvalue)
-
-        if self._should_highlight(key, 'match'):
-            key = ReplicationKey(issue, None, treatment, age_limit, demo_desc)
-            self.replication_highlights[key]['match'] = ReplicationValue(substance, normalized_substance, pvalue)
-
-    def add_panel_for_replication(self, outcome, treatment, smallest_n, substance, pvalue, age_limit=None, demo_desc=None):
-        (issue, metric) = self._parse_outcome(outcome)
-        normalized_substance = self._normalize_substance(issue, substance)
-        key = ReplicationKey(issue, metric, treatment, age_limit, demo_desc)
-        self.replication[key]['smallest_n'] = smallest_n
-        self.replication[key]['panel'] = ReplicationValue(substance, normalized_substance, pvalue)
-
-        if self._should_highlight(key, 'panel'):
-            key = ReplicationKey(issue, None, treatment, age_limit, demo_desc)
-            self.replication_highlights[key]['smallest_n'] = smallest_n
-            self.replication_highlights[key]['panel'] = ReplicationValue(substance, normalized_substance, pvalue)
-
-    def _normalize_substance(self, issue, amount):
-        (lower_bound, upper_bound) = self.ISSUE_BOUNDS[issue]
-        return round((amount - lower_bound) * 100 / upper_bound, 1)
-
-    def _should_highlight(self, key, approach):
-        return all([
-            key.metric == 'after' if approach == 'match' else key.metric == 'delta',
-            key.age_limit is not None,
-            key.treatment in ['firstborn', 'is_parent'],
-            key.demo_desc is None
-        ])
-
-    def _parse_outcome(self, outcome):
-        for m in self.METRICS:
-            if outcome.endswith(m):
-                return (outcome.replace(f"_{m}", ""), m)
-        raise ParentsPoliticsPanelException(f"Could not parse outcome {outcome}")
+        self.comparator = ParentsPoliticsApproachComparator(self)
 
     def get_approach_comparison(self, matrix=None):
-        if matrix is None:
-            matrix = self.replication
-
-        def _star_count(string):
-            return len(re.sub(r'[^*]', "", string))
-
-        data = {
-            'issue': [k.issue for k in matrix.keys()],
-            'metric': [k.metric for k in matrix.keys()],
-            'treatment': [k.treatment for k in matrix.keys()],
-            'age cohort': [f"under {k.age_limit}" if k.age_limit else "--" for k in matrix.keys()],
-            'demographic': [k.demo_desc if k.demo_desc else "--" for k in matrix.keys()],
-            'smallest_n': [v['smallest_n'] for v in matrix.values()],
-        }
-
-        # TODO: this is to allow skipping matching analysis, is pretty horrible - bring the only/skip variables into ParentsPoliticsPanel?
-        # Also this eerror capture doesn't work now that the values are tuples
-        # Skipping either approach also breaks _filter_replication, which expects columns for both
-        (has_match, has_panel) = (True, True)
-        try:
-            data.update({'match-': [v['match'].diff for v in matrix.values()]})
-        except TypeError as e:
-            has_match = False
-        try:
-            data.update({'panel-': [v['panel'].diff for v in matrix.values()]})
-        except TypeError as e:
-            has_panel = False
-
-        if has_match:
-            data.update({'match%': [v['match'].norm for v in matrix.values()]})
-            data.update({'match*': [v['match'].pvalue for v in matrix.values()]})
-        if has_panel:
-            data.update({'panel%': [v['panel'].norm for v in matrix.values()]})
-            data.update({'panel*': [v['panel'].pvalue for v in matrix.values()]})
-        if has_match:
-            data.update({'match*_level': [_star_count(v['match'].pvalue) for v in matrix.values()]})
-        if has_panel:
-            data.update({'panel*_level': [_star_count(v['panel'].pvalue) for v in matrix.values()]})
-
-        return pd.DataFrame(data=data)
+        return self.comparator.get_comparison()
 
     def filter_approach_comparison(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
-        return self._filter_replication(self.replication, substance_threshold, pvalue_threshold, smallest_n_threshold)
+        return self.comparator.filter(substance_threshold, pvalue_threshold, smallest_n_threshold)
 
-    def _filter_replication(self, matrix, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
-        matrix = self.get_approach_comparison(matrix)
-        matrix = matrix.loc[np.logical_and(
-            np.logical_and(matrix['match*_level'] >= pvalue_threshold, matrix['panel*_level'] >= pvalue_threshold),
-            np.logical_and(np.abs(matrix['match%']) >= substance_threshold, np.abs(matrix['panel%']) >= substance_threshold)
-        )].copy()
-        if smallest_n_threshold:
-            matrix = matrix.loc[matrix['smallest_n'] >= smallest_n_threshold,:]
-        return matrix
+    def get_core_approach_comparison(self, matrix=None):
+        return self.comparator.get_core_comparison()
 
     def _truncate_output(self):
         for filename in self.OUTPUT_FILES:
@@ -351,10 +359,12 @@ class ParentsPoliticsPanel():
             results['pvalue'].append(str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue))
 
             if 'persist' not in metric:
-                smallest_n = min([len(a_values), len(b_values)])
-                self.add_panel_for_replication(label, comparator_treatment or demographic_label, smallest_n,
-                                               results['diff'][-1], results['pvalue'][-1],
+                self.comparator.set_smallest_n(self.comparator.PANEL, label, comparator_treatment or demographic_label,
+                                               min([len(a_values), len(b_values)]),
                                                age_limit=age_limit, demo_desc=comparator_desc)
+                self.comparator.add(self.comparator.PANEL, label, comparator_treatment or demographic_label,
+                                    results['diff'][-1], results['pvalue'][-1],
+                                    age_limit=age_limit, demo_desc=comparator_desc)
 
         df = DataFrame.from_dict(results)
         df.sort_values('metric', inplace=True)
@@ -526,9 +536,8 @@ class ParentsPoliticsPanel():
             result = self.t_test(reduced_df, o, treatment, a_value=control_value, b_value=treatment_value)
             pvalue = str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue)
             pvalues.append(pvalue)
-            self.add_match_for_replication(o, comparator_treatment or treatment,
-                                           diff, pvalue,
-                                           age_limit=age_limit, demo_desc=comparator_desc)
+            self.comparator.add(self.comparator.MATCH, o, comparator_treatment or treatment, diff, pvalue,
+                                age_limit=age_limit, demo_desc=comparator_desc)
 
         summary = pd.DataFrame(data={
             'control': agg_matched_outcomes,

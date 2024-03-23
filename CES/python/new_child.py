@@ -247,11 +247,8 @@ ces.log_header('''
 #######################
 # Approach Comparison #
 #######################''')
-matrix = ces.get_approach_comparison()
-ces.log_verbose(matrix)
+ces.log_verbose(ces.get_approach_comparison(), "Comparison of matching and panel analysis")
 findings = ces.filter_approach_comparison(0.1, 3, 100)
 ces.log_verbose(findings, "Findings with significance ***, at least 0.1 substantive difference, and at least 100 cases each in treatment and control groups")
 ces.log_verbose(Counter(findings['issue']), "Issue counts in the above table")
-
-highlights = ces.get_approach_comparison(ces.replication_highlights)
-ces.log_verbose(highlights, "Compare matching's after value with panel analysis's delta, limited to young adults")
+ces.log_verbose(ces.get_core_approach_comparison(), "Compare matching's after value with panel analysis's delta, limited to young adults")
