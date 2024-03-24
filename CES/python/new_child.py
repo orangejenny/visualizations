@@ -80,6 +80,7 @@ if _should_run("match"):
         demo_a_1012 = ces.filter_demographic(waves_1012, demo_label, demo_a)
         demo_b_1012 = ces.filter_demographic(waves_1012, demo_label, demo_b)
 
+        # diff is control - treatment, or a -b for t tests, so negatives mean treatment group (or women, for gender) is more liberal
         for formula in formulas:
             for treatment in ces.treatments - {'new_child'}:
                 comparator_desc = f"{demo_label} ({demo_a} vs {demo_b})"

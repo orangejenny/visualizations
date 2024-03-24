@@ -56,7 +56,8 @@ class ParentsPoliticsApproachComparator():
 
     def _normalize_substance(self, issue, amount):
         (lower_bound, upper_bound) = self.ppp.ISSUE_BOUNDS[issue]
-        return round((amount - lower_bound) * 100 / upper_bound, 1)
+        range_size = upper_bound - lower_bound
+        return round(amount * 100 / range_size, 1)
 
     def get_comparison(self):
         if self.comparison is None:
