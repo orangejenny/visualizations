@@ -290,6 +290,28 @@ class CESPanel(ParentsPoliticsPanel):
                 [x.start_wave == w for w in self.start_waves],
                 [np.where(x.parenthood != 0, 1, 0) for w in self.start_waves],
             ),
+
+            # Dosage dummy variables
+            'is_parent_1': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(np.logical_and(x.is_parent == 1, x[f'child18num_{w}'] == 1), 1, 0) for w in self.end_waves],
+            ),
+            'is_parent_2': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(np.logical_and(x.is_parent == 1, x[f'child18num_{w}'] == 2), 1, 0) for w in self.end_waves],
+            ),
+            'is_parent_3': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(np.logical_and(x.is_parent == 1, x[f'child18num_{w}'] == 3), 1, 0) for w in self.end_waves],
+            ),
+            'is_parent_3_more': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(np.logical_and(x.is_parent == 1, x[f'child18num_{w}'] > 2), 1, 0) for w in self.end_waves],
+            ),
+            'is_parent_4_more': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(np.logical_and(x.is_parent == 1, x[f'child18num_{w}'] > 3), 1, 0) for w in self.end_waves],
+            ),
         })
         return df
 
