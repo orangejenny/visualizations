@@ -499,7 +499,7 @@ class ParentsPoliticsPanel():
         outcomes = [
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
-        columns = ['caseid', treatment, 'score', 'weight'] + outcomes
+        columns = ['caseid', treatment, 'score', 'score_copy', 'weight'] + outcomes
 
         if len(df['caseid'].unique()) != len(df['caseid']):
             raise ParentsPoliticsPanelException("Data frame given to get_matched_outcomes does not have unique cases")
@@ -529,6 +529,8 @@ class ParentsPoliticsPanel():
             print(f"Lost {treatment_percent}% of treatment cases and {candidate_percent}% of control cases due to missing score")
 
         matched_set = pd.merge_asof(treatment_cases, candidates, on='score', suffixes=('_treatment', ''), tolerance=0.05, direction='nearest')
+        matched_set['score_diff'] = matched_set['score_copy'] - matched_set['score_copy_treatment']
+        print(f"Max score difference: {round(max(matched_set['score_diff']), 4)}")
 
         # Group on treatment caseid, averaging all relevant control matches
         matched_outcomes = self._weighted_averages(matched_set, 'caseid_treatment', outcomes)
@@ -567,6 +569,7 @@ class ParentsPoliticsPanel():
                         family=sm.families.Binomial(),
                         data=df).fit()
         df['score'] = logit.predict(df)
+        df['score_copy'] = df['score']
         return df
 
     def consider_models(self, df, treatment):
