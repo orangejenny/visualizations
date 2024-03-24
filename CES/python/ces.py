@@ -7,7 +7,7 @@ from parents_politics_panel import ParentsPoliticsPanel
 
 class CESPanel(ParentsPoliticsPanel):
     waves = [10, 12, 14]
-    treatments = ['firstborn', 'new_child', 'is_parent']
+    treatments = {'firstborn', 'new_child', 'is_parent'}
     demographics_with_bounds = [
         ('gender', 1, 2),
         ('race', 1, 8),
@@ -261,6 +261,7 @@ class CESPanel(ParentsPoliticsPanel):
         - childless: 0     ...recall this is only about minor children
         - firstborn: 1
         - new_child: 2
+        - steady_parent: 3
         - is_parent: 1, 2, or 3
 
         - 0 no children
@@ -279,20 +280,51 @@ class CESPanel(ParentsPoliticsPanel):
             ),
             'new_child': lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
-                [np.where(x.parenthood == 1, 1, 0) for w in self.start_waves],
+                [np.where(x.parenthood == 2, 1, 0) for w in self.start_waves],
+            ),
+            'steady_parent': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(x.parenthood == 3, 1, 0) for w in self.start_waves],
             ),
             'is_parent': lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
                 [np.where(x.parenthood != 0, 1, 0) for w in self.start_waves],
             ),
+
+            # Dosage dummy variables
+            'is_parent_1': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(np.logical_and(x.is_parent == 1, x[f'child18num_{w}'] == 1), 1, 0) for w in self.end_waves],
+            ),
+            'is_parent_2': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(np.logical_and(x.is_parent == 1, x[f'child18num_{w}'] == 2), 1, 0) for w in self.end_waves],
+            ),
+            'is_parent_3': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(np.logical_and(x.is_parent == 1, x[f'child18num_{w}'] == 3), 1, 0) for w in self.end_waves],
+            ),
+            'is_parent_3_more': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(np.logical_and(x.is_parent == 1, x[f'child18num_{w}'] > 2), 1, 0) for w in self.end_waves],
+            ),
+            'is_parent_4_more': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(np.logical_and(x.is_parent == 1, x[f'child18num_{w}'] > 3), 1, 0) for w in self.end_waves],
+            ),
         })
         return df
 
     def _add_all_single_issues(self, df):
-        df = self._add_issue(df, 'ideo5_XX', 'ideo', 1, 5)
-        df = self._add_issue(df, 'pid7_XX', 'pid', 1, 7)
+        df = self._add_issue(df, 'ideo5_XX', 'ideo', 1, 5, calc_only=True)
+        df = self._add_issue(df, 'pid7_XX', 'pid', 1, 7, calc_only=True)
         df = self._add_issue(df, 'CCXX_327', 'aff_action', 1, 4)
         df = self._add_issue(df, 'CCXX_320', 'guns', 1, 3)
+        df = self._add_issue(df, 'CCXX_321', 'climate_severity', 1, 5, calc_only=True)
+        df = self._add_issue(df, 'CCXX_325', 'climate_jobs_env', 1, 5, calc_only=True)
+        df = self._add_issue(df, 'CCXX_325', 'climate_clean_energy', 1, 2, calc_only=True)
+        df = self._add_issue(df, 'CCXX_326', 'gay_marriage', 1, 2, calc_only=True)
+        df = self._add_issue(df, 'CCXX_330G', 'gay_dadt', 1, 2, calc_only=True)
         return df
 
     def add_all_composite_issues(self, df):
@@ -305,12 +337,12 @@ class CESPanel(ParentsPoliticsPanel):
 
         df = self.add_immigration_composite(df)
 
-        df = self._add_issue(df, 'budget_composite_20XX', 'budget_composite')
-        df = self._add_issue(df, 'climate_composite_20XX', 'climate_composite')
-        df = self._add_issue(df, 'gay_composite_20XX', 'gay_composite')
-        df = self._add_issue(df, 'ideo_composite_20XX', 'ideo_composite')
-        df = self._add_issue(df, 'military_composite_20XX', 'military_composite')
-        df = self._add_issue(df, 'immigration_composite_20XX', 'immigration_composite')
+        df = self._add_issue(df, 'budget_composite_20XX', 'budget_composite', 1, 2)
+        df = self._add_issue(df, 'climate_composite_20XX', 'climate_composite', 1, 5)
+        df = self._add_issue(df, 'gay_composite_20XX', 'gay_composite', 1, 2)
+        df = self._add_issue(df, 'ideo_composite_20XX', 'ideo_composite', 12 / 14, 5)
+        df = self._add_issue(df, 'military_composite_20XX', 'military_composite', 1, 2)
+        df = self._add_issue(df, 'immigration_composite_20XX', 'immigration_composite', 1, 2)
 
         return df
 
@@ -385,7 +417,7 @@ class CESPanel(ParentsPoliticsPanel):
         df = self.nan_out_of_bounds(df, f'{issue}_after', lower_bound, upper_bound)
         return df
 
-    def _add_issue(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
+    def _add_issue(self, df, before_pattern, issue, lower_bound=None, upper_bound=None, calc_only=False):
         df = self.add_before_after(df, before_pattern, issue, lower_bound, upper_bound)
 
         df = df.assign(**{
@@ -413,6 +445,8 @@ class CESPanel(ParentsPoliticsPanel):
             df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{issue}_persists'] = np.nan  # Can't calculate unless all waves are available
         df[f'{issue}_persists_abs'] = np.abs(df[f'{issue}_persists'])
 
-        self.ISSUES.add(issue)
+        if not calc_only:
+            self.ISSUES.add(issue)
+            self.ISSUE_BOUNDS[issue] = (lower_bound, upper_bound)
 
         return df

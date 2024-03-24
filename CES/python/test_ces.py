@@ -128,6 +128,7 @@ class TestCESPanel(unittest.TestCase):
     #def summarize_demographics_non_response(self, df):
     #def _limit_to_significant(self, data, level=1):
     #def _limit_to_substantive(self, data, threshold=0.1):
+    # TODO: add tests for functions added in this week's PRs
 
     def test_add_budget_composite(self):
         df = pd.DataFrame(data={

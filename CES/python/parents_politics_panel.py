@@ -12,10 +12,121 @@ from pandas import DataFrame
 from statsmodels.stats.weightstats import ttest_ind
 
 Result = namedtuple('Result', ['statistic', 'df', 'pvalue'])
+ComparatorKey = namedtuple('ComparatorKey', ['issue', 'metric', 'treatment', 'age_limit', 'demo_desc'])
+ComparatorValue = namedtuple('ComparatorValue', ['diff', 'norm', 'pvalue'])
 
 
 class ParentsPoliticsPanelException(Exception):
     pass
+
+
+class ParentsPoliticsApproachComparator():
+    MATCH = 'match'
+    PANEL = 'panel'
+    approaches = {
+        PANEL: 'delta',
+        MATCH: 'after',
+    }
+
+    def __init__(self, ppp):
+        self.data = {a: {} for a in self.approaches}
+        self.smallest_n = {}
+        self.ppp = ppp
+        self.comparison = None
+        self.core_comparison = None
+
+    def add(self, approach, outcome, treatment, substance, pvalue, age_limit=None, demo_desc=None):
+        assert approach in self.approaches.keys(), f"{approach} is not an approach"
+
+        (issue, metric) = self._parse_outcome(outcome)
+        normalized_substance = self._normalize_substance(issue, substance)
+        key = ComparatorKey(issue, metric, treatment, age_limit, demo_desc)
+        self.data[approach][key] = ComparatorValue(substance, normalized_substance, pvalue)
+
+    def set_smallest_n(self, approach, outcome, treatment, smallest_n, age_limit=None, demo_desc=None):
+        (issue, metric) = self._parse_outcome(outcome)
+        key = ComparatorKey(issue, metric, treatment, age_limit, demo_desc)
+        self.smallest_n[key] = smallest_n
+
+    def _parse_outcome(self, outcome):
+        for m in self.ppp.METRICS:
+            if outcome.endswith(m):
+                return (outcome.replace(f"_{m}", ""), m)
+        raise ParentsPoliticsPanelException(f"Could not parse outcome {outcome}")
+
+    def _normalize_substance(self, issue, amount):
+        (lower_bound, upper_bound) = self.ppp.ISSUE_BOUNDS[issue]
+        range_size = upper_bound - lower_bound
+        return round(amount * 100 / range_size, 1)
+
+    def get_comparison(self):
+        if self.comparison is None:
+            keys = {key for value in self.data.values() for key in value.keys()}
+            data = {
+                'issue': [k.issue for k in keys],
+                'metric': [k.metric for k in keys],
+                'treatment': [k.treatment for k in keys],
+                'age cohort': [f"under {k.age_limit}" if k.age_limit else "--" for k in keys],
+                'demographic': [k.demo_desc if k.demo_desc else "--" for k in keys],
+                'smallest_n': [self.smallest_n.get(k, '?') for k in keys],
+            }
+            blank_value = ComparatorValue("--", "--", "--")
+            for approach in self.approaches.keys():
+                data.update({f'{approach}-': [self.data[approach].get(key, blank_value).diff for key in keys]})
+            for approach in self.approaches.keys():
+                data.update({f'{approach}%': [self.data[approach].get(key, blank_value).norm for key in keys]})
+            for approach in self.approaches.keys():
+                data.update({f'{approach}*': [self.data[approach].get(key, blank_value).pvalue for key in keys]})
+            for approach in self.approaches.keys():
+                data.update({f'{approach}*_level': [self._star_count(self.data[approach].get(key, blank_value).pvalue) for key in keys]})
+            self.comparison = pd.DataFrame(data=data)
+            self.comparison.sort_values(['demographic', 'issue', 'treatment', 'metric'], inplace=True)
+
+        return self.comparison
+
+    # Pairs the "core" metrics: the after value for matching and the delta for panel analysis
+    # Also limit to overall sample (no subset), young adults, and either firstborn/is_parent
+    def get_core_comparison(self):
+        if self.core_comparison is None:
+            full = self.get_comparison()
+            core = full.loc[
+                np.logical_and(
+                    full['age cohort'] == "under 40",
+                    #np.logical_and(full['demographic'] == "--", full['age cohort'] == "under 40"),
+                    np.logical_or(full['treatment'] == 'firstborn', full['treatment'] == 'is_parent'),
+                )
+            ,:].copy()
+
+            key_columns = ['issue', 'treatment', 'age cohort', 'demographic']
+            adata = {}
+            acols = {}
+            for approach, core_metric in self.approaches.items():
+                acols[approach] = [f'{approach}-', f'{approach}%', f'{approach}*', f'{approach}*_level']
+                adata[approach] = core.loc[core['metric'] == core_metric, key_columns + ['smallest_n'] + acols[approach]].copy()
+
+            # Just access the approaches by name, since merge only supports two
+            recombined = pd.merge(adata['panel'], adata['match'], on=key_columns, suffixes=('', '_match'))
+            self.core_comparison = recombined.loc[:,key_columns + ['smallest_n'] + [val for pair in zip(acols['match'], acols['panel']) for val in pair]]
+
+        return self.core_comparison
+
+    def _star_count(self, string):
+        return len(re.sub(r'[^*]', "", string))
+
+    def filter(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
+        return self._filter(self.get_comparison(), substance_threshold, pvalue_threshold, smallest_n_threshold=None)
+
+    def filter_core(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
+        return self._filter(self.get_core_comparison(), substance_threshold, pvalue_threshold, smallest_n_threshold=None)
+
+    def _filter(self, matrix, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
+        matrix = matrix.loc[np.logical_and(
+            np.logical_and(matrix['match*_level'] >= pvalue_threshold, matrix['panel*_level'] >= pvalue_threshold),
+            np.logical_and(np.abs(matrix['match%']) >= substance_threshold, np.abs(matrix['panel%']) >= substance_threshold)
+        )].copy()
+        if smallest_n_threshold:
+            matrix = matrix.loc[matrix['smallest_n'] >= smallest_n_threshold,:]
+        return matrix
 
 
 class ParentsPoliticsPanel():
@@ -40,6 +151,7 @@ class ParentsPoliticsPanel():
 
     def __init__(self, output_suffix=''):
         self.ISSUES = set()
+        self.ISSUE_BOUNDS = {}
 
         if output_suffix:
             self.OUTPUT_DIR = f'{self.OUTPUT_DIR}_{output_suffix}'
@@ -59,6 +171,21 @@ class ParentsPoliticsPanel():
 
         # De-fragment frames
         self.paired_waves = self.paired_waves.copy()
+
+        # Compare findings from different approaches
+        self.comparator = ParentsPoliticsApproachComparator(self)
+
+    def get_approach_comparison(self, matrix=None):
+        return self.comparator.get_comparison()
+
+    def filter_approach_comparison(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
+        return self.comparator.filter(substance_threshold, pvalue_threshold, smallest_n_threshold)
+
+    def get_core_approach_comparison(self, matrix=None):
+        return self.comparator.get_core_comparison()
+
+    def filter_core_approach_comparison(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
+        return self.comparator.filter_core(substance_threshold, pvalue_threshold, smallest_n_threshold)
 
     def _truncate_output(self):
         for filename in self.OUTPUT_FILES:
@@ -139,9 +266,9 @@ class ParentsPoliticsPanel():
     def add_all_composite_issues(self, df):
         raise NotImplementedError()
 
-    ##################
-    # Data accessors #
-    ##################
+    ################################
+    # Data accessors and filtering #
+    ################################
     # panel contains all original data
     def get_panel(self):
         return self.panel
@@ -149,6 +276,18 @@ class ParentsPoliticsPanel():
     # paired_waves contains multiple rows per respondent, one row per pair of waves
     def get_paired_waves(self):
         return self.paired_waves
+
+    def filter_dummy(self, df, dummy):
+        return df.loc[df[dummy] == 1,:].copy()
+
+    def filter_age(self, df, age):
+        return df.loc[np.less(df['age'], age),:].copy()
+
+    def filter_demographic(self, df, label, value):
+        return df.loc[df[label] == value,:].copy()
+
+    def filter_na(self, df, label):
+        return df.loc[pd.notna(df[label]),:].copy()
 
     ######################
     # Analysis functions #
@@ -187,21 +326,23 @@ class ParentsPoliticsPanel():
             return '*'
         return ''
 
-    def filter_na(self, df, label):
-        return df.loc[pd.notna(df[label]),:].copy()
-
-    def all_t_test_pvalues(self, df, demographic_label, **test_kwargs):
+    def all_t_test_pvalues(self, df, demographic_label, age_limit=None, comparator_treatment=None, comparator_desc=None, **test_kwargs):
         issues = list(self.ISSUES)
         issues.sort()
         all_results = pd.DataFrame(data={'issue': issues})
         for metric in self.METRICS:
-            issue_results = self.t_tests(df, metric, demographic_label, **test_kwargs)
+            issue_results = self.t_tests(df, metric, demographic_label, age_limit=age_limit,
+                                         comparator_treatment=comparator_treatment, comparator_desc=comparator_desc, **test_kwargs)
             all_results = all_results.merge(issue_results.loc[:,['issue', 'diff', 'pvalue']], on='issue')
             all_results.rename(columns={'diff': f'{metric}-', 'pvalue': f'{metric}*'}, inplace=True)
+
         return all_results
 
     # TODO: Make weighting an option, not default
-    def t_tests(self, df, metric, demographic_label, a_value=0, b_value=1):
+    def t_tests(self, df, metric, demographic_label, a_value=0, b_value=1, age_limit=None, comparator_treatment=None, comparator_desc=None):
+        if age_limit is not None:
+            df = self.filter_age(df, age_limit)
+
         results = {
             'metric': [],
             'diff': [],
@@ -230,6 +371,15 @@ class ParentsPoliticsPanel():
             results['statistic'].append(result.statistic)
             results['df'].append(result.df)
             results['pvalue'].append(str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue))
+
+            if 'persist' not in metric:
+                self.comparator.set_smallest_n(self.comparator.PANEL, label, comparator_treatment or demographic_label,
+                                               min([len(a_values), len(b_values)]),
+                                               age_limit=age_limit, demo_desc=comparator_desc)
+                self.comparator.add(self.comparator.PANEL, label, comparator_treatment or demographic_label,
+                                    results['diff'][-1], results['pvalue'][-1],
+                                    age_limit=age_limit, demo_desc=comparator_desc)
+
         df = DataFrame.from_dict(results)
         df.sort_values('metric', inplace=True)
         return df
@@ -249,7 +399,9 @@ class ParentsPoliticsPanel():
     #####################
     # Summary functions #
     #####################
-    def summarize_all_issues(self, df, group_by_labels):
+    def summarize_all_issues(self, df, group_by_labels, age_limit=None):
+        if age_limit is not None:
+            df = self.filter_age(df, age_limit)
         if type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
         all_issues = pd.DataFrame({k: [] for k in ['issue'] + group_by_labels + self.METRICS})
@@ -343,14 +495,17 @@ class ParentsPoliticsPanel():
     # Matching functions #
     ######################
     # TODO: Make weighting an option, not default
-    def get_matched_outcomes(self, df, formula, treatment, control_value=0, treatment_value=1):
+    def get_matched_outcomes(self, df, formula, treatment, control_value=0, treatment_value=1, age_limit=None, comparator_treatment=None, comparator_desc=None):
         outcomes = [
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
-        columns = ['caseid', treatment, 'score', 'weight'] + outcomes
+        columns = ['caseid', treatment, 'score', 'score_copy', 'weight'] + outcomes
 
         if len(df['caseid'].unique()) != len(df['caseid']):
-            raise ParentsPoliticsPanelException("Data frame gives to get_matched_outcomes does not have unique cases")
+            raise ParentsPoliticsPanelException("Data frame given to get_matched_outcomes does not have unique cases")
+
+        if age_limit is not None:
+            df = self.filter_age(df, age_limit)
 
         if "~" not in formula:
             formula = f"{treatment} ~ {formula}"
@@ -359,14 +514,23 @@ class ParentsPoliticsPanel():
         candidates = df.loc[df[treatment] == control_value, columns].copy()
 
         # Match up treatment and control groups
-        matched_set = treatment_cases.merge(candidates, on='score', how='left', suffixes=('_treatment', ''))
-        match_counts = matched_set.groupby('caseid_treatment').count().loc[:,['score']]
-        match_counts.rename(columns={'score':'control_count'}, inplace=True)
-        unmatched = match_counts.loc[match_counts['control_count'] == 0,:]
-        # TODO: error/note if any of treatment_cases didn't match: ultimately implement nearest neighbor & record distance, noting bias
-        # Currently not matching 5-15% of cases with exact matching
-        if len(unmatched):
-            print(f"Could not match {len(unmatched)} of {len(treatment_cases)} treatment cases ({round(len(unmatched) * 100 / len(treatment_cases))}%)")
+        # TODO: test, and error/note if any of treatment_cases didn't match: ultimately implement nearest neighbor & record distance, noting bias
+        # matched_set = treatment_cases.merge(candidates, on='score', how='left', suffixes=('_treatment', ''))  # exact match
+        treatment_cases.sort_values('score', inplace=True)
+        candidates.sort_values('score', inplace=True)
+
+        before_counts = (len(treatment_cases), len(candidates))
+        treatment_cases = self.filter_na(treatment_cases, 'score')
+        candidates = self.filter_na(candidates, 'score')
+        after_counts = (len(treatment_cases), len(candidates))
+        if any(np.subtract(before_counts, after_counts)):
+            treatment_percent = round((before_counts[0] - after_counts[0]) * 100 / before_counts[0], 1) if before_counts[0] != after_counts[0] else 0
+            candidate_percent = round((before_counts[1] - after_counts[1]) * 100 / before_counts[1], 1) if before_counts[1] != after_counts[1] else 0
+            print(f"Lost {treatment_percent}% of treatment cases and {candidate_percent}% of control cases due to missing score")
+
+        matched_set = pd.merge_asof(treatment_cases, candidates, on='score', suffixes=('_treatment', ''), tolerance=0.05, direction='nearest')
+        matched_set['score_diff'] = matched_set['score_copy'] - matched_set['score_copy_treatment']
+        print(f"Max score difference: {round(max(matched_set['score_diff']), 4)}")
 
         # Group on treatment caseid, averaging all relevant control matches
         matched_outcomes = self._weighted_averages(matched_set, 'caseid_treatment', outcomes)
@@ -380,15 +544,21 @@ class ParentsPoliticsPanel():
         matched_outcomes[treatment] = control_value
         matched_outcomes['weight'] = 1  # Outcomes have been weighted, so set weight to 1
         reduced_df = pd.concat([treatment_cases, matched_outcomes])
+        diffs = []
         pvalues = []
         for o in outcomes:
+            diff = round(agg_matched_outcomes[o] - agg_treatment_outcomes[o], 2)
+            diffs.append(diff)
             result = self.t_test(reduced_df, o, treatment, a_value=control_value, b_value=treatment_value)
-            pvalues.append(str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue))
+            pvalue = str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue)
+            pvalues.append(pvalue)
+            self.comparator.add(self.comparator.MATCH, o, comparator_treatment or treatment, diff, pvalue,
+                                age_limit=age_limit, demo_desc=comparator_desc)
 
         summary = pd.DataFrame(data={
             'control': agg_matched_outcomes,
             'treatment': agg_treatment_outcomes,
-            'diff': round(agg_matched_outcomes - agg_treatment_outcomes, 2),
+            'diff': diffs,
             'pvalue': pvalues,
         })
         summary.sort_index(inplace=True)
@@ -399,6 +569,7 @@ class ParentsPoliticsPanel():
                         family=sm.families.Binomial(),
                         data=df).fit()
         df['score'] = logit.predict(df)
+        df['score_copy'] = df['score']
         return df
 
     def consider_models(self, df, treatment):
@@ -434,7 +605,7 @@ class ParentsPoliticsPanel():
         summary.sort_values('aic_rank', inplace=True)
         return summary
 
-    def evaluate_scores(self, df, formula, treatment):
+    def scores_histogram_table(self, df, formula, treatment):
         self._add_score(df, f"{treatment} ~ {formula}")
         scores = df.loc[:,['score', treatment]].copy()
         scores.sort_values('score', inplace=True)
