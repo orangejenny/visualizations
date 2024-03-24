@@ -33,6 +33,7 @@ class ParentsPoliticsApproachComparator():
         self.smallest_n = {}
         self.ppp = ppp
         self.comparison = None
+        self.core_comparison = None
 
     def add(self, approach, outcome, treatment, substance, pvalue, age_limit=None, demo_desc=None):
         assert approach in self.approaches.keys(), f"{approach} is not an approach"
@@ -78,37 +79,46 @@ class ParentsPoliticsApproachComparator():
             for approach in self.approaches.keys():
                 data.update({f'{approach}*_level': [self._star_count(self.data[approach].get(key, blank_value).pvalue) for key in keys]})
             self.comparison = pd.DataFrame(data=data)
-            self.comparison.sort_values(['issue', 'treatment', 'metric'], inplace=True)
+            self.comparison.sort_values(['demographic', 'issue', 'treatment', 'metric'], inplace=True)
 
         return self.comparison
 
     # Pairs the "core" metrics: the after value for matching and the delta for panel analysis
     # Also limit to overall sample (no subset), young adults, and either firstborn/is_parent
     def get_core_comparison(self):
-        full = self.get_comparison()
-        core = full.loc[
-            np.logical_and(
-                np.logical_and(full['demographic'] == "--", full['age cohort'] == "under 40"),
-                np.logical_or(full['treatment'] == 'firstborn', full['treatment'] == 'is_parent'),
-            )
-        ,:].copy()
+        if self.core_comparison is None:
+            full = self.get_comparison()
+            core = full.loc[
+                np.logical_and(
+                    full['age cohort'] == "under 40",
+                    #np.logical_and(full['demographic'] == "--", full['age cohort'] == "under 40"),
+                    np.logical_or(full['treatment'] == 'firstborn', full['treatment'] == 'is_parent'),
+                )
+            ,:].copy()
 
-        key_columns = ['issue', 'treatment', 'age cohort', 'demographic']
-        adata = {}
-        acols = {}
-        for approach, core_metric in self.approaches.items():
-            acols[approach] = [f'{approach}-', f'{approach}%', f'{approach}*', f'{approach}*_level']
-            adata[approach] = core.loc[core['metric'] == core_metric, key_columns + ['smallest_n'] + acols[approach]].copy()
+            key_columns = ['issue', 'treatment', 'age cohort', 'demographic']
+            adata = {}
+            acols = {}
+            for approach, core_metric in self.approaches.items():
+                acols[approach] = [f'{approach}-', f'{approach}%', f'{approach}*', f'{approach}*_level']
+                adata[approach] = core.loc[core['metric'] == core_metric, key_columns + ['smallest_n'] + acols[approach]].copy()
 
-        # Just access the approaches by name, since merge only supports two
-        recombined = pd.merge(adata['panel'], adata['match'], on=key_columns, suffixes=('', '_match'))
-        return recombined.loc[:,key_columns + ['smallest_n'] + [val for pair in zip(acols['match'], acols['panel']) for val in pair]]
+            # Just access the approaches by name, since merge only supports two
+            recombined = pd.merge(adata['panel'], adata['match'], on=key_columns, suffixes=('', '_match'))
+            self.core_comparison = recombined.loc[:,key_columns + ['smallest_n'] + [val for pair in zip(acols['match'], acols['panel']) for val in pair]]
+
+        return self.core_comparison
 
     def _star_count(self, string):
         return len(re.sub(r'[^*]', "", string))
 
     def filter(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
-        matrix = self.get_comparison()
+        return self._filter(self.get_comparison(), substance_threshold, pvalue_threshold, smallest_n_threshold=None)
+
+    def filter_core(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
+        return self._filter(self.get_core_comparison(), substance_threshold, pvalue_threshold, smallest_n_threshold=None)
+
+    def _filter(self, matrix, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
         matrix = matrix.loc[np.logical_and(
             np.logical_and(matrix['match*_level'] >= pvalue_threshold, matrix['panel*_level'] >= pvalue_threshold),
             np.logical_and(np.abs(matrix['match%']) >= substance_threshold, np.abs(matrix['panel%']) >= substance_threshold)
@@ -172,6 +182,9 @@ class ParentsPoliticsPanel():
 
     def get_core_approach_comparison(self, matrix=None):
         return self.comparator.get_core_comparison()
+
+    def filter_core_approach_comparison(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
+        return self.comparator.filter_core(substance_threshold, pvalue_threshold, smallest_n_threshold)
 
     def _truncate_output(self):
         for filename in self.OUTPUT_FILES:
