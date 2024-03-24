@@ -18,7 +18,7 @@ parser.add_argument('-P', '--skip-panel', action='store_true')
 parser.add_argument('-E', '--skip-explore', action='store_true')
 args = parser.parse_args()
 
-def _should_run(section):
+def _should_run(section, skip_header=False):
     sections = ['match', 'model', 'panel', 'explore']
     if section not in sections:
         raise ParentsPoliticsPanelException(f"Unrecognized section: {section}")
@@ -31,11 +31,12 @@ def _should_run(section):
             if getattr(args, f'only_{s}'):
                 should_run = s == section
 
-    skip_label = ": SKIPPING" if not should_run else ""
-    ces.log_header(f'''
-    ############
-    # {section.upper()}{skip_label}
-    ############''')
+    if not skip_header:
+        skip_label = ": SKIPPING" if not should_run else ""
+        ces.log_header(f'''
+        ############
+        # {section.upper()}{skip_label}
+        ############''')
 
     return should_run
 
@@ -244,16 +245,17 @@ if _should_run("panel"):
             ces.log_verbose(ces.summarize_all_issues(sample_1012[treatment], [treatment, 'high_income']), f"Summary of issues by {treatment} and high_income")
             ces.log_verbose(ces.summarize_all_issues(sample_1012[treatment], [treatment, 'low_income']), f"Summary of issues by {treatment} and low_income")
 
-ces.log_header('''
-#######################
-# Approach Comparison #
-#######################''')
-ces.log_verbose(ces.get_approach_comparison(), "Comparison of matching and panel analysis")
-findings = ces.filter_approach_comparison(0.1, 3, 100)
-ces.log_verbose(findings, "Findings with significance ***, at least 0.1 substantive difference, and at least 100 cases each in treatment and control groups")
-ces.log_verbose(Counter(findings['issue']), "Issue counts in the above table")
+if _should_run("match") and _should_run("panel"):
+    ces.log_header('''
+    #######################
+    # Approach Comparison #
+    #######################''')
+    ces.log_verbose(ces.get_approach_comparison(), "Comparison of matching and panel analysis")
+    findings = ces.filter_approach_comparison(0.1, 3, 100)
+    ces.log_verbose(findings, "Findings with significance ***, at least 0.1 substantive difference, and at least 100 cases each in treatment and control groups")
+    ces.log_verbose(Counter(findings['issue']), "Issue counts in the above table")
 
-ces.log_verbose(ces.get_core_approach_comparison(), "Compare matching's after value with panel analysis's delta, limited to young adults")
-core_findings = ces.filter_core_approach_comparison(0.1, 3, 100)
-ces.log_verbose(core_findings, "Core findings with significance ***, at least 0.1 substantive difference, and at least 100 cases each in treatment and control groups")
-ces.log_verbose(Counter(core_findings['issue']), "Issue counts in the above table")
+    ces.log_verbose(ces.get_core_approach_comparison(), "Compare matching's after value with panel analysis's delta, limited to young adults")
+    core_findings = ces.filter_core_approach_comparison(0.1, 3, 100)
+    ces.log_verbose(core_findings, "Core findings with significance ***, at least 0.1 substantive difference, and at least 100 cases each in treatment and control groups")
+    ces.log_verbose(Counter(core_findings['issue']), "Issue counts in the above table")
