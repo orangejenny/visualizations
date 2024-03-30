@@ -6,6 +6,8 @@ from collections import Counter
 
 from ces import CESPanel
 
+#np.seterr(all='raise')
+
 parser = argparse.ArgumentParser(description="Analyze parenting political data")
 parser.add_argument('-o', '--output', help='Suffix for output directory')
 parser.add_argument('-m', '--only-match', action='store_true')

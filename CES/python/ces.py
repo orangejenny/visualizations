@@ -103,7 +103,6 @@ class CESPanel(ParentsPoliticsPanel):
 
     def _recode_issues(self, df):
         # Recode a few columns to streamline later calculations
-        # TODO: Verify that all invalid vlues are NAed out
         for year in self.waves:
             # Recode guns to be continuous (swapping 2 and 3 so that "no change" is in the middle of "less strict" and "more strict")
             label = f'CC{year}_320'
@@ -122,12 +121,12 @@ class CESPanel(ParentsPoliticsPanel):
 
             # CC10_414_1-CC10_414_6 are all usage of military for for different reasons: 1 yes, 2 no
             # CC10_414_7 is a "none of the above" for the previous six: 1 yes, 2 no
-            df[f'CC{year}_414_7'] = np.where(df[f'CC{year}_414_7'] == 1, 2, 1)
+            df[f'CC{year}_414_7'] = np.where(df[f'CC{year}_414_7'] == 1, 2, np.where(df[f'CC{year}_414_7'] == 2, 1, np.nan))
 
             # Flip the 2 yes/no immigration questions that are opposite polarity of the other 5
             # For 1,7, 1 is more liberal and 2 is more conservative
             # For 2,3,4,5,6, 1 is more conservative and 2 is more liberal
-            df[f'CC{year}_322_1'] = np.where(df[f'CC{year}_322_1'] == 1, 2, 1)
+            df[f'CC{year}_322_1'] = np.where(df[f'CC{year}_322_1'] == 1, 2, np.where(df[f'CC{year}_322_1'] == 2, 1, np.nan))
             if year == 10:  # only asked in 2010
                 df[f'CC{year}_322_7'] = np.where(df[f'CC{year}_322_7'] == 1, 2, np.where(df[f'CC{year}_322_7'] == 2, 1, np.nan))
         return df
