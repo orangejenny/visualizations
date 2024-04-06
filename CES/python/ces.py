@@ -63,6 +63,7 @@ class CESPanel(ParentsPoliticsPanel):
             # Policy issues: single issues
             self.panel.columns.str.contains("CC1[024]_320", regex=True) + # gun control (1-3 more strict, less strict, same)
             self.panel.columns.str.contains("CC1[024]_321", regex=True) + # climate change (1-5 real to not real)
+            self.panel.columns.str.contains("CC1[024]_324", regex=True) + # abortion (1-4 conservative to liberal)
             self.panel.columns.str.contains("CC1[024]_325", regex=True) + # job vs environment (1-5 favor environment to favor jobs)
             self.panel.columns.str.contains("CC1[024]_327", regex=True) + # affirmative action (1-4 support to oppose)
             self.panel.columns.str.contains("CC1[024]_415r", regex=True) + # taxes vs spending (examples given are of domestic spending) (0 to 100)
@@ -324,6 +325,7 @@ class CESPanel(ParentsPoliticsPanel):
         df = self._add_issue(df, 'CCXX_325', 'climate_clean_energy', 1, 2, calc_only=True)
         df = self._add_issue(df, 'CCXX_326', 'gay_marriage', 1, 2, calc_only=True)
         df = self._add_issue(df, 'CCXX_330G', 'gay_dadt', 1, 2, calc_only=True)
+        df = self._add_issue(df, 'CCXX_324', 'abortion', 1, 4)
         return df
 
     def add_all_composite_issues(self, df):
