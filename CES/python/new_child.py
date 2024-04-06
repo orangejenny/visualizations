@@ -75,7 +75,7 @@ if _should_run("match"):
     for formula in formulas:
         for treatment in ces.treatments:
             ces.log_findings(ces.scores_histogram_table(sample_1012[treatment], formula, treatment), f"Score histogram of {treatment} ~ {formula}")
-            ces.log_findings(ces.get_matched_outcomes(sample_1012[treatment], formula, treatment), f"Comparison of outcomes, treatment={treatment}, matched on {formula}")
+            #ces.log_findings(ces.get_matched_outcomes(sample_1012[treatment], formula, treatment), f"Comparison of outcomes, treatment={treatment}, matched on {formula}")
             ces.log_findings(ces.get_matched_outcomes(sample_1012[treatment], formula, treatment, age_limit=40), f"Same, but only respondents under 40")
 
     def matching_for_subset(demo_label, demo_a, demo_b):
@@ -192,14 +192,15 @@ if _should_run("explore"):
 
 if _should_run("panel"):
     for treatment in ces.treatments:
-        ces.log_findings(ces.all_t_test_pvalues(sample_1012[treatment], treatment), f"T test p values for {treatment}")
-        ces.log_verbose(ces.summarize_all_issues(sample_1012[treatment], treatment), f"Summary of issues for {treatment}")
+        #ces.log_findings(ces.all_t_test_pvalues(sample_1012[treatment], treatment), f"T test p values for {treatment}")
+        #ces.log_verbose(ces.summarize_all_issues(sample_1012[treatment], treatment), f"Summary of issues for {treatment}")
         ces.log_findings(ces.all_t_test_pvalues(sample_1012[treatment], treatment, age_limit=40), f"T test p values, respondents under 40 years old: {treatment}")
         ces.log_verbose(ces.summarize_all_issues(sample_1012[treatment], treatment, age_limit=40), f"Summary of issues, respondents under 40 years old: {treatment}")
 
     # (not logged) Persistence: how common is persistent change?
     # Of the new_child who changed, how many keep that change?
     # new_child often slightly more likely to experience persistent change than others
+    # TODO: age limit?
     for treatment in ces.treatments:
         ces.log_verbose(ces.summarize_all_persistence(treatment), f"Summary of persistent change frequency: {treatment}")
 
