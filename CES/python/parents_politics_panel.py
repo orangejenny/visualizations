@@ -38,26 +38,15 @@ class ParentsPoliticsApproachComparator():
     def add(self, approach, outcome, treatment, substance, pvalue, age_limit=None, demo_desc=None):
         assert approach in self.approaches.keys(), f"{approach} is not an approach"
 
-        (issue, metric) = self._parse_outcome(outcome)
-        normalized_substance = self._normalize_substance(issue, substance)
+        (issue, metric) = self.ppp.parse_outcome(outcome)
+        normalized_substance = self.ppp.normalize_substance(issue, substance)
         key = ComparatorKey(issue, metric, treatment, age_limit, demo_desc)
         self.data[approach][key] = ComparatorValue(substance, normalized_substance, pvalue)
 
     def set_smallest_n(self, approach, outcome, treatment, smallest_n, age_limit=None, demo_desc=None):
-        (issue, metric) = self._parse_outcome(outcome)
+        (issue, metric) = self.ppp.parse_outcome(outcome)
         key = ComparatorKey(issue, metric, treatment, age_limit, demo_desc)
         self.smallest_n[key] = smallest_n
-
-    def _parse_outcome(self, outcome):
-        for m in self.ppp.METRICS:
-            if outcome.endswith(m):
-                return (outcome.replace(f"_{m}", ""), m)
-        raise ParentsPoliticsPanelException(f"Could not parse outcome {outcome}")
-
-    def _normalize_substance(self, issue, amount):
-        (lower_bound, upper_bound) = self.ppp.ISSUE_BOUNDS[issue]
-        range_size = upper_bound - lower_bound
-        return round(amount * 100 / range_size, 1)
 
     def get_comparison(self):
         if self.comparison is None:
@@ -131,7 +120,7 @@ class ParentsPoliticsApproachComparator():
 
 class ParentsPoliticsPanel():
     OUTPUT_DIR = 'output'
-    OUTPUT_FILES = ['significant.log', 'all.log', 'two_stars.log', 'three_stars.log', 'substantive.log']
+    OUTPUT_FILES = ['significant.log', 'all.log', 'two_stars.log', 'three_stars.log', 'substantive.log', 'paper.log']
 
     METRICS = ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']
     waves = []
@@ -187,6 +176,9 @@ class ParentsPoliticsPanel():
     def filter_core_approach_comparison(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
         return self.comparator.filter_core(substance_threshold, pvalue_threshold, smallest_n_threshold)
 
+    #####################
+    # Logging functions #
+    #####################
     def _truncate_output(self):
         for filename in self.OUTPUT_FILES:
             with open(os.path.join(self.OUTPUT_DIR, filename), 'w') as fh:
@@ -199,6 +191,9 @@ class ParentsPoliticsPanel():
 
     def log_verbose(self, data, description=''):
         self._output('all.log', data, description)
+
+    def _log_for_paper(self, data, description=''):
+        self._output('paper.log', data, description)
 
     def log_findings(self, data, description=''):
         self._output('all.log', data, description)
@@ -247,6 +242,34 @@ class ParentsPoliticsPanel():
             data = "\n" + description + "\n" + data
         with open(os.path.join(self.OUTPUT_DIR, filename), 'a') as fh:
             fh.write(data + "\n")
+
+    def parse_outcome(self, outcome):
+        for m in self.METRICS:
+            if outcome.endswith(m):
+                return (outcome.replace(f"_{m}", ""), m)
+        raise ParentsPoliticsPanelException(f"Could not parse outcome {outcome}")
+
+    def normalize_substance(self, issue, amount):
+        (lower_bound, upper_bound) = self.ISSUE_BOUNDS[issue]
+        range_size = upper_bound - lower_bound
+        return round(amount * 100 / range_size, 1)
+
+    def log_matching_for_paper(self, treatment, outcomes, description=''):
+        if treatment not in ['firstborn', 'is_parent']:
+            return
+
+        paper_outcomes = defaultdict(list)
+        for index, row in outcomes.iterrows():
+            (issue, metric) = self.parse_outcome(index)
+            if metric == "after":
+                paper_outcomes['issue'].append(issue)
+                paper_outcomes['control'].append(round(row['control'], 2))
+                paper_outcomes['treatment'].append(round(row['treatment'], 2))
+                paper_outcomes['diff'].append(round(row['diff'], 2))
+                paper_outcomes['norm'].append(self.normalize_substance(issue, row['diff']))
+                paper_outcomes['pvalue'].append(row['pvalue'])
+
+        self._log_for_paper(pd.DataFrame(paper_outcomes), description)
 
     def _load_panel(self):
         raise NotImplementedError()
