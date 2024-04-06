@@ -259,6 +259,6 @@ if _should_run("match") and _should_run("panel"):
     ces.log_verbose(Counter(findings['issue']), "Issue counts in the above table")
 
     ces.log_verbose(ces.get_core_approach_comparison(), "Compare matching's after value with panel analysis's delta, limited to young adults")
-    core_findings = ces.filter_core_approach_comparison(0.1, 3, 100)
-    ces.log_verbose(core_findings, "Core findings with significance ***, at least 0.1 substantive difference, and at least 100 cases each in treatment and control groups")
+    core_findings = ces.filter_core_approach_comparison(10, 1, 10)
+    ces.log_verbose(core_findings, "Core findings with significance *, at least 10% substantive difference, and at least 10 cases each in treatment and control groups")
     ces.log_verbose(Counter(core_findings['issue']), "Issue counts in the above table")

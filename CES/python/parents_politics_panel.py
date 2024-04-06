@@ -114,10 +114,10 @@ class ParentsPoliticsApproachComparator():
         return len(re.sub(r'[^*]', "", string))
 
     def filter(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
-        return self._filter(self.get_comparison(), substance_threshold, pvalue_threshold, smallest_n_threshold=None)
+        return self._filter(self.get_comparison(), substance_threshold, pvalue_threshold, smallest_n_threshold)
 
     def filter_core(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
-        return self._filter(self.get_core_comparison(), substance_threshold, pvalue_threshold, smallest_n_threshold=None)
+        return self._filter(self.get_core_comparison(), substance_threshold, pvalue_threshold, smallest_n_threshold)
 
     def _filter(self, matrix, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
         matrix = matrix.loc[np.logical_and(
