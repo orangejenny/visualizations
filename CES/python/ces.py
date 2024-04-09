@@ -341,7 +341,7 @@ class CESPanel(ParentsPoliticsPanel):
         df = self._add_issue(df, 'budget_composite_20XX', 'budget_composite', 1, 2)
         df = self._add_issue(df, 'climate_composite_20XX', 'climate_composite', 1, 5)
         df = self._add_issue(df, 'gay_composite_20XX', 'gay_composite', 1, 2)
-        df = self._add_issue(df, 'ideo_composite_20XX', 'ideo_composite', 12 / 14, 5)
+        df = self._add_issue(df, 'ideo_composite_20XX', 'ideo_composite', 6, 35)
         df = self._add_issue(df, 'military_composite_20XX', 'military_composite', 1, 2)
         df = self._add_issue(df, 'immigration_composite_20XX', 'immigration_composite', 1, 2)
 
@@ -392,7 +392,7 @@ class CESPanel(ParentsPoliticsPanel):
 
     def add_ideo_composite(self, df, year):
         # Ideology composite that combines ideo and pid
-        df[f'ideo_composite_20{year}'] = (df[f'ideo5_{year}'] * 7 + df[f'pid7_{year}'] * 5) / 7 / 2  # ~5-point composite scale
+        df[f'ideo_composite_20{year}'] = (df[f'ideo5_{year}'] * 7 + df[f'pid7_{year}'] * 5) / 2  # ~5-point composite scale
         return df
 
     def add_immigration_composite(self, df):
