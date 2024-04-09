@@ -260,13 +260,14 @@ class CESPanel(ParentsPoliticsPanel):
         Additional boolean columns based on parenthood
         - childless: 0     ...recall this is only about minor children
         - firstborn: 1
-        - new_child: 2
+        - new_sibling: 2
+        - new_child: 1 or 2
         - steady_parent: 3
         - is_parent: 1, 2, or 3
 
         - 0 no children
         - 1 new first child (same as firstborn)
-        - 2 new additional child
+        - 2 new non-first child
         - 3 parent, no change in number of children
         '''
         df = df.assign(**{
@@ -278,9 +279,13 @@ class CESPanel(ParentsPoliticsPanel):
                 [x.start_wave == w for w in self.start_waves],
                 [np.where(x.parenthood == 1, 1, 0) for w in self.start_waves],
             ),
-            'new_child': lambda x: np.select(
+            'new_sibling': lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
                 [np.where(x.parenthood == 2, 1, 0) for w in self.start_waves],
+            ),
+            'new_child': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(np.logical_or(x.parenthood == 1, x.parenthood == 2) , 1, 0) for w in self.start_waves],
             ),
             'steady_parent': lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],

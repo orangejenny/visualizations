@@ -56,13 +56,13 @@ matching_data = waves_1012
 
 ### Build samples for matching: treatment group plus the relevant control
 sample_1012 = {}
-sample_1012['firstborn'] = pd.concat([  # Treatment is firstborn, control is non-parents
+sample_1012['firstborn'] = pd.concat([
     ces.filter_dummy(waves_1012, 'firstborn'),
     ces.filter_dummy(waves_1012, 'childless'),
 ])
-sample_1012['new_child'] = pd.concat([  # Treatment is new_child, control is parents not experiencing a new child
+sample_1012['new_child'] = pd.concat([
     ces.filter_dummy(waves_1012, 'new_child'),
-    ces.filter_dummy(waves_1012, 'steady_parent'),
+    ces.filter_dummy(waves_1012, 'childless'),
 ])
 sample_1012['is_parent'] = waves_1012  # Treatment is is_parent, control is non-parents, which is the whole sample
 
@@ -203,8 +203,7 @@ if _should_run("panel"):
         ces.log_verbose(ces.summarize_all_issues(sample_1012[treatment], treatment, age_limit=40), f"Summary of issues, respondents under 40 years old: {treatment}")
 
     # (not logged) Persistence: how common is persistent change?
-    # Of the new_child who changed, how many keep that change?
-    # new_child often slightly more likely to experience persistent change than others
+    # Of those who changed, how many keep that change?
     # TODO: age limit?
     for treatment in ces.treatments:
         ces.log_verbose(ces.summarize_all_persistence(treatment), f"Summary of persistent change frequency: {treatment}")
