@@ -254,9 +254,8 @@ class ParentsPoliticsPanel():
         range_size = upper_bound - lower_bound
         return round(amount * 100 / range_size, 1)
 
-    def log_matching_for_paper(self, treatment, outcomes, description=''):
-        if treatment not in ['firstborn', 'is_parent']:
-            return
+    def log_matching(self, outcomes, description=''):
+        self.log_findings(outcomes, description)
 
         paper_outcomes = defaultdict(list)
         for index, row in outcomes.iterrows():
@@ -385,9 +384,10 @@ class ParentsPoliticsPanel():
             if np.isnan(result.statistic):
                 results['diff'].append(np.nan)
             else:
-                results['diff'].append(round(
+                results['diff'].append( round(
                     np.average(a_values[label], weights=a_values['weight'])
                     - np.average(b_values[label], weights=b_values['weight']),
+                ,
                 2))
 
             results['metric'].append(label)
@@ -484,7 +484,7 @@ class ParentsPoliticsPanel():
             summary = summary.groupby(group_by_labels, as_index=False)
         summary = summary.sum()
         for col in columns:
-            summary[col] = np.divide(summary[col], summary['weight'])
+            summary[col] = round(np.divide(summary[col], summary['weight']), 2)
         summary = summary.drop(['weight'], axis=(1 if type(summary) == pd.DataFrame else 0))
         return summary
 

@@ -78,8 +78,7 @@ if _should_run("match"):
             #ces.log_findings(ces.get_matched_outcomes(sample_1012[treatment], formula, treatment), f"Comparison of outcomes, treatment={treatment}, matched on {formula}")
 
             outcomes = ces.get_matched_outcomes(sample_1012[treatment], formula, treatment, age_limit=40)
-            ces.log_findings(outcomes, f"Same, but only respondents under 40")
-            ces.log_matching_for_paper(treatment, outcomes, f"All respondents under 40, treatment={treatment}")
+            ces.log_matching(outcomes, f"All respondents under 40, treatment={treatment}")
 
     def matching_for_subset(demo_label, demo_a, demo_b):
         # Split data by demographic: men vs women, etc.
@@ -95,8 +94,7 @@ if _should_run("match"):
                 #                 f"Comparison of outcomes when {treatment}=1, by {comparator_desc}, matched on {formula}")
                 outcomes = ces.get_matched_outcomes(sample_1012[treatment], f"{treatment} ~ {formula}", demo_label, demo_a, demo_b, age_limit=40,
                                                     comparator_treatment=treatment, comparator_desc=comparator_desc)
-                ces.log_findings(outcomes, f"Comparison of outcomes when {treatment}=1, respondents under 40, by {comparator_desc}, matched on {formula}")
-                ces.log_matching_for_paper(treatment, outcomes, f"{demo_label}, treatment={treatment}")
+                ces.log_matching(outcomes, f"{demo_label}, {treatment}=1, respondents under 40, by {comparator_desc}, matched on {formula}")
 
             for demo_value, demo_subset in ((demo_a, demo_a_1012), (demo_b, demo_b_1012)):
                 for treatment in ces.treatments - {'new_child'}:
@@ -104,8 +102,7 @@ if _should_run("match"):
                     #ces.log_findings(ces.get_matched_outcomes(demo_subset, f"{treatment} ~ {formula}", treatment, comparator_desc=comparator_desc),
                     #                 f"Comparison of outcomes, {comparator_desc}, treatment={treatment}, matched on {formula}")
                     outcomes = ces.get_matched_outcomes(demo_subset, f"{treatment} ~ {formula}", treatment, age_limit=40, comparator_desc=comparator_desc)
-                    ces.log_findings(outcomes, f"Comparison of outcomes, {comparator_desc}, respondents under 40, treatment={treatment}, matched on {formula}")
-                    ces.log_matching_for_paper(treatment, outcomes, f"{comparator_desc}, treatment={treatment}")
+                    ces.log_matching(outcomes, f"{comparator_desc}, respondents under 40, treatment={treatment}, matched on {formula}")
 
     ces.log_header('''
     ####################
