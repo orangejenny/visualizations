@@ -196,7 +196,7 @@ if _should_run("panel"):
     for treatment in ces.treatments:
         #ces.log_findings(ces.all_t_test_pvalues(sample_1012[treatment], treatment), f"T test p values for {treatment}")
         #ces.log_verbose(ces.summarize_all_issues(sample_1012[treatment], treatment), f"Summary of issues for {treatment}")
-        ces.log_findings(ces.all_t_test_pvalues(sample_1012[treatment], treatment, age_limit=40), f"T test p values, respondents under 40 years old: {treatment}")
+        ces.log_panel(ces.all_t_test_pvalues(sample_1012[treatment], treatment, age_limit=40), f"T test p values, respondents under 40 years old: {treatment}")
         ces.log_verbose(ces.summarize_all_issues(sample_1012[treatment], treatment, age_limit=40), f"Summary of issues, respondents under 40 years old: {treatment}")
 
     # (not logged) Persistence: how common is persistent change?
@@ -211,11 +211,11 @@ if _should_run("panel"):
     ##########################''')
     for age_limit in [40]:  # (None, 40):
         for treatment in ces.treatments - {'new_child'}:
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], "gender", 1), treatment, age_limit=age_limit, comparator_desc="gender=1"),
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], "gender", 1), treatment, age_limit=age_limit, comparator_desc="gender=1"),
                              f"T test p values, fathers ({treatment}) versus other men")
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], "gender", 2), treatment, age_limit=age_limit, comparator_desc="gender=2"),
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], "gender", 2), treatment, age_limit=age_limit, comparator_desc="gender=2"),
                              f"T test p values, mothers ({treatment}) versus other women")
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_dummy(sample_1012[treatment], treatment), 'gender', a_value=1, b_value=2, age_limit=age_limit,
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_dummy(sample_1012[treatment], treatment), 'gender', a_value=1, b_value=2, age_limit=age_limit,
                                                     comparator_treatment=treatment, comparator_desc="gender (1 vs 2)"),
                              f"T test p values, fathers versus mothers: all {treatment}")
             ces.log_verbose(ces.summarize_all_issues(sample_1012[treatment], [treatment, 'gender']), f"Summary of issues by new_child and gender: {treatment}")
@@ -230,19 +230,19 @@ if _should_run("panel"):
 
     for age_limit in [40]:  # (None, 40):
         for treatment in ces.treatments - {'new_child'}:
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], 'low_income', 1), treatment, age_limit=age_limit, comparator_desc="low_income=1"),
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], 'low_income', 1), treatment, age_limit=age_limit, comparator_desc="low_income=1"),
                              f"T test p values, bottom 40% {treatment} versus other bottom 40% respondents")
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], 'low_income', 0), treatment, age_limit=age_limit, comparator_desc="low_income=0"),
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], 'low_income', 0), treatment, age_limit=age_limit, comparator_desc="low_income=0"),
                              f"T test p values, top 60% {treatment} versus other top 60% respondents")
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], 'high_income', 1), treatment, age_limit=age_limit, comparator_desc="high_income=1"),
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], 'high_income', 1), treatment, age_limit=age_limit, comparator_desc="high_income=1"),
                              f"T test p values, top 20% {treatment} versus other top 20% respondents")
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], 'high_income', 0), treatment, age_limit=age_limit, comparator_desc="high_income=0"),
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], 'high_income', 0), treatment, age_limit=age_limit, comparator_desc="high_income=0"),
                              f"T test p values, bottom 80% {treatment} versus other bottom 80% respondents")
 
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_dummy(sample_1012[treatment], treatment), 'high_income', age_limit=age_limit,
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_dummy(sample_1012[treatment], treatment), 'high_income', age_limit=age_limit,
                                                     comparator_treatment=treatment, comparator_desc="high_income (0 vs 1)"),
                              f"T test p values, top 20% {treatment} versus bottom 80% {treatment}")
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_dummy(sample_1012[treatment], treatment), 'low_income', age_limit=age_limit,
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_dummy(sample_1012[treatment], treatment), 'low_income', age_limit=age_limit,
                                                     comparator_treatment=treatment, comparator_desc="low_income (0 vs 1)"),
                              f"T test p values, bottom 40% {treatment} versus top 60% {treatment}")
 

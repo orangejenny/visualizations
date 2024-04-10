@@ -270,6 +270,22 @@ class ParentsPoliticsPanel():
 
         self._log_for_paper(pd.DataFrame(paper_outcomes), description)
 
+    def log_panel(self, issues, description=''):
+        self.log_findings(issues, description)
+
+        paper_issues = defaultdict(list)
+        for index, row in issues.iterrows():
+            issue = row['issue']
+            paper_issues['issue'].append(issue)
+            for metric in ['delta', 'persists']:
+                paper_issues[f'{metric}_a'].append(row[f'{metric}_a'])
+                paper_issues[f'{metric}_b'].append(row[f'{metric}_b'])
+                paper_issues[f'{metric}-'].append(row[f'{metric}-'])
+                paper_issues[f'{metric}*'].append(row[f'{metric}*'])
+                paper_issues[f'{metric}%'].append(self.normalize_substance(issue, row[f'{metric}-']))
+
+        self._log_for_paper(pd.DataFrame(paper_issues), description)
+
     def _load_panel(self):
         raise NotImplementedError()
 
@@ -355,8 +371,8 @@ class ParentsPoliticsPanel():
         for metric in self.METRICS:
             issue_results = self.t_tests(df, metric, demographic_label, age_limit=age_limit,
                                          comparator_treatment=comparator_treatment, comparator_desc=comparator_desc, **test_kwargs)
-            all_results = all_results.merge(issue_results.loc[:,['issue', 'diff', 'pvalue']], on='issue')
-            all_results.rename(columns={'diff': f'{metric}-', 'pvalue': f'{metric}*'}, inplace=True)
+            all_results = all_results.merge(issue_results.loc[:,['issue', 'a', 'b', 'diff', 'pvalue']], on='issue')
+            all_results.rename(columns={'diff': f'{metric}-', 'pvalue': f'{metric}*', 'a': f'{metric}_a', 'b': f'{metric}_b'}, inplace=True)
 
         return all_results
 
@@ -367,6 +383,8 @@ class ParentsPoliticsPanel():
 
         results = {
             'metric': [],
+            'a': [],
+            'b': [],
             'diff': [],
             'statistic': [],
             'df': [],
@@ -382,13 +400,13 @@ class ParentsPoliticsPanel():
             a_values = filtered.loc[filtered[demographic_label] == a_value, [label, 'weight']]
             b_values = filtered.loc[filtered[demographic_label] == b_value, [label, 'weight']]
             if np.isnan(result.statistic):
+                results['a'].append(np.nan)
+                results['b'].append(np.nan)
                 results['diff'].append(np.nan)
             else:
-                results['diff'].append( round(
-                    np.average(a_values[label], weights=a_values['weight'])
-                    - np.average(b_values[label], weights=b_values['weight']),
-                ,
-                2))
+                results['a'].append(round(np.average(a_values[label], weights=a_values['weight']), 3))
+                results['b'].append(round(np.average(b_values[label], weights=b_values['weight']), 3))
+                results['diff'].append(results['a'][-1] - results['b'][-1])
 
             results['metric'].append(label)
             results['statistic'].append(result.statistic)
