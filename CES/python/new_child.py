@@ -68,7 +68,11 @@ sample_1012['is_parent'] = waves_1012  # Treatment is is_parent, control is non-
 
 if _should_run("match"):
     formulas = [
-        "gender + race + employ + educ + marstat + pew_churatd + division + age + income",
+        "gender + race + employ + educ + marstat + pew_churatd + division + age + income",  # currently used in paper
+        #"gender + race + employ + educ + marstat + pew_churatd + ownhome + division + age + income",  # in top 5 for both is_parent and new_child (under 40)
+        #"gender + employ + educ + marstat + pew_churatd + ownhome + division + age + income",  # top for new_child under 40
+        #"gender + educ + marstat + pew_churatd + ownhome + division + age + income", # top for is_parent under 40
+        #"gender + race + educ + marstat + ownhome + age + income", # top for firstborn under 40
     ]
 
     for formula in formulas:
