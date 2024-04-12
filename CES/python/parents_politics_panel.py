@@ -575,26 +575,26 @@ class ParentsPoliticsPanel():
             candidate_percent = round((before_counts[1] - after_counts[1]) * 100 / before_counts[1], 1) if before_counts[1] != after_counts[1] else 0
             messages.append(f"Lost {treatment_percent}% of treatment cases and {candidate_percent}% of control cases due to missing score")
 
-        matched_set = pd.merge_asof(treatment_cases, candidates, on='score', suffixes=('_treatment', ''), tolerance=0.05, direction='nearest')
-        matched_set = self.filter_na(matched_set, 'caseid')
+        control_cases = pd.merge_asof(treatment_cases, candidates, on='score', suffixes=('_treatment', ''), tolerance=0.05, direction='nearest')
+        control_cases = self.filter_na(control_cases, 'caseid')
 
-        if len(matched_set) < len(treatment_cases):
-            percent = round((len(treatment_cases) - len(matched_set)) * 100 / len(treatment_cases), 1)
-            messages.append(f"Lost {percent}% of cases ({len(treatment_cases) - len(matched_set)} cases) due to matching tolerance, leaving {len(matched_set)}")
+        if len(control_cases) < len(treatment_cases):
+            percent = round((len(treatment_cases) - len(control_cases)) * 100 / len(treatment_cases), 1)
+            messages.append(f"Lost {percent}% of cases ({len(treatment_cases) - len(control_cases)} cases) due to matching tolerance, leaving {len(control_cases)}")
 
             # Filter out treatment cases that weren't matched
-            treatment_cases = pd.merge(treatment_cases, matched_set['caseid_treatment'], how='inner', left_on='caseid', right_on='caseid_treatment')
+            treatment_cases = pd.merge(treatment_cases, control_cases['caseid_treatment'], how='inner', left_on='caseid', right_on='caseid_treatment')
 
-        matched_set['score_diff'] = matched_set['score_copy'] - matched_set['score_copy_treatment']
-        messages.append(f"Max score difference: {round(max(matched_set['score_diff']), 4)}")
+        control_cases['score_diff'] = control_cases['score_copy'] - control_cases['score_copy_treatment']
+        messages.append(f"Max score difference: {round(max(control_cases['score_diff']), 4)}")
 
         # Calculate average treatment effect for control & treatment groups
-        agg_matched_outcomes = self._weighted_averages(matched_set, None, outcomes, do_weight=do_weight)
+        agg_matched_outcomes = self._weighted_averages(control_cases, None, outcomes, do_weight=do_weight)
         agg_treatment_outcomes = self._weighted_averages(treatment_cases, None, outcomes, do_weight=do_weight)
 
         # Calculate difference in treatment effect for each outcome, and run t test
-        matched_set[treatment] = control_value
-        reduced_df = pd.concat([treatment_cases, matched_set])
+        control_cases[treatment] = control_value
+        reduced_df = pd.concat([treatment_cases, control_cases])
         diffs = []
         pvalues = []
         for o in outcomes:
