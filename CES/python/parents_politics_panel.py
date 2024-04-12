@@ -445,14 +445,14 @@ class ParentsPoliticsPanel():
     #####################
     # Summary functions #
     #####################
-    def summarize_all_issues(self, df, group_by_labels, age_limit=None):
+    def summarize_all_issues(self, df, group_by_labels, age_limit=None, do_weight=True):
         if age_limit is not None:
             df = self.filter_age(df, age_limit)
         if type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
         all_issues = pd.DataFrame({k: [] for k in ['issue'] + group_by_labels + self.METRICS})
         for issue in sorted(self.ISSUES):
-            issue_summary = self.summarize_issue(self.filter_na(df, f'{issue}_delta'), group_by_labels, issue)
+            issue_summary = self.summarize_issue(self.filter_na(df, f'{issue}_delta'), group_by_labels, issue, do_weight=do_weight)
             issue_summary['issue'] = issue
             issue_summary.rename(columns={f'{issue}_{m}': m for m in self.METRICS}, inplace=True)
             all_issues = pd.concat([all_issues, issue_summary])
@@ -486,21 +486,23 @@ class ParentsPoliticsPanel():
 
         return pd.DataFrame(rates)
 
-    def summarize_issue(self, df, group_by_labels, issue):
+    def summarize_issue(self, df, group_by_labels, issue, do_weight=True):
         if type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
 
         issue_columns = [f'{issue}_{m}' for m in self.METRICS]
-        return self._weighted_averages(df, group_by_labels, issue_columns)
+        return self._weighted_averages(df, group_by_labels, issue_columns, do_weight=do_weight)
 
     # For each issue column, calculate (values * weights).groupby(by).sum() / weights.groupby(by).sum()
-    def _weighted_averages(self, df, group_by_labels, columns):
+    def _weighted_averages(self, df, group_by_labels, columns, do_weight=True):
         if group_by_labels is None:
             group_by_labels = []
         elif type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
 
         summary = df.loc[:,['weight'] + group_by_labels + columns].copy()
+        if not do_weight:
+            summary['weight'] = 1
         for col in columns:
             summary[col] = np.multiply(summary[col], summary['weight'])
         if group_by_labels:
