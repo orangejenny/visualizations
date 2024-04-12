@@ -254,7 +254,11 @@ class ParentsPoliticsPanel():
         range_size = upper_bound - lower_bound
         return round(amount * 100 / range_size, 1)
 
-    def log_matching(self, outcomes, description=''):
+    def log_matching(self, outcomes_and_messages, description=''):
+        (outcomes, messages) = outcomes_and_messages
+        if messages:
+            description = description + "\n" + "\n".join(messages)
+
         self.log_findings(outcomes, description)
 
         paper_outcomes = defaultdict(list)
@@ -542,6 +546,7 @@ class ParentsPoliticsPanel():
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
         columns = ['caseid', treatment, 'score', 'score_copy', 'weight'] + outcomes
+        messages = []
 
         if len(df['caseid'].unique()) != len(df['caseid']):
             raise ParentsPoliticsPanelException("Data frame given to get_matched_outcomes does not have unique cases")
@@ -568,11 +573,11 @@ class ParentsPoliticsPanel():
         if any(np.subtract(before_counts, after_counts)):
             treatment_percent = round((before_counts[0] - after_counts[0]) * 100 / before_counts[0], 1) if before_counts[0] != after_counts[0] else 0
             candidate_percent = round((before_counts[1] - after_counts[1]) * 100 / before_counts[1], 1) if before_counts[1] != after_counts[1] else 0
-            print(f"Lost {treatment_percent}% of treatment cases and {candidate_percent}% of control cases due to missing score")
+            messages.append(f"Lost {treatment_percent}% of treatment cases and {candidate_percent}% of control cases due to missing score")
 
         matched_set = pd.merge_asof(treatment_cases, candidates, on='score', suffixes=('_treatment', ''), tolerance=0.05, direction='nearest')
         matched_set['score_diff'] = matched_set['score_copy'] - matched_set['score_copy_treatment']
-        print(f"Max score difference: {round(max(matched_set['score_diff']), 4)}")
+        messages.append(f"Max score difference: {round(max(matched_set['score_diff']), 4)}")
 
         # Group on treatment caseid, averaging all relevant control matches
         matched_outcomes = self._weighted_averages(matched_set, 'caseid_treatment', outcomes)
@@ -604,7 +609,7 @@ class ParentsPoliticsPanel():
             'pvalue': pvalues,
         })
         summary.sort_index(inplace=True)
-        return summary
+        return (summary, messages)
 
     def _add_score(self, df, formula, do_weight=True):
         logit = smf.glm(formula=formula,
