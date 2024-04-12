@@ -563,8 +563,6 @@ class ParentsPoliticsPanel():
         candidates = df.loc[df[treatment] == control_value, columns].copy()
 
         # Match up treatment and control groups
-        # TODO: test, and error/note if any of treatment_cases didn't match: ultimately implement nearest neighbor & record distance, noting bias
-        # matched_set = treatment_cases.merge(candidates, on='score', how='left', suffixes=('_treatment', ''))  # exact match
         treatment_cases.sort_values('score', inplace=True)
         candidates.sort_values('score', inplace=True)
 
@@ -578,6 +576,15 @@ class ParentsPoliticsPanel():
             messages.append(f"Lost {treatment_percent}% of treatment cases and {candidate_percent}% of control cases due to missing score")
 
         matched_set = pd.merge_asof(treatment_cases, candidates, on='score', suffixes=('_treatment', ''), tolerance=0.05, direction='nearest')
+        matched_set = self.filter_na(matched_set, 'caseid')
+
+        if len(matched_set) < len(treatment_cases):
+            percent = round((len(treatment_cases) - len(matched_set)) * 100 / len(treatment_cases), 1)
+            messages.append(f"Lost {percent}% of cases ({len(treatment_cases) - len(matched_set)} cases) due to matching tolerance, leaving {len(matched_set)}")
+
+            # Filter out treatment cases that weren't matched
+            treatment_cases = pd.merge(treatment_cases, matched_set['caseid_treatment'], how='inner', left_on='caseid', right_on='caseid_treatment')
+
         matched_set['score_diff'] = matched_set['score_copy'] - matched_set['score_copy_treatment']
         messages.append(f"Max score difference: {round(max(matched_set['score_diff']), 4)}")
 
