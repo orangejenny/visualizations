@@ -207,7 +207,7 @@ if _should_run("panel"):
 
     # (not logged) Persistence: how common is persistent change?
     # Of those who changed, how many keep that change?
-    # TODO: age limit?
+    # Note this doesn't account for age limit
     for treatment in ces.treatments:
         ces.log_verbose(ces.summarize_all_persistence(treatment), f"Summary of persistent change frequency: {treatment}")
 
