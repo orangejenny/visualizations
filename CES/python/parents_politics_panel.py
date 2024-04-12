@@ -376,8 +376,8 @@ class ParentsPoliticsPanel():
 
         return all_results
 
-    # TODO: Make weighting an option, not default
-    def t_tests(self, df, metric, demographic_label, a_value=0, b_value=1, age_limit=None, comparator_treatment=None, comparator_desc=None):
+    def t_tests(self, df, metric, demographic_label, a_value=0, b_value=1, age_limit=None, do_weight=True,
+                comparator_treatment=None, comparator_desc=None):
         if age_limit is not None:
             df = self.filter_age(df, age_limit)
 
@@ -394,7 +394,7 @@ class ParentsPoliticsPanel():
         for issue in self.ISSUES:
             results['issue'].append(issue)
             label = f'{issue}_{metric}'
-            result = self.t_test(df, label, demographic_label, a_value, b_value)
+            result = self.t_test(df, label, demographic_label, a_value, b_value, do_weight=do_weight)
 
             filtered = self.filter_na(df, label)
             a_values = filtered.loc[filtered[demographic_label] == a_value, [label, 'weight']]
@@ -404,8 +404,9 @@ class ParentsPoliticsPanel():
                 results['b'].append(np.nan)
                 results['diff'].append(np.nan)
             else:
-                results['a'].append(round(np.average(a_values[label], weights=a_values['weight']), 3))
-                results['b'].append(round(np.average(b_values[label], weights=b_values['weight']), 3))
+                weights = (a_values['weight'], b_values['weight']) if do_weight else (None, None)
+                results['a'].append(round(np.average(a_values[label], weights=weights[0]), 3))
+                results['b'].append(round(np.average(b_values[label], weights=weights[1]), 3))
                 results['diff'].append(results['a'][-1] - results['b'][-1])
 
             results['metric'].append(label)
@@ -425,7 +426,7 @@ class ParentsPoliticsPanel():
         df.sort_values('metric', inplace=True)
         return df
 
-    def t_test(self, df, issue_label, demographic_label, a_value=0, b_value=1):
+    def t_test(self, df, issue_label, demographic_label, a_value=0, b_value=1, do_weight=True):
         filtered = self.filter_na(self.filter_na(df, demographic_label), issue_label)
         group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), ['weight', issue_label]]
         group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), ['weight', issue_label]]
@@ -434,7 +435,7 @@ class ParentsPoliticsPanel():
         else:
             (statistic, pvalue, df) = ttest_ind(group_a[issue_label], group_b[issue_label],
                                                 usevar='unequal',
-                                                weights=(group_a.weight, group_b.weight))
+                                                weights=(group_a.weight, group_b.weight) if do_weight else (None, None))
         return Result(statistic=statistic, df=df, pvalue=pvalue)
 
     #####################
