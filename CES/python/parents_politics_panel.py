@@ -542,8 +542,8 @@ class ParentsPoliticsPanel():
     ######################
     # Matching functions #
     ######################
-    # TODO: Make weighting an option, not default
-    def get_matched_outcomes(self, df, formula, treatment, control_value=0, treatment_value=1, age_limit=None, comparator_treatment=None, comparator_desc=None):
+    def get_matched_outcomes(self, df, formula, treatment, control_value=0, treatment_value=1, age_limit=None, do_weight=True,
+                             comparator_treatment=None, comparator_desc=None):
         outcomes = [
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
@@ -588,24 +588,19 @@ class ParentsPoliticsPanel():
         matched_set['score_diff'] = matched_set['score_copy'] - matched_set['score_copy_treatment']
         messages.append(f"Max score difference: {round(max(matched_set['score_diff']), 4)}")
 
-        # Group on treatment caseid, averaging all relevant control matches
-        matched_outcomes = self._weighted_averages(matched_set, 'caseid_treatment', outcomes)
-        matched_outcomes = matched_outcomes.drop(['caseid_treatment'], axis=1)
-        agg_matched_outcomes = matched_outcomes.mean()
-        agg_treatment_outcomes = self._weighted_averages(treatment_cases, None, outcomes)
+        # Calculate average treatment effect for control & treatment groups
+        agg_matched_outcomes = self._weighted_averages(matched_set, None, outcomes, do_weight=do_weight)
+        agg_treatment_outcomes = self._weighted_averages(treatment_cases, None, outcomes, do_weight=do_weight)
 
-        # Reduce matches to a single control row per treatment to t test
-        # TODO: matched_outcomes outcomes are weighted, but treatment_cases are not
-        # Is doing weighting myself for t tests legit?
-        matched_outcomes[treatment] = control_value
-        matched_outcomes['weight'] = 1  # Outcomes have been weighted, so set weight to 1
-        reduced_df = pd.concat([treatment_cases, matched_outcomes])
+        # Calculate difference in treatment effect for each outcome, and run t test
+        matched_set[treatment] = control_value
+        reduced_df = pd.concat([treatment_cases, matched_set])
         diffs = []
         pvalues = []
         for o in outcomes:
             diff = round(agg_matched_outcomes[o] - agg_treatment_outcomes[o], 2)
             diffs.append(diff)
-            result = self.t_test(reduced_df, o, treatment, a_value=control_value, b_value=treatment_value)
+            result = self.t_test(reduced_df, o, treatment, a_value=control_value, b_value=treatment_value, do_weight=do_weight)
             pvalue = str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue)
             pvalues.append(pvalue)
             self.comparator.add(self.comparator.MATCH, o, comparator_treatment or treatment, diff, pvalue,
