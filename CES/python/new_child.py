@@ -73,11 +73,12 @@ if _should_run("match"):
         #"gender + employ + educ + marstat + pew_churatd + ownhome + division + age + income",  # top for new_child under 40
         #"gender + educ + marstat + pew_churatd + ownhome + division + age + income", # top for is_parent under 40
         #"gender + race + educ + marstat + ownhome + age + income", # top for firstborn under 40
+        #"gender + race + educ + marstat + ownhome + division + age + income" # one of the more parsimonious approaches, shows up in firstborn under 40
     ]
 
     for formula in formulas:
         for treatment in ces.treatments:
-            ces.log_findings(ces.scores_histogram_table(sample_1012[treatment], formula, treatment), f"Score histogram of {treatment} ~ {formula}")
+            #ces.log_findings(ces.scores_histogram_table(sample_1012[treatment], formula, treatment), f"Score histogram of {treatment} ~ {formula}")
             #ces.log_findings(ces.get_matched_outcomes(sample_1012[treatment], formula, treatment), f"Comparison of outcomes, treatment={treatment}, matched on {formula}")
 
             outcomes = ces.get_matched_outcomes(sample_1012[treatment], formula, treatment, age_limit=40)
@@ -122,18 +123,20 @@ if _should_run("match"):
 
 if _should_run("model"):
     top_formulas = {}
-    for df, addendum in [
-        (waves_1012, ""),
-        (ces.filter_age(waves_1012, 40), ", limited to respondents under 40"),
+    for df, do_weight, addendum in [
+        #(waves_1012, False, ""),
+        #(waves_1012, True, ""),
+        (ces.filter_age(waves_1012, 40), False, ", limited to respondents under 40, unweighted"),
+        (ces.filter_age(waves_1012, 40), True, ", limited to respondents under 40, weighted"),
     ]:
         for treatment in ces.treatments:
             tag = f"{treatment}{addendum}"
             print("Looking at " + tag)
-            models = ces.consider_models(df, treatment)
+            models = ces.consider_models(df, treatment, do_weight=do_weight)
             ces.log_verbose(models, f"Comparison of models to predict {treatment}{addendum}")
             if len(models):
                 top_formula = models['formula'][1]  # 1 because these are indexed based on DataFrame.rank
-                ces.log_verbose(ces.scores_histogram_table(df, top_formula, treatment), f"Score histogram for top model: {top_formula}")
+                #ces.log_verbose(ces.scores_histogram_table(df, top_formula, treatment), f"Score histogram for top model: {top_formula}")
                 top_formulas[tag] = [
                     models['formula'][1],
                     models['formula'][2],

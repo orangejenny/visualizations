@@ -551,7 +551,7 @@ class ParentsPoliticsPanel():
 
         if "~" not in formula:
             formula = f"{treatment} ~ {formula}"
-        df = self._add_score(df, formula)
+        df = self._add_score(df, formula, do_weight=do_weight)
         treatment_cases = df.loc[df[treatment] == treatment_value, columns].copy()
         candidates = df.loc[df[treatment] == control_value, columns].copy()
 
@@ -606,22 +606,24 @@ class ParentsPoliticsPanel():
         summary.sort_index(inplace=True)
         return summary
 
-    def _add_score(self, df, formula):
+    def _add_score(self, df, formula, do_weight=True):
         logit = smf.glm(formula=formula,
                         family=sm.families.Binomial(),
-                        data=df).fit()
+                        data=df,
+                        freq_weights=(df['weight'] if do_weight else None)).fit()
         df['score'] = logit.predict(df)
         df['score_copy'] = df['score']
         return df
 
-    def consider_models(self, df, treatment):
+    def consider_models(self, df, treatment, do_weight=True):
         models = {}
         for choose_count in range(1, len(self.demographics) + 1):
             for chosen in list(combinations(self.demographics, choose_count)):
                 formula = treatment + " ~ " + " + ".join(chosen)
                 logit = smf.glm(formula=formula,
                                 family=sm.families.Binomial(),
-                                data=df).fit()
+                                data=df,
+                                freq_weights=(df['weight'] if do_weight else None)).fit()
                 df['score'] = logit.predict(df)
                 unscored_count = len(df.loc[np.isnan(df['score'])])
                 unscored_percentage = f'{round(unscored_count * 100 / len(df))}%'
@@ -630,7 +632,6 @@ class ParentsPoliticsPanel():
         by_r_squared = sorted(models.values(), key=lambda t: t[1]) # higher is better
         by_aic = sorted(models.values(), key=lambda t: t[2]) # lower is better
 
-        # Note two_years returns stuff, and waves_1214, but not waves_1012
         max_models = int(len(models) * 0.05)
         decent_r_squared = by_r_squared[-max_models:]
         decent_aic = by_aic[:max_models]
@@ -647,8 +648,8 @@ class ParentsPoliticsPanel():
         summary.sort_values('aic_rank', inplace=True)
         return summary
 
-    def scores_histogram_table(self, df, formula, treatment):
-        self._add_score(df, f"{treatment} ~ {formula}")
+    def scores_histogram_table(self, df, formula, treatment, weight_score=True):
+        self._add_score(df, f"{treatment} ~ {formula}", do_weight=weight_score)
         scores = df.loc[:,['score', treatment]].copy()
         scores.sort_values('score', inplace=True)
         scores = scores.loc[pd.notna(scores['score']),:]
