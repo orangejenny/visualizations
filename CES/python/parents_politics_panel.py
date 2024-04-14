@@ -323,7 +323,7 @@ class ParentsPoliticsPanel():
         return df.loc[df[dummy] == 1,:].copy()
 
     def filter_age(self, df, age):
-        return df.loc[np.less(df['age'], age),:].copy()
+        return df.loc[np.less_equal(df['age'], age),:].copy()
 
     def filter_demographic(self, df, label, value):
         return df.loc[df[label] == value,:].copy()
@@ -584,6 +584,7 @@ class ParentsPoliticsPanel():
 
             # Filter out treatment cases that weren't matched
             treatment_cases = pd.merge(treatment_cases, control_cases['caseid_treatment'], how='inner', left_on='caseid', right_on='caseid_treatment')
+        messages.append(f"Final n: {len(control_cases)} control, {len(treatment_cases)} treatment cases")
 
         control_cases['score_diff'] = control_cases['score_copy'] - control_cases['score_copy_treatment']
         messages.append(f"Max score difference: {round(max(control_cases['score_diff']), 4)}")
