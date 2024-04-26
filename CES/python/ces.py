@@ -158,15 +158,20 @@ class CESPanel(ParentsPoliticsPanel):
         return df
 
     def add_rural_urban(self, df):
-        codes = pd.read_csv("~/Documents/visualizations/midterm/ruralurbancontinuumcodes2023/rural_urban.csv")
+        df = df.assign(countyfips_14=np.logical_or(df['countyfips_14'], 0))
+        df = df.astype({
+            'countyfips_10': 'int64',
+            'countyfips_12': 'int64',
+            'countyfips_14': 'int64',
+        })
         df = df.assign(
             countyfips_before=lambda x:np.select(
                 [x.start_wave == w for w in self.start_waves],
                 [x[f'countyfips_{w}'] for w in self.start_waves],
             )
         )
-        df = df.astype({'countyfips_before': 'int64'})
-        df = df.merge(codes, how='left', left_on='countyfips_before', right_on='FIPS')
+        codes = pd.read_csv("~/Documents/visualizations/midterm/ruralurbancontinuumcodes2023/rural_urban.csv")
+        codes = codes.loc[:,['FIPS', 'State', 'RUCC_2023']] #, 'Description']]
         # https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
         states = [
             ['CT', 'ME', 'MA', 'NH', 'RI', 'VT'],
@@ -181,7 +186,15 @@ class CESPanel(ParentsPoliticsPanel):
         ]
         divisions = pd.DataFrame(data=[(a, i + 1) for i, abbreviations in enumerate(states) for a in abbreviations])
         divisions.rename(columns={0: 'state', 1: 'division'}, inplace=True)
-        df = df.merge(divisions, how='left', left_on='State', right_on='state')
+
+        divisions = divisions.merge(codes, how='inner', left_on='state', right_on='State')
+        df = df.merge(codes, how='left', left_on='countyfips_before', right_on='FIPS')
+
+        divisions.drop(['state', 'State'], axis=1, inplace=True)
+        df = df.merge(divisions, how='left', left_on='countyfips_10', right_on='FIPS', suffixes=('', '_10'))
+        df = df.merge(divisions, how='left', left_on='countyfips_12', right_on='FIPS', suffixes=('', '_12'))
+        df = df.merge(divisions, how='left', left_on='countyfips_14', right_on='FIPS', suffixes=('', '_14'))
+
         return df
 
     def add_income_brackets(self, df):
