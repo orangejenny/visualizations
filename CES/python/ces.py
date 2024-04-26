@@ -63,6 +63,7 @@ class CESPanel(ParentsPoliticsPanel):
             # Policy issues: single issues
             self.panel.columns.str.contains("CC1[024]_320", regex=True) + # gun control (1-3 more strict, less strict, same)
             self.panel.columns.str.contains("CC1[024]_321", regex=True) + # climate change (1-5 real to not real)
+            self.panel.columns.str.contains("CC1[024]_324", regex=True) + # abortion (1-4 conservative to liberal)
             self.panel.columns.str.contains("CC1[024]_325", regex=True) + # job vs environment (1-5 favor environment to favor jobs)
             self.panel.columns.str.contains("CC1[024]_327", regex=True) + # affirmative action (1-4 support to oppose)
             self.panel.columns.str.contains("CC1[024]_415r", regex=True) + # taxes vs spending (examples given are of domestic spending) (0 to 100)
@@ -103,11 +104,14 @@ class CESPanel(ParentsPoliticsPanel):
 
     def _recode_issues(self, df):
         # Recode a few columns to streamline later calculations
-        # TODO: Verify that all invalid vlues are NAed out
         for year in self.waves:
             # Recode guns to be continuous (swapping 2 and 3 so that "no change" is in the middle of "less strict" and "more strict")
             label = f'CC{year}_320'
             df.loc[:, label] = np.where(df[label] == 2, 3, np.where(df[label] == 3, 2, np.where(df[label] == 1, 1, np.nan)))
+
+            # Reverse abortion, so that 1 is liberal and 4 conservative
+            label = f'CC{year}_324'
+            df.loc[:, label] = np.where(df[label] == 1, 4, np.where(df[label] == 2, 3, np.where(df[label] == 3, 2, np.where(df[label] == 4, 1, np.nan))))
 
             # Recode don't ask don't tell, swapping so that 1 is the more conservative value, to match gay marriage ban question
             df[f'CC{year}_330G'] = np.where(
@@ -122,12 +126,12 @@ class CESPanel(ParentsPoliticsPanel):
 
             # CC10_414_1-CC10_414_6 are all usage of military for for different reasons: 1 yes, 2 no
             # CC10_414_7 is a "none of the above" for the previous six: 1 yes, 2 no
-            df[f'CC{year}_414_7'] = np.where(df[f'CC{year}_414_7'] == 1, 2, 1)
+            df[f'CC{year}_414_7'] = np.where(df[f'CC{year}_414_7'] == 1, 2, np.where(df[f'CC{year}_414_7'] == 2, 1, np.nan))
 
             # Flip the 2 yes/no immigration questions that are opposite polarity of the other 5
             # For 1,7, 1 is more liberal and 2 is more conservative
             # For 2,3,4,5,6, 1 is more conservative and 2 is more liberal
-            df[f'CC{year}_322_1'] = np.where(df[f'CC{year}_322_1'] == 1, 2, 1)
+            df[f'CC{year}_322_1'] = np.where(df[f'CC{year}_322_1'] == 1, 2, np.where(df[f'CC{year}_322_1'] == 2, 1, np.nan))
             if year == 10:  # only asked in 2010
                 df[f'CC{year}_322_7'] = np.where(df[f'CC{year}_322_7'] == 1, 2, np.where(df[f'CC{year}_322_7'] == 2, 1, np.nan))
         return df
@@ -260,13 +264,14 @@ class CESPanel(ParentsPoliticsPanel):
         Additional boolean columns based on parenthood
         - childless: 0     ...recall this is only about minor children
         - firstborn: 1
-        - new_child: 2
+        - new_sibling: 2
+        - new_child: 1 or 2
         - steady_parent: 3
         - is_parent: 1, 2, or 3
 
         - 0 no children
         - 1 new first child (same as firstborn)
-        - 2 new additional child
+        - 2 new non-first child
         - 3 parent, no change in number of children
         '''
         df = df.assign(**{
@@ -278,9 +283,13 @@ class CESPanel(ParentsPoliticsPanel):
                 [x.start_wave == w for w in self.start_waves],
                 [np.where(x.parenthood == 1, 1, 0) for w in self.start_waves],
             ),
-            'new_child': lambda x: np.select(
+            'new_sibling': lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
                 [np.where(x.parenthood == 2, 1, 0) for w in self.start_waves],
+            ),
+            'new_child': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(np.logical_or(x.parenthood == 1, x.parenthood == 2) , 1, 0) for w in self.start_waves],
             ),
             'steady_parent': lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
@@ -325,6 +334,7 @@ class CESPanel(ParentsPoliticsPanel):
         df = self._add_issue(df, 'CCXX_325', 'climate_clean_energy', 1, 2, calc_only=True)
         df = self._add_issue(df, 'CCXX_326', 'gay_marriage', 1, 2, calc_only=True)
         df = self._add_issue(df, 'CCXX_330G', 'gay_dadt', 1, 2, calc_only=True)
+        df = self._add_issue(df, 'CCXX_324', 'abortion', 1, 4)
         return df
 
     def add_all_composite_issues(self, df):
@@ -340,7 +350,7 @@ class CESPanel(ParentsPoliticsPanel):
         df = self._add_issue(df, 'budget_composite_20XX', 'budget_composite', 1, 2)
         df = self._add_issue(df, 'climate_composite_20XX', 'climate_composite', 1, 5)
         df = self._add_issue(df, 'gay_composite_20XX', 'gay_composite', 1, 2)
-        df = self._add_issue(df, 'ideo_composite_20XX', 'ideo_composite', 12 / 14, 5)
+        df = self._add_issue(df, 'ideo_composite_20XX', 'ideo_composite', 6, 35)
         df = self._add_issue(df, 'military_composite_20XX', 'military_composite', 1, 2)
         df = self._add_issue(df, 'immigration_composite_20XX', 'immigration_composite', 1, 2)
 
@@ -391,7 +401,7 @@ class CESPanel(ParentsPoliticsPanel):
 
     def add_ideo_composite(self, df, year):
         # Ideology composite that combines ideo and pid
-        df[f'ideo_composite_20{year}'] = (df[f'ideo5_{year}'] * 7 + df[f'pid7_{year}'] * 5) / 7 / 2  # ~5-point composite scale
+        df[f'ideo_composite_20{year}'] = (df[f'ideo5_{year}'] * 7 + df[f'pid7_{year}'] * 5) / 2  # ~5-point composite scale
         return df
 
     def add_immigration_composite(self, df):

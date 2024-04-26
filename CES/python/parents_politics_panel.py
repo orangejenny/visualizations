@@ -38,26 +38,15 @@ class ParentsPoliticsApproachComparator():
     def add(self, approach, outcome, treatment, substance, pvalue, age_limit=None, demo_desc=None):
         assert approach in self.approaches.keys(), f"{approach} is not an approach"
 
-        (issue, metric) = self._parse_outcome(outcome)
-        normalized_substance = self._normalize_substance(issue, substance)
+        (issue, metric) = self.ppp.parse_outcome(outcome)
+        normalized_substance = self.ppp.normalize_substance(issue, substance)
         key = ComparatorKey(issue, metric, treatment, age_limit, demo_desc)
         self.data[approach][key] = ComparatorValue(substance, normalized_substance, pvalue)
 
     def set_smallest_n(self, approach, outcome, treatment, smallest_n, age_limit=None, demo_desc=None):
-        (issue, metric) = self._parse_outcome(outcome)
+        (issue, metric) = self.ppp.parse_outcome(outcome)
         key = ComparatorKey(issue, metric, treatment, age_limit, demo_desc)
         self.smallest_n[key] = smallest_n
-
-    def _parse_outcome(self, outcome):
-        for m in self.ppp.METRICS:
-            if outcome.endswith(m):
-                return (outcome.replace(f"_{m}", ""), m)
-        raise ParentsPoliticsPanelException(f"Could not parse outcome {outcome}")
-
-    def _normalize_substance(self, issue, amount):
-        (lower_bound, upper_bound) = self.ppp.ISSUE_BOUNDS[issue]
-        range_size = upper_bound - lower_bound
-        return round(amount * 100 / range_size, 1)
 
     def get_comparison(self):
         if self.comparison is None:
@@ -114,10 +103,10 @@ class ParentsPoliticsApproachComparator():
         return len(re.sub(r'[^*]', "", string))
 
     def filter(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
-        return self._filter(self.get_comparison(), substance_threshold, pvalue_threshold, smallest_n_threshold=None)
+        return self._filter(self.get_comparison(), substance_threshold, pvalue_threshold, smallest_n_threshold)
 
     def filter_core(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
-        return self._filter(self.get_core_comparison(), substance_threshold, pvalue_threshold, smallest_n_threshold=None)
+        return self._filter(self.get_core_comparison(), substance_threshold, pvalue_threshold, smallest_n_threshold)
 
     def _filter(self, matrix, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
         matrix = matrix.loc[np.logical_and(
@@ -131,7 +120,7 @@ class ParentsPoliticsApproachComparator():
 
 class ParentsPoliticsPanel():
     OUTPUT_DIR = 'output'
-    OUTPUT_FILES = ['significant.log', 'all.log', 'two_stars.log', 'three_stars.log', 'substantive.log']
+    OUTPUT_FILES = ['significant.log', 'all.log', 'two_stars.log', 'three_stars.log', 'substantive.log', 'paper.log']
 
     METRICS = ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']
     waves = []
@@ -187,6 +176,9 @@ class ParentsPoliticsPanel():
     def filter_core_approach_comparison(self, substance_threshold, pvalue_threshold, smallest_n_threshold=None):
         return self.comparator.filter_core(substance_threshold, pvalue_threshold, smallest_n_threshold)
 
+    #####################
+    # Logging functions #
+    #####################
     def _truncate_output(self):
         for filename in self.OUTPUT_FILES:
             with open(os.path.join(self.OUTPUT_DIR, filename), 'w') as fh:
@@ -199,6 +191,9 @@ class ParentsPoliticsPanel():
 
     def log_verbose(self, data, description=''):
         self._output('all.log', data, description)
+
+    def _log_for_paper(self, data, description=''):
+        self._output('paper.log', data, description)
 
     def log_findings(self, data, description=''):
         self._output('all.log', data, description)
@@ -248,6 +243,53 @@ class ParentsPoliticsPanel():
         with open(os.path.join(self.OUTPUT_DIR, filename), 'a') as fh:
             fh.write(data + "\n")
 
+    def parse_outcome(self, outcome):
+        for m in self.METRICS:
+            if outcome.endswith(m):
+                return (outcome.replace(f"_{m}", ""), m)
+        raise ParentsPoliticsPanelException(f"Could not parse outcome {outcome}")
+
+    def normalize_substance(self, issue, amount):
+        (lower_bound, upper_bound) = self.ISSUE_BOUNDS[issue]
+        range_size = upper_bound - lower_bound
+        return round(amount * 100 / range_size, 1)
+
+    def log_matching(self, outcomes_and_messages, description=''):
+        (outcomes, messages) = outcomes_and_messages
+        if messages:
+            description = description + "\n" + "\n".join(messages)
+
+        self.log_findings(outcomes, description)
+
+        paper_outcomes = defaultdict(list)
+        for index, row in outcomes.iterrows():
+            (issue, metric) = self.parse_outcome(index)
+            if metric == "after":
+                paper_outcomes['issue'].append(issue)
+                paper_outcomes['control'].append(round(row['control'], 2))
+                paper_outcomes['treatment'].append(round(row['treatment'], 2))
+                paper_outcomes['diff'].append(round(row['diff'], 2))
+                paper_outcomes['norm'].append(self.normalize_substance(issue, row['diff']))
+                paper_outcomes['pvalue'].append(row['pvalue'])
+
+        self._log_for_paper(pd.DataFrame(paper_outcomes), description)
+
+    def log_panel(self, issues, description=''):
+        self.log_findings(issues, description)
+
+        paper_issues = defaultdict(list)
+        for index, row in issues.iterrows():
+            issue = row['issue']
+            paper_issues['issue'].append(issue)
+            for metric in ['delta', 'persists']:
+                paper_issues[f'{metric}_a'].append(row[f'{metric}_a'])
+                paper_issues[f'{metric}_b'].append(row[f'{metric}_b'])
+                paper_issues[f'{metric}-'].append(row[f'{metric}-'])
+                paper_issues[f'{metric}*'].append(row[f'{metric}*'])
+                paper_issues[f'{metric}%'].append(self.normalize_substance(issue, row[f'{metric}-']))
+
+        self._log_for_paper(pd.DataFrame(paper_issues), description)
+
     def _load_panel(self):
         raise NotImplementedError()
 
@@ -281,7 +323,7 @@ class ParentsPoliticsPanel():
         return df.loc[df[dummy] == 1,:].copy()
 
     def filter_age(self, df, age):
-        return df.loc[np.less(df['age'], age),:].copy()
+        return df.loc[np.less_equal(df['age'], age),:].copy()
 
     def filter_demographic(self, df, label, value):
         return df.loc[df[label] == value,:].copy()
@@ -333,18 +375,20 @@ class ParentsPoliticsPanel():
         for metric in self.METRICS:
             issue_results = self.t_tests(df, metric, demographic_label, age_limit=age_limit,
                                          comparator_treatment=comparator_treatment, comparator_desc=comparator_desc, **test_kwargs)
-            all_results = all_results.merge(issue_results.loc[:,['issue', 'diff', 'pvalue']], on='issue')
-            all_results.rename(columns={'diff': f'{metric}-', 'pvalue': f'{metric}*'}, inplace=True)
+            all_results = all_results.merge(issue_results.loc[:,['issue', 'a', 'b', 'diff', 'pvalue']], on='issue')
+            all_results.rename(columns={'diff': f'{metric}-', 'pvalue': f'{metric}*', 'a': f'{metric}_a', 'b': f'{metric}_b'}, inplace=True)
 
         return all_results
 
-    # TODO: Make weighting an option, not default
-    def t_tests(self, df, metric, demographic_label, a_value=0, b_value=1, age_limit=None, comparator_treatment=None, comparator_desc=None):
+    def t_tests(self, df, metric, demographic_label, a_value=0, b_value=1, age_limit=None, do_weight=True,
+                comparator_treatment=None, comparator_desc=None):
         if age_limit is not None:
             df = self.filter_age(df, age_limit)
 
         results = {
             'metric': [],
+            'a': [],
+            'b': [],
             'diff': [],
             'statistic': [],
             'df': [],
@@ -354,18 +398,20 @@ class ParentsPoliticsPanel():
         for issue in self.ISSUES:
             results['issue'].append(issue)
             label = f'{issue}_{metric}'
-            result = self.t_test(df, label, demographic_label, a_value, b_value)
+            result = self.t_test(df, label, demographic_label, a_value, b_value, do_weight=do_weight)
 
             filtered = self.filter_na(df, label)
             a_values = filtered.loc[filtered[demographic_label] == a_value, [label, 'weight']]
             b_values = filtered.loc[filtered[demographic_label] == b_value, [label, 'weight']]
             if np.isnan(result.statistic):
+                results['a'].append(np.nan)
+                results['b'].append(np.nan)
                 results['diff'].append(np.nan)
             else:
-                results['diff'].append(round(
-                    np.average(a_values[label], weights=a_values['weight'])
-                    - np.average(b_values[label], weights=b_values['weight']),
-                2))
+                weights = (a_values['weight'], b_values['weight']) if do_weight else (None, None)
+                results['a'].append(round(np.average(a_values[label], weights=weights[0]), 3))
+                results['b'].append(round(np.average(b_values[label], weights=weights[1]), 3))
+                results['diff'].append(results['a'][-1] - results['b'][-1])
 
             results['metric'].append(label)
             results['statistic'].append(result.statistic)
@@ -384,7 +430,7 @@ class ParentsPoliticsPanel():
         df.sort_values('metric', inplace=True)
         return df
 
-    def t_test(self, df, issue_label, demographic_label, a_value=0, b_value=1):
+    def t_test(self, df, issue_label, demographic_label, a_value=0, b_value=1, do_weight=True):
         filtered = self.filter_na(self.filter_na(df, demographic_label), issue_label)
         group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), ['weight', issue_label]]
         group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), ['weight', issue_label]]
@@ -393,20 +439,20 @@ class ParentsPoliticsPanel():
         else:
             (statistic, pvalue, df) = ttest_ind(group_a[issue_label], group_b[issue_label],
                                                 usevar='unequal',
-                                                weights=(group_a.weight, group_b.weight))
+                                                weights=(group_a.weight, group_b.weight) if do_weight else (None, None))
         return Result(statistic=statistic, df=df, pvalue=pvalue)
 
     #####################
     # Summary functions #
     #####################
-    def summarize_all_issues(self, df, group_by_labels, age_limit=None):
+    def summarize_all_issues(self, df, group_by_labels, age_limit=None, do_weight=True):
         if age_limit is not None:
             df = self.filter_age(df, age_limit)
         if type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
         all_issues = pd.DataFrame({k: [] for k in ['issue'] + group_by_labels + self.METRICS})
         for issue in sorted(self.ISSUES):
-            issue_summary = self.summarize_issue(self.filter_na(df, f'{issue}_delta'), group_by_labels, issue)
+            issue_summary = self.summarize_issue(self.filter_na(df, f'{issue}_delta'), group_by_labels, issue, do_weight=do_weight)
             issue_summary['issue'] = issue
             issue_summary.rename(columns={f'{issue}_{m}': m for m in self.METRICS}, inplace=True)
             all_issues = pd.concat([all_issues, issue_summary])
@@ -440,28 +486,30 @@ class ParentsPoliticsPanel():
 
         return pd.DataFrame(rates)
 
-    def summarize_issue(self, df, group_by_labels, issue):
+    def summarize_issue(self, df, group_by_labels, issue, do_weight=True):
         if type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
 
         issue_columns = [f'{issue}_{m}' for m in self.METRICS]
-        return self._weighted_averages(df, group_by_labels, issue_columns)
+        return self._weighted_averages(df, group_by_labels, issue_columns, do_weight=do_weight)
 
     # For each issue column, calculate (values * weights).groupby(by).sum() / weights.groupby(by).sum()
-    def _weighted_averages(self, df, group_by_labels, columns):
+    def _weighted_averages(self, df, group_by_labels, columns, do_weight=True):
         if group_by_labels is None:
             group_by_labels = []
         elif type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
 
         summary = df.loc[:,['weight'] + group_by_labels + columns].copy()
+        if not do_weight:
+            summary['weight'] = 1
         for col in columns:
             summary[col] = np.multiply(summary[col], summary['weight'])
         if group_by_labels:
             summary = summary.groupby(group_by_labels, as_index=False)
         summary = summary.sum()
         for col in columns:
-            summary[col] = np.divide(summary[col], summary['weight'])
+            summary[col] = round(np.divide(summary[col], summary['weight']), 2)
         summary = summary.drop(['weight'], axis=(1 if type(summary) == pd.DataFrame else 0))
         return summary
 
@@ -494,12 +542,13 @@ class ParentsPoliticsPanel():
     ######################
     # Matching functions #
     ######################
-    # TODO: Make weighting an option, not default
-    def get_matched_outcomes(self, df, formula, treatment, control_value=0, treatment_value=1, age_limit=None, comparator_treatment=None, comparator_desc=None):
+    def get_matched_outcomes(self, df, formula, treatment, control_value=0, treatment_value=1, age_limit=None, do_weight=True,
+                             comparator_treatment=None, comparator_desc=None):
         outcomes = [
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
         columns = ['caseid', treatment, 'score', 'score_copy', 'weight'] + outcomes
+        messages = []
 
         if len(df['caseid'].unique()) != len(df['caseid']):
             raise ParentsPoliticsPanelException("Data frame given to get_matched_outcomes does not have unique cases")
@@ -509,13 +558,11 @@ class ParentsPoliticsPanel():
 
         if "~" not in formula:
             formula = f"{treatment} ~ {formula}"
-        df = self._add_score(df, formula)
+        df = self._add_score(df, formula, do_weight=do_weight)
         treatment_cases = df.loc[df[treatment] == treatment_value, columns].copy()
         candidates = df.loc[df[treatment] == control_value, columns].copy()
 
         # Match up treatment and control groups
-        # TODO: test, and error/note if any of treatment_cases didn't match: ultimately implement nearest neighbor & record distance, noting bias
-        # matched_set = treatment_cases.merge(candidates, on='score', how='left', suffixes=('_treatment', ''))  # exact match
         treatment_cases.sort_values('score', inplace=True)
         candidates.sort_values('score', inplace=True)
 
@@ -526,30 +573,35 @@ class ParentsPoliticsPanel():
         if any(np.subtract(before_counts, after_counts)):
             treatment_percent = round((before_counts[0] - after_counts[0]) * 100 / before_counts[0], 1) if before_counts[0] != after_counts[0] else 0
             candidate_percent = round((before_counts[1] - after_counts[1]) * 100 / before_counts[1], 1) if before_counts[1] != after_counts[1] else 0
-            print(f"Lost {treatment_percent}% of treatment cases and {candidate_percent}% of control cases due to missing score")
+            messages.append(f"Lost {treatment_percent}% of treatment cases and {candidate_percent}% of control cases due to missing score")
 
-        matched_set = pd.merge_asof(treatment_cases, candidates, on='score', suffixes=('_treatment', ''), tolerance=0.05, direction='nearest')
-        matched_set['score_diff'] = matched_set['score_copy'] - matched_set['score_copy_treatment']
-        print(f"Max score difference: {round(max(matched_set['score_diff']), 4)}")
+        control_cases = pd.merge_asof(treatment_cases, candidates, on='score', suffixes=('_treatment', ''), tolerance=0.05, direction='nearest')
+        control_cases = self.filter_na(control_cases, 'caseid')
 
-        # Group on treatment caseid, averaging all relevant control matches
-        matched_outcomes = self._weighted_averages(matched_set, 'caseid_treatment', outcomes)
-        matched_outcomes = matched_outcomes.drop(['caseid_treatment'], axis=1)
-        agg_matched_outcomes = matched_outcomes.mean()
-        agg_treatment_outcomes = self._weighted_averages(treatment_cases, None, outcomes)
+        if len(control_cases) < len(treatment_cases):
+            percent = round((len(treatment_cases) - len(control_cases)) * 100 / len(treatment_cases), 1)
+            messages.append(f"Lost {percent}% of cases ({len(treatment_cases) - len(control_cases)} cases) due to matching tolerance, leaving {len(control_cases)}")
 
-        # Reduce matches to a single control row per treatment to t test
-        # TODO: matched_outcomes outcomes are weighted, but treatment_cases are not
-        # Is doing weighting myself for t tests legit?
-        matched_outcomes[treatment] = control_value
-        matched_outcomes['weight'] = 1  # Outcomes have been weighted, so set weight to 1
-        reduced_df = pd.concat([treatment_cases, matched_outcomes])
+            # Filter out treatment cases that weren't matched
+            treatment_cases = pd.merge(treatment_cases, control_cases['caseid_treatment'], how='inner', left_on='caseid', right_on='caseid_treatment')
+        messages.append(f"Final n: {len(control_cases)} control, {len(treatment_cases)} treatment cases")
+
+        control_cases['score_diff'] = control_cases['score_copy'] - control_cases['score_copy_treatment']
+        messages.append(f"Max score difference: {round(max(control_cases['score_diff']), 4)}")
+
+        # Calculate average treatment effect for control & treatment groups
+        agg_matched_outcomes = self._weighted_averages(control_cases, None, outcomes, do_weight=do_weight)
+        agg_treatment_outcomes = self._weighted_averages(treatment_cases, None, outcomes, do_weight=do_weight)
+
+        # Calculate difference in treatment effect for each outcome, and run t test
+        control_cases[treatment] = control_value
+        reduced_df = pd.concat([treatment_cases, control_cases])
         diffs = []
         pvalues = []
         for o in outcomes:
             diff = round(agg_matched_outcomes[o] - agg_treatment_outcomes[o], 2)
             diffs.append(diff)
-            result = self.t_test(reduced_df, o, treatment, a_value=control_value, b_value=treatment_value)
+            result = self.t_test(reduced_df, o, treatment, a_value=control_value, b_value=treatment_value, do_weight=do_weight)
             pvalue = str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue)
             pvalues.append(pvalue)
             self.comparator.add(self.comparator.MATCH, o, comparator_treatment or treatment, diff, pvalue,
@@ -562,24 +614,26 @@ class ParentsPoliticsPanel():
             'pvalue': pvalues,
         })
         summary.sort_index(inplace=True)
-        return summary
+        return (summary, messages)
 
-    def _add_score(self, df, formula):
+    def _add_score(self, df, formula, do_weight=True):
         logit = smf.glm(formula=formula,
                         family=sm.families.Binomial(),
-                        data=df).fit()
+                        data=df,
+                        freq_weights=(df['weight'] if do_weight else None)).fit()
         df['score'] = logit.predict(df)
         df['score_copy'] = df['score']
         return df
 
-    def consider_models(self, df, treatment):
+    def consider_models(self, df, treatment, do_weight=True):
         models = {}
         for choose_count in range(1, len(self.demographics) + 1):
             for chosen in list(combinations(self.demographics, choose_count)):
                 formula = treatment + " ~ " + " + ".join(chosen)
                 logit = smf.glm(formula=formula,
                                 family=sm.families.Binomial(),
-                                data=df).fit()
+                                data=df,
+                                freq_weights=(df['weight'] if do_weight else None)).fit()
                 df['score'] = logit.predict(df)
                 unscored_count = len(df.loc[np.isnan(df['score'])])
                 unscored_percentage = f'{round(unscored_count * 100 / len(df))}%'
@@ -588,7 +642,6 @@ class ParentsPoliticsPanel():
         by_r_squared = sorted(models.values(), key=lambda t: t[1]) # higher is better
         by_aic = sorted(models.values(), key=lambda t: t[2]) # lower is better
 
-        # Note two_years returns stuff, and waves_1214, but not waves_1012
         max_models = int(len(models) * 0.05)
         decent_r_squared = by_r_squared[-max_models:]
         decent_aic = by_aic[:max_models]
@@ -605,8 +658,8 @@ class ParentsPoliticsPanel():
         summary.sort_values('aic_rank', inplace=True)
         return summary
 
-    def scores_histogram_table(self, df, formula, treatment):
-        self._add_score(df, f"{treatment} ~ {formula}")
+    def scores_histogram_table(self, df, formula, treatment, weight_score=True):
+        self._add_score(df, f"{treatment} ~ {formula}", do_weight=weight_score)
         scores = df.loc[:,['score', treatment]].copy()
         scores.sort_values('score', inplace=True)
         scores = scores.loc[pd.notna(scores['score']),:]

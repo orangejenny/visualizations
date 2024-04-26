@@ -6,6 +6,8 @@ from collections import Counter
 
 from ces import CESPanel
 
+#np.seterr(all='raise')
+
 parser = argparse.ArgumentParser(description="Analyze parenting political data")
 parser.add_argument('-o', '--output', help='Suffix for output directory')
 parser.add_argument('-m', '--only-match', action='store_true')
@@ -46,7 +48,6 @@ two_years = ces.get_paired_waves()
 waves_1012 = two_years.loc[two_years['start_wave'] == 10,:].copy()
 waves_1214 = two_years.loc[two_years['start_wave'] == 12,:].copy()
 
-# TODO: support for swapping out different set of waves
 exploratory_data = ces.get_paired_waves()
 panel_data = waves_1012
 matching_data = waves_1012
@@ -54,27 +55,34 @@ matching_data = waves_1012
 
 ### Build samples for matching: treatment group plus the relevant control
 sample_1012 = {}
-sample_1012['firstborn'] = pd.concat([  # Treatment is firstborn, control is non-parents
+sample_1012['firstborn'] = pd.concat([
     ces.filter_dummy(waves_1012, 'firstborn'),
     ces.filter_dummy(waves_1012, 'childless'),
 ])
-sample_1012['new_child'] = pd.concat([  # Treatment is new_child, control is parents not experiencing a new child
+sample_1012['new_child'] = pd.concat([
     ces.filter_dummy(waves_1012, 'new_child'),
-    ces.filter_dummy(waves_1012, 'steady_parent'),
+    ces.filter_dummy(waves_1012, 'childless'),
 ])
 sample_1012['is_parent'] = waves_1012  # Treatment is is_parent, control is non-parents, which is the whole sample
 
 
 if _should_run("match"):
     formulas = [
-        "gender + race + employ + educ + marstat + pew_churatd + division + age + income",
+        "gender + race + employ + educ + marstat + pew_churatd + division + age + income",  # currently used in paper
+        #"gender + race + employ + educ + marstat + pew_churatd + ownhome + division + age + income",  # in top 5 for both is_parent and new_child (under 40)
+        #"gender + employ + educ + marstat + pew_churatd + ownhome + division + age + income",  # top for new_child under 40
+        #"gender + educ + marstat + pew_churatd + ownhome + division + age + income", # top for is_parent under 40
+        #"gender + race + educ + marstat + ownhome + age + income", # top for firstborn under 40
+        #"gender + race + educ + marstat + ownhome + division + age + income" # one of the more parsimonious approaches, shows up in firstborn under 40
     ]
 
     for formula in formulas:
         for treatment in ces.treatments:
-            ces.log_findings(ces.scores_histogram_table(sample_1012[treatment], formula, treatment), f"Score histogram of {treatment} ~ {formula}")
-            ces.log_findings(ces.get_matched_outcomes(sample_1012[treatment], formula, treatment), f"Comparison of outcomes, treatment={treatment}, matched on {formula}")
-            ces.log_findings(ces.get_matched_outcomes(sample_1012[treatment], formula, treatment, age_limit=40), f"Same, but only respondents under 40")
+            #ces.log_findings(ces.scores_histogram_table(sample_1012[treatment], formula, treatment), f"Score histogram of {treatment} ~ {formula}")
+            #ces.log_findings(ces.get_matched_outcomes(sample_1012[treatment], formula, treatment), f"Comparison of outcomes, treatment={treatment}, matched on {formula}")
+
+            outcomes = ces.get_matched_outcomes(sample_1012[treatment], formula, treatment, age_limit=40)
+            ces.log_matching(outcomes, f"All respondents under 40, treatment={treatment}")
 
     def matching_for_subset(demo_label, demo_a, demo_b):
         # Split data by demographic: men vs women, etc.
@@ -88,17 +96,17 @@ if _should_run("match"):
                 #ces.log_findings(ces.get_matched_outcomes(sample_1012[treatment], f"{treatment} ~ {formula}", demo_label, demo_a, demo_b,
                 #                                          comparator_treatment=treatment, comparator_desc=comparator_desc),
                 #                 f"Comparison of outcomes when {treatment}=1, by {comparator_desc}, matched on {formula}")
-                ces.log_findings(ces.get_matched_outcomes(sample_1012[treatment], f"{treatment} ~ {formula}", demo_label, demo_a, demo_b, age_limit=40,
-                                                          comparator_treatment=treatment, comparator_desc=comparator_desc),
-                                 f"Comparison of outcomes when {treatment}=1, respondents under 40, by {comparator_desc}, matched on {formula}")
+                outcomes = ces.get_matched_outcomes(sample_1012[treatment], f"{treatment} ~ {formula}", demo_label, demo_a, demo_b, age_limit=40,
+                                                    comparator_treatment=treatment, comparator_desc=comparator_desc)
+                ces.log_matching(outcomes, f"{demo_label}, {treatment}=1, respondents under 40, by {comparator_desc}, matched on {formula}")
 
             for demo_value, demo_subset in ((demo_a, demo_a_1012), (demo_b, demo_b_1012)):
                 for treatment in ces.treatments - {'new_child'}:
                     comparator_desc = f"{demo_label}={demo_value}"
                     #ces.log_findings(ces.get_matched_outcomes(demo_subset, f"{treatment} ~ {formula}", treatment, comparator_desc=comparator_desc),
                     #                 f"Comparison of outcomes, {comparator_desc}, treatment={treatment}, matched on {formula}")
-                    ces.log_findings(ces.get_matched_outcomes(demo_subset, f"{treatment} ~ {formula}", treatment, age_limit=40, comparator_desc=comparator_desc),
-                                     f"Comparison of outcomes, {comparator_desc}, respondents under 40, treatment={treatment}, matched on {formula}")
+                    outcomes = ces.get_matched_outcomes(demo_subset, f"{treatment} ~ {formula}", treatment, age_limit=40, comparator_desc=comparator_desc)
+                    ces.log_matching(outcomes, f"{comparator_desc}, respondents under 40, treatment={treatment}, matched on {formula}")
 
     ces.log_header('''
     ####################
@@ -115,18 +123,20 @@ if _should_run("match"):
 
 if _should_run("model"):
     top_formulas = {}
-    for df, addendum in [
-        (waves_1012, ""),
-        (ces.filter_age(waves_1012, 40), ", limited to respondents under 40"),
+    for df, do_weight, addendum in [
+        #(waves_1012, False, ""),
+        #(waves_1012, True, ""),
+        (ces.filter_age(waves_1012, 40), False, ", limited to respondents under 40, unweighted"),
+        (ces.filter_age(waves_1012, 40), True, ", limited to respondents under 40, weighted"),
     ]:
         for treatment in ces.treatments:
             tag = f"{treatment}{addendum}"
             print("Looking at " + tag)
-            models = ces.consider_models(df, treatment)
+            models = ces.consider_models(df, treatment, do_weight=do_weight)
             ces.log_verbose(models, f"Comparison of models to predict {treatment}{addendum}")
             if len(models):
                 top_formula = models['formula'][1]  # 1 because these are indexed based on DataFrame.rank
-                ces.log_verbose(ces.scores_histogram_table(df, top_formula, treatment), f"Score histogram for top model: {top_formula}")
+                #ces.log_verbose(ces.scores_histogram_table(df, top_formula, treatment), f"Score histogram for top model: {top_formula}")
                 top_formulas[tag] = [
                     models['formula'][1],
                     models['formula'][2],
@@ -190,14 +200,14 @@ if _should_run("explore"):
 
 if _should_run("panel"):
     for treatment in ces.treatments:
-        ces.log_findings(ces.all_t_test_pvalues(sample_1012[treatment], treatment), f"T test p values for {treatment}")
-        ces.log_verbose(ces.summarize_all_issues(sample_1012[treatment], treatment), f"Summary of issues for {treatment}")
-        ces.log_findings(ces.all_t_test_pvalues(sample_1012[treatment], treatment, age_limit=40), f"T test p values, respondents under 40 years old: {treatment}")
+        #ces.log_findings(ces.all_t_test_pvalues(sample_1012[treatment], treatment), f"T test p values for {treatment}")
+        #ces.log_verbose(ces.summarize_all_issues(sample_1012[treatment], treatment), f"Summary of issues for {treatment}")
+        ces.log_panel(ces.all_t_test_pvalues(sample_1012[treatment], treatment, age_limit=40), f"T test p values, respondents under 40 years old: {treatment}")
         ces.log_verbose(ces.summarize_all_issues(sample_1012[treatment], treatment, age_limit=40), f"Summary of issues, respondents under 40 years old: {treatment}")
 
     # (not logged) Persistence: how common is persistent change?
-    # Of the new_child who changed, how many keep that change?
-    # new_child often slightly more likely to experience persistent change than others
+    # Of those who changed, how many keep that change?
+    # Note this doesn't account for age limit
     for treatment in ces.treatments:
         ces.log_verbose(ces.summarize_all_persistence(treatment), f"Summary of persistent change frequency: {treatment}")
 
@@ -207,11 +217,11 @@ if _should_run("panel"):
     ##########################''')
     for age_limit in [40]:  # (None, 40):
         for treatment in ces.treatments - {'new_child'}:
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], "gender", 1), treatment, age_limit=age_limit, comparator_desc="gender=1"),
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], "gender", 1), treatment, age_limit=age_limit, comparator_desc="gender=1"),
                              f"T test p values, fathers ({treatment}) versus other men")
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], "gender", 2), treatment, age_limit=age_limit, comparator_desc="gender=2"),
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], "gender", 2), treatment, age_limit=age_limit, comparator_desc="gender=2"),
                              f"T test p values, mothers ({treatment}) versus other women")
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_dummy(sample_1012[treatment], treatment), 'gender', a_value=1, b_value=2, age_limit=age_limit,
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_dummy(sample_1012[treatment], treatment), 'gender', a_value=1, b_value=2, age_limit=age_limit,
                                                     comparator_treatment=treatment, comparator_desc="gender (1 vs 2)"),
                              f"T test p values, fathers versus mothers: all {treatment}")
             ces.log_verbose(ces.summarize_all_issues(sample_1012[treatment], [treatment, 'gender']), f"Summary of issues by new_child and gender: {treatment}")
@@ -226,19 +236,19 @@ if _should_run("panel"):
 
     for age_limit in [40]:  # (None, 40):
         for treatment in ces.treatments - {'new_child'}:
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], 'low_income', 1), treatment, age_limit=age_limit, comparator_desc="low_income=1"),
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], 'low_income', 1), treatment, age_limit=age_limit, comparator_desc="low_income=1"),
                              f"T test p values, bottom 40% {treatment} versus other bottom 40% respondents")
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], 'low_income', 0), treatment, age_limit=age_limit, comparator_desc="low_income=0"),
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], 'low_income', 0), treatment, age_limit=age_limit, comparator_desc="low_income=0"),
                              f"T test p values, top 60% {treatment} versus other top 60% respondents")
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], 'high_income', 1), treatment, age_limit=age_limit, comparator_desc="high_income=1"),
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], 'high_income', 1), treatment, age_limit=age_limit, comparator_desc="high_income=1"),
                              f"T test p values, top 20% {treatment} versus other top 20% respondents")
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], 'high_income', 0), treatment, age_limit=age_limit, comparator_desc="high_income=0"),
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_demographic(sample_1012[treatment], 'high_income', 0), treatment, age_limit=age_limit, comparator_desc="high_income=0"),
                              f"T test p values, bottom 80% {treatment} versus other bottom 80% respondents")
 
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_dummy(sample_1012[treatment], treatment), 'high_income', age_limit=age_limit,
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_dummy(sample_1012[treatment], treatment), 'high_income', age_limit=age_limit,
                                                     comparator_treatment=treatment, comparator_desc="high_income (0 vs 1)"),
                              f"T test p values, top 20% {treatment} versus bottom 80% {treatment}")
-            ces.log_findings(ces.all_t_test_pvalues(ces.filter_dummy(sample_1012[treatment], treatment), 'low_income', age_limit=age_limit,
+            ces.log_panel(ces.all_t_test_pvalues(ces.filter_dummy(sample_1012[treatment], treatment), 'low_income', age_limit=age_limit,
                                                     comparator_treatment=treatment, comparator_desc="low_income (0 vs 1)"),
                              f"T test p values, bottom 40% {treatment} versus top 60% {treatment}")
 
@@ -256,6 +266,6 @@ if _should_run("match") and _should_run("panel"):
     ces.log_verbose(Counter(findings['issue']), "Issue counts in the above table")
 
     ces.log_verbose(ces.get_core_approach_comparison(), "Compare matching's after value with panel analysis's delta, limited to young adults")
-    core_findings = ces.filter_core_approach_comparison(0.1, 3, 100)
-    ces.log_verbose(core_findings, "Core findings with significance ***, at least 0.1 substantive difference, and at least 100 cases each in treatment and control groups")
+    core_findings = ces.filter_core_approach_comparison(10, 1, 10)
+    ces.log_verbose(core_findings, "Core findings with significance *, at least 10% substantive difference, and at least 10 cases each in treatment and control groups")
     ces.log_verbose(Counter(core_findings['issue']), "Issue counts in the above table")
