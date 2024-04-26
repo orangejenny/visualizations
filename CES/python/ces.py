@@ -109,6 +109,10 @@ class CESPanel(ParentsPoliticsPanel):
             label = f'CC{year}_320'
             df.loc[:, label] = np.where(df[label] == 2, 3, np.where(df[label] == 3, 2, np.where(df[label] == 1, 1, np.nan)))
 
+            # Reverse abortion, so that 1 is liberal and 4 conservative
+            label = f'CC{year}_324'
+            df.loc[:, label] = np.where(df[label] == 1, 4, np.where(df[label] == 2, 3, np.where(df[label] == 3, 2, np.where(df[label] == 4, 1, np.nan))))
+
             # Recode don't ask don't tell, swapping so that 1 is the more conservative value, to match gay marriage ban question
             df[f'CC{year}_330G'] = np.where(
                 df[f'CC{year}_330G'] == 1,
