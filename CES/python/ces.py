@@ -3,28 +3,28 @@ import pandas as pd
 
 from scipy.stats import zscore
 
-from parents_politics_panel import ParentsPoliticsPanel
+from parents_politics_panel import Demographic, ParentsPoliticsPanel
 
 class CESPanel(ParentsPoliticsPanel):
     waves = [10, 12, 14]
     treatments = {'firstborn', 'new_child', 'is_parent'}
     # These do change. Not gender, but even race, and definitely employment, marital status, education, church, even division.
-    demographics_with_bounds = [
-        ('gender', 1, 2),
-        ('race', 1, 8),
-        ('employ', 1, 8),
-        #('investor', 1, 2),
-        ('educ', 1, 6),
-        ('marstat', 1, 6),
-        ('pew_churatd', 1, 6),  # There are other religion questions, but this one is used in CES's own sample matching
-        ('ownhome', 1, 3),
+    demographics = [
+        Demographic(name="gender", lower_bound=1, upper_bound=2),
+        Demographic(name="race", lower_bound=1, upper_bound=8),
+        Demographic(name="employ", lower_bound=1, upper_bound=8),
+        #Demographic(name="investor", lower_bound=1, upper_bound=2),
+        Demographic(name="educ", lower_bound=1, upper_bound=6),
+        Demographic(name="marstat", lower_bound=1, upper_bound=6),
+        Demographic(name="pew_churatd", lower_bound=1, upper_bound=6),  # There are other religion questions, but this one is used in CES's own sample matching
+        Demographic(name="ownhome", lower_bound=1, upper_bound=3),
 
         # constructed
-        ('RUCC_2023', None, None),  # From USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
-        ('division', None, None),  # Census division: https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
-        ('age', None, None),
-        ('income', None, None),
-        #('income_quintile', None, None),   # Duplicative with income and less granular
+        Demographic(name="RUCC_2023", lower_bound=None, upper_bound=None),  # From USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
+        Demographic(name="division", lower_bound=None, upper_bound=None),  # Census division: https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
+        Demographic(name="age", lower_bound=None, upper_bound=None),
+        Demographic(name="income", lower_bound=None, upper_bound=None),
+        #Demographic(name="income_quintile", lower_bound=None, upper_bound=None),  # Duplicative with income and less granular, although it's linear in some sense
     ]
 
     def _load_panel(cls):
@@ -138,20 +138,20 @@ class CESPanel(ParentsPoliticsPanel):
         return df
 
     def _consolidate_demographics(self, df):
-        for demo, lower_bound, upper_bound in self.demographics_with_bounds:
-            if lower_bound is None and upper_bound is None:
+        for demographic in self.demographics:
+            if demographic.lower_bound is None and demographic.upper_bound is None:
                 continue
 
-            old_labels = [f'{demo}_{wave}' for wave in self.waves]
+            old_labels = [f'{demographic.name}_{wave}' for wave in self.waves]
             for old_label in old_labels:
-                df = self.nan_out_of_bounds(df, old_label, lower_bound, upper_bound)
+                df = self.nan_out_of_bounds(df, old_label, demographic.lower_bound, demographic.upper_bound)
 
             # Use "after" data if available, else use most recent value
-            df = df.assign(**{demo: lambda x: np.select(
+            df = df.assign(**{demographic.name: lambda x: np.select(
                 [x.end_wave == w for w in self.end_waves],
                 [np.where(
-                    pd.notna(x[f'{demo}_{w}']),
-                    x[f'{demo}_{w}'],
+                    pd.notna(x[f'{demographic.name}_{w}']),
+                    x[f'{demographic.name}_{w}'],
                     x[old_labels].bfill(axis=1).iloc[:, 0]
                 ) for i, w in enumerate(self.end_waves)],
             )})

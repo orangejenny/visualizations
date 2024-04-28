@@ -11,6 +11,7 @@ from itertools import combinations
 from pandas import DataFrame
 from statsmodels.stats.weightstats import ttest_ind
 
+Demographic = namedtuple('Demographic', ['name', 'upper_bound', 'lower_bound'])
 Result = namedtuple('Result', ['statistic', 'df', 'pvalue'])
 ComparatorKey = namedtuple('ComparatorKey', ['issue', 'metric', 'treatment', 'age_limit', 'demo_desc'])
 ComparatorValue = namedtuple('ComparatorValue', ['diff', 'norm', 'pvalue'])
@@ -128,7 +129,7 @@ class ParentsPoliticsPanel():
 
     METRICS = ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']
     waves = []
-    demographics_with_bounds = []
+    demographics = []
 
     @property
     def start_waves(self):
@@ -137,10 +138,6 @@ class ParentsPoliticsPanel():
     @property
     def end_waves(self):
         return self.waves[1:]
-
-    @property
-    def demographics(self):
-        return [d[0] for d in self.demographics_with_bounds]
 
     def __init__(self, output_suffix=''):
         self.ISSUES = set()
@@ -486,8 +483,8 @@ class ParentsPoliticsPanel():
         rates = defaultdict(list)
 
         for demographic in self.demographics:
-            missing = len(df.loc[np.isnan(df[demographic]),:])
-            rates['demographic'].append(demographic)
+            missing = len(df.loc[np.isnan(df[demographic.name]),:])
+            rates['demographic'].append(demographic.name)
             rates['rate'].append(str(round(missing * 100 / total, 2)) + '%')
 
         return pd.DataFrame(rates)
@@ -656,7 +653,7 @@ class ParentsPoliticsPanel():
     def consider_models(self, df, treatment, do_weight=True):
         models = {}
         for choose_count in range(1, len(self.demographics) + 1):
-            for chosen in list(combinations(self.demographics, choose_count)):
+            for chosen in list(combinations([d.name for d in self.demographics], choose_count)):
                 formula = treatment + " ~ " + " + ".join(chosen)
                 logit = smf.glm(formula=formula,
                                 family=sm.families.Binomial(),
