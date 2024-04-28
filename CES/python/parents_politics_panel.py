@@ -555,7 +555,6 @@ class ParentsPoliticsPanel():
         ]
         if score_label is None:
             score_label = f'{treatment}_score'
-        columns = ['caseid', treatment, score_label, f'{score_label}_copy', 'weight'] + outcomes
         messages = []
 
         if len(df['caseid'].unique()) != len(df['caseid']):
@@ -564,8 +563,17 @@ class ParentsPoliticsPanel():
         if age_limit is not None:
             df = self.filter_age(df, age_limit)
 
+        covariates = "gender + race + employ + educ + marstat + pew_churatd + division + age + income".split(" + ")
+        columns = ['caseid', treatment, score_label, f'{score_label}_copy', 'weight'] + outcomes
+        if not comparator_desc:
+            columns = columns + covariates
         treatment_cases = df.loc[df[treatment] == treatment_value, columns].copy()
         candidates = df.loc[df[treatment] == control_value, columns].copy()
+
+        covariate_means = {k: [] for k in ['group'] + covariates}
+        if not comparator_desc:
+            covariate_means = self.add_covariate_means(treatment_cases, covariate_means, 'treatment')
+            covariate_means = self.add_covariate_means(candidates, covariate_means, 'candidates')
 
         # Match up treatment and control groups
         treatment_cases.sort_values(score_label, inplace=True)
@@ -582,6 +590,13 @@ class ParentsPoliticsPanel():
 
         control_cases = pd.merge_asof(treatment_cases, candidates, on=score_label, suffixes=('_treatment', ''), tolerance=0.06, direction='nearest')
         control_cases = self.filter_na(control_cases, 'caseid')
+        if not comparator_desc:
+            covariate_means = self.add_covariate_means(treatment_cases, covariate_means, 'control')
+            covariate_means = pd.DataFrame(covariate_means)
+            messages.append(covariate_means.to_string())
+        if not comparator_desc:
+            treatment_cases.drop([col for col in covariates], axis=1, inplace=True)
+            control_cases.drop([col for col in covariates], axis=1, inplace=True)
 
         if len(control_cases) < len(treatment_cases):
             percent = round((len(treatment_cases) - len(control_cases)) * 100 / len(treatment_cases), 1)
@@ -620,6 +635,14 @@ class ParentsPoliticsPanel():
         })
         summary.sort_index(inplace=True)
         return (summary, messages)
+
+    def add_covariate_means(self, df, results, label):
+        means = df.mean()
+        for key in results.keys():
+            if key != 'group':
+                results[key].append(round(means[key], 2))
+        results['group'].append(label)
+        return results
 
     def add_score(self, df, formula, label='score', do_weight=True):
         logit = smf.glm(formula=formula,
