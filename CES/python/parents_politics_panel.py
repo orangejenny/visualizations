@@ -661,8 +661,13 @@ class ParentsPoliticsPanel():
     def consider_models(self, df, treatment, do_weight=True):
         models = {}
         for choose_count in range(1, len(self.demographics) + 1):
-            for chosen in list(combinations([d for d in self.demographics.keys()], choose_count)):
-                formula = treatment + " ~ " + " + ".join(chosen)
+            print(f"Trying formulas with {choose_count} options")
+            combos = list(combinations([d for d in self.demographics.keys()], choose_count))
+            for index, chosen in enumerate(combos):
+                print(f"Trying {index} of {len(combos)}: {chosen}")
+                formula = treatment + " ~ " + " + ".join([
+                    c if self.demographics[c].dtype == DemographicType.CONTINUOUS else f'C({c})' for c in chosen
+                ])
                 logit = smf.glm(formula=formula,
                                 family=sm.families.Binomial(),
                                 data=df,
@@ -675,7 +680,7 @@ class ParentsPoliticsPanel():
         by_r_squared = sorted(models.values(), key=lambda t: t[1]) # higher is better
         by_aic = sorted(models.values(), key=lambda t: t[2]) # lower is better
 
-        max_models = int(len(models) * 0.05)
+        max_models = int(len(models) * 0.5)
         decent_r_squared = by_r_squared[-max_models:]
         decent_aic = by_aic[:max_models]
         decent_formulas = list(set([x[0] for x in decent_r_squared]) & set([x[0] for x in decent_aic]))[:10]

@@ -67,15 +67,12 @@ sample_1012['is_parent'] = waves_1012  # Treatment is is_parent, control is non-
 
 
 if _should_run("match"):
-    formula = "gender + race + employ + educ + marstat + pew_churatd + division + age + income"
-    # Some other formulas
-    #"gender + race + employ + educ + marstat + pew_churatd + ownhome + division + age + income",  # in top 5 for both is_parent and new_child (under 40)
-    #"gender + employ + educ + marstat + pew_churatd + ownhome + division + age + income",  # top for new_child under 40
-    #"gender + educ + marstat + pew_churatd + ownhome + division + age + income", # top for is_parent under 40
-    #"gender + race + educ + marstat + ownhome + age + income", # top for firstborn under 40
-    #"gender + race + educ + marstat + ownhome + division + age + income" # one of the more parsimonious approaches, shows up in firstborn under 40
+    formulas = {
+        'firstborn': 'C(race) + C(employ) + C(marstat) + C(pew_churatd) + C(ownhome) + C(division) + C(income)',
+        'is_parent': 'C(gender) + C(race) + C(marstat) + C(pew_churatd) + C(ownhome) + C(RUCC_2023) + age + C(income)',
+    }
 
-    for treatment in ces.treatments:
+    for treatment, formula in formulas.items():
         ces.add_score(waves_1012, f"{treatment} ~ {formula}", label=f'{treatment}_score')
         ces.add_score(sample_1012[treatment], f"{treatment} ~ {formula}", label=f'{treatment}_score')
 
@@ -91,7 +88,7 @@ if _should_run("match"):
             outcomes = ces.get_matched_outcomes(ces.filter_dummy(waves_1012, treatment), demo_label, score_label=f"{treatment}_score",
                                                 control_value=demo_a, treatment_value=demo_b, age_limit=40,
                                                 comparator_treatment=treatment, comparator_desc=comparator_desc)
-            ces.log_matching(outcomes, f"{demo_label}, {treatment}=1, respondents under 40, by {comparator_desc}, matched on {formula}")
+            ces.log_matching(outcomes, f"{demo_label}, {treatment}=1, respondents under 40, by {comparator_desc}, matched on {formulas[treatment]}")
 
         # Within each demographic group, compare those receiving and not receiving treatment
         for demo_value in (demo_a, demo_b):
@@ -99,7 +96,7 @@ if _should_run("match"):
                 comparator_desc = f"{demo_label}={demo_value}"
                 demo_subset = ces.filter_demographic(sample_1012[treatment], demo_label, demo_value)
                 outcomes = ces.get_matched_outcomes(demo_subset, treatment, age_limit=40, comparator_desc=comparator_desc)
-                ces.log_matching(outcomes, f"{comparator_desc}, respondents under 40, treatment={treatment}, matched on {formula}")
+                ces.log_matching(outcomes, f"{comparator_desc}, respondents under 40, treatment={treatment}, matched on {formulas[treatment]}")
 
     ces.log_header('''
     ####################
@@ -119,10 +116,10 @@ if _should_run("model"):
     for df, do_weight, addendum in [
         #(waves_1012, False, ""),
         #(waves_1012, True, ""),
-        (ces.filter_age(waves_1012, 40), False, ", limited to respondents under 40, unweighted"),
+        #(ces.filter_age(waves_1012, 40), False, ", limited to respondents under 40, unweighted"),
         (ces.filter_age(waves_1012, 40), True, ", limited to respondents under 40, weighted"),
     ]:
-        for treatment in ces.treatments:
+        for treatment in ces.treatments - {'new_child'}:
             tag = f"{treatment}{addendum}"
             print("Looking at " + tag)
             models = ces.consider_models(df, treatment, do_weight=do_weight)
