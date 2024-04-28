@@ -8,6 +8,7 @@ from parents_politics_panel import ParentsPoliticsPanel
 class CESPanel(ParentsPoliticsPanel):
     waves = [10, 12, 14]
     treatments = {'firstborn', 'new_child', 'is_parent'}
+    # These do change. Not gender, but even race, and definitely employment, marital status, education, church, even division.
     demographics_with_bounds = [
         ('gender', 1, 2),
         ('race', 1, 8),
