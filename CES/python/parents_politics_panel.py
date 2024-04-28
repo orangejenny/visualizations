@@ -6,12 +6,16 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 
 from collections import defaultdict, namedtuple
+from enum import Enum
 from datetime import datetime
 from itertools import combinations
 from pandas import DataFrame
 from statsmodels.stats.weightstats import ttest_ind
 
-Demographic = namedtuple('Demographic', ['name', 'upper_bound', 'lower_bound'])
+
+DemographicType = Enum('DemographicType', ['CONTINUOUS', 'CATEGORICAL', 'ORDERED_CATEGORICAL'])
+
+Demographic = namedtuple('Demographic', ['name', 'dtype', 'upper_bound', 'lower_bound'])
 Result = namedtuple('Result', ['statistic', 'df', 'pvalue'])
 ComparatorKey = namedtuple('ComparatorKey', ['issue', 'metric', 'treatment', 'age_limit', 'demo_desc'])
 ComparatorValue = namedtuple('ComparatorValue', ['diff', 'norm', 'pvalue'])
@@ -129,7 +133,11 @@ class ParentsPoliticsPanel():
 
     METRICS = ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']
     waves = []
-    demographics = []
+    _demographics = []
+
+    @property
+    def demographics(self):
+        return {d.name: d for d in self._demographics}
 
     @property
     def start_waves(self):
@@ -482,9 +490,9 @@ class ParentsPoliticsPanel():
         total = len(df)
         rates = defaultdict(list)
 
-        for demographic in self.demographics:
-            missing = len(df.loc[np.isnan(df[demographic.name]),:])
-            rates['demographic'].append(demographic.name)
+        for demographic in self.demographics.keys():
+            missing = len(df.loc[np.isnan(df[demographic]),:])
+            rates['demographic'].append(demographic)
             rates['rate'].append(str(round(missing * 100 / total, 2)) + '%')
 
         return pd.DataFrame(rates)
@@ -653,7 +661,7 @@ class ParentsPoliticsPanel():
     def consider_models(self, df, treatment, do_weight=True):
         models = {}
         for choose_count in range(1, len(self.demographics) + 1):
-            for chosen in list(combinations([d.name for d in self.demographics], choose_count)):
+            for chosen in list(combinations([d for d in self.demographics.keys()], choose_count)):
                 formula = treatment + " ~ " + " + ".join(chosen)
                 logit = smf.glm(formula=formula,
                                 family=sm.families.Binomial(),

@@ -3,28 +3,28 @@ import pandas as pd
 
 from scipy.stats import zscore
 
-from parents_politics_panel import Demographic, ParentsPoliticsPanel
+from parents_politics_panel import Demographic, DemographicType, ParentsPoliticsPanel
 
 class CESPanel(ParentsPoliticsPanel):
     waves = [10, 12, 14]
     treatments = {'firstborn', 'new_child', 'is_parent'}
     # These do change. Not gender, but even race, and definitely employment, marital status, education, church, even division.
-    demographics = [
-        Demographic(name="gender", lower_bound=1, upper_bound=2),
-        Demographic(name="race", lower_bound=1, upper_bound=8),
-        Demographic(name="employ", lower_bound=1, upper_bound=8),
-        #Demographic(name="investor", lower_bound=1, upper_bound=2),
-        Demographic(name="educ", lower_bound=1, upper_bound=6),
-        Demographic(name="marstat", lower_bound=1, upper_bound=6),
-        Demographic(name="pew_churatd", lower_bound=1, upper_bound=6),  # There are other religion questions, but this one is used in CES's own sample matching
-        Demographic(name="ownhome", lower_bound=1, upper_bound=3),
+    _demographics = [
+        Demographic(name="gender", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=2),
+        Demographic(name="race", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=8),
+        Demographic(name="employ", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=8),
+        #Demographic(name="investor", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=2),
+        Demographic(name="educ", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=1, upper_bound=6),
+        Demographic(name="marstat", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=6),
+        Demographic(name="pew_churatd", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=1, upper_bound=6),  # There are other religion questions, but this one is used in CES's own sample matching
+        Demographic(name="ownhome", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=3),
 
         # constructed
-        Demographic(name="RUCC_2023", lower_bound=None, upper_bound=None),  # From USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
-        Demographic(name="division", lower_bound=None, upper_bound=None),  # Census division: https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
-        Demographic(name="age", lower_bound=None, upper_bound=None),
-        Demographic(name="income", lower_bound=None, upper_bound=None),
-        #Demographic(name="income_quintile", lower_bound=None, upper_bound=None),  # Duplicative with income and less granular, although it's linear in some sense
+        Demographic(name="RUCC_2023", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None),  # From USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
+        Demographic(name="division", dtype=DemographicType.CATEGORICAL, lower_bound=None, upper_bound=None),  # Census division: https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
+        Demographic(name="age", dtype=DemographicType.CONTINUOUS, lower_bound=None, upper_bound=None),
+        Demographic(name="income", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None),
+        #Demographic(name="income_quintile", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None),  # Duplicative with income and less granular, although it's linear in some sense
     ]
 
     def _load_panel(cls):
@@ -138,20 +138,20 @@ class CESPanel(ParentsPoliticsPanel):
         return df
 
     def _consolidate_demographics(self, df):
-        for demographic in self.demographics:
+        for dname, demographic in self.demographics.items():
             if demographic.lower_bound is None and demographic.upper_bound is None:
                 continue
 
-            old_labels = [f'{demographic.name}_{wave}' for wave in self.waves]
+            old_labels = [f'{dname}_{wave}' for wave in self.waves]
             for old_label in old_labels:
                 df = self.nan_out_of_bounds(df, old_label, demographic.lower_bound, demographic.upper_bound)
 
             # Use "after" data if available, else use most recent value
-            df = df.assign(**{demographic.name: lambda x: np.select(
+            df = df.assign(**{dname: lambda x: np.select(
                 [x.end_wave == w for w in self.end_waves],
                 [np.where(
-                    pd.notna(x[f'{demographic.name}_{w}']),
-                    x[f'{demographic.name}_{w}'],
+                    pd.notna(x[f'{dname}_{w}']),
+                    x[f'{dname}_{w}'],
                     x[old_labels].bfill(axis=1).iloc[:, 0]
                 ) for i, w in enumerate(self.end_waves)],
             )})
