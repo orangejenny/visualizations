@@ -436,6 +436,8 @@ class ParentsPoliticsPanel():
         group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), ['weight', issue_label]]
         if group_a.empty or group_b.empty:
             (statistic, pvalue, df) = (np.nan, np.nan, np.nan)
+        elif np.var(group_a[issue_label]) == 0 or np.var(group_b[issue_label]) == 0:  # can happen in very small groups
+           (statistic, pvalue, df) = (np.nan, np.nan, np.nan)
         else:
             (statistic, pvalue, df) = ttest_ind(group_a[issue_label], group_b[issue_label],
                                                 usevar='unequal',
