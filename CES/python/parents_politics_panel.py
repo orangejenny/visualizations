@@ -38,6 +38,10 @@ class ParentsPoliticsApproachComparator():
     def add(self, approach, outcome, treatment, substance, pvalue, age_limit=None, demo_desc=None):
         assert approach in self.approaches.keys(), f"{approach} is not an approach"
 
+        # Matching doesn't use new_child
+        if treatment == 'new_child':
+            return
+
         (issue, metric) = self.ppp.parse_outcome(outcome)
         normalized_substance = self.ppp.normalize_substance(issue, substance)
         key = ComparatorKey(issue, metric, treatment, age_limit, demo_desc)
@@ -544,12 +548,14 @@ class ParentsPoliticsPanel():
     ######################
     # Matching functions #
     ######################
-    def get_matched_outcomes(self, df, formula, treatment, control_value=0, treatment_value=1, age_limit=None, do_weight=True,
+    def get_matched_outcomes(self, df, treatment, score_label=None, control_value=0, treatment_value=1, age_limit=None, do_weight=True,
                              comparator_treatment=None, comparator_desc=None):
         outcomes = [
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
-        columns = ['caseid', treatment, 'score', 'score_copy', 'weight'] + outcomes
+        if score_label is None:
+            score_label = f'{treatment}_score'
+        columns = ['caseid', treatment, score_label, f'{score_label}_copy', 'weight'] + outcomes
         messages = []
 
         if len(df['caseid'].unique()) != len(df['caseid']):
@@ -558,26 +564,23 @@ class ParentsPoliticsPanel():
         if age_limit is not None:
             df = self.filter_age(df, age_limit)
 
-        if "~" not in formula:
-            formula = f"{treatment} ~ {formula}"
-        df = self._add_score(df, formula, do_weight=do_weight)
         treatment_cases = df.loc[df[treatment] == treatment_value, columns].copy()
         candidates = df.loc[df[treatment] == control_value, columns].copy()
 
         # Match up treatment and control groups
-        treatment_cases.sort_values('score', inplace=True)
-        candidates.sort_values('score', inplace=True)
+        treatment_cases.sort_values(score_label, inplace=True)
+        candidates.sort_values(score_label, inplace=True)
 
         before_counts = (len(treatment_cases), len(candidates))
-        treatment_cases = self.filter_na(treatment_cases, 'score')
-        candidates = self.filter_na(candidates, 'score')
+        treatment_cases = self.filter_na(treatment_cases, score_label)
+        candidates = self.filter_na(candidates, score_label)
         after_counts = (len(treatment_cases), len(candidates))
         if any(np.subtract(before_counts, after_counts)):
             treatment_percent = round((before_counts[0] - after_counts[0]) * 100 / before_counts[0], 1) if before_counts[0] != after_counts[0] else 0
             candidate_percent = round((before_counts[1] - after_counts[1]) * 100 / before_counts[1], 1) if before_counts[1] != after_counts[1] else 0
             messages.append(f"Lost {treatment_percent}% of treatment cases and {candidate_percent}% of control cases due to missing score")
 
-        control_cases = pd.merge_asof(treatment_cases, candidates, on='score', suffixes=('_treatment', ''), tolerance=0.06, direction='nearest')
+        control_cases = pd.merge_asof(treatment_cases, candidates, on=score_label, suffixes=('_treatment', ''), tolerance=0.06, direction='nearest')
         control_cases = self.filter_na(control_cases, 'caseid')
 
         if len(control_cases) < len(treatment_cases):
@@ -588,7 +591,7 @@ class ParentsPoliticsPanel():
             treatment_cases = pd.merge(treatment_cases, control_cases['caseid_treatment'], how='inner', left_on='caseid', right_on='caseid_treatment')
         messages.append(f"Final n: {len(control_cases)} control, {len(treatment_cases)} treatment cases")
 
-        control_cases['score_diff'] = control_cases['score_copy'] - control_cases['score_copy_treatment']
+        control_cases['score_diff'] = control_cases[f'{score_label}_copy'] - control_cases[f'{score_label}_copy_treatment']
         messages.append(f"Max score difference: {round(max(control_cases['score_diff']), 4)}")
 
         # Calculate average treatment effect for control & treatment groups
@@ -618,13 +621,13 @@ class ParentsPoliticsPanel():
         summary.sort_index(inplace=True)
         return (summary, messages)
 
-    def _add_score(self, df, formula, do_weight=True):
+    def add_score(self, df, formula, label='score', do_weight=True):
         logit = smf.glm(formula=formula,
                         family=sm.families.Binomial(),
                         data=df,
                         freq_weights=(df['weight'] if do_weight else None)).fit()
-        df['score'] = logit.predict(df)
-        df['score_copy'] = df['score']
+        df[label] = logit.predict(df)
+        df[f'{label}_copy'] = df[label]
         return df
 
     def consider_models(self, df, treatment, do_weight=True):
@@ -661,7 +664,7 @@ class ParentsPoliticsPanel():
         return summary
 
     def scores_histogram_table(self, df, formula, treatment, weight_score=True):
-        self._add_score(df, f"{treatment} ~ {formula}", do_weight=weight_score)
+        self.add_score(df, f"{treatment} ~ {formula}", do_weight=weight_score)
         scores = df.loc[:,['score', treatment]].copy()
         scores.sort_values('score', inplace=True)
         scores = scores.loc[pd.notna(scores['score']),:]
