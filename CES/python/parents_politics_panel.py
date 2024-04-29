@@ -603,7 +603,11 @@ class ParentsPoliticsPanel():
             candidate_percent = round((before_counts[1] - after_counts[1]) * 100 / before_counts[1], 1) if before_counts[1] != after_counts[1] else 0
             messages.append(f"Lost {treatment_percent}% of treatment cases and {candidate_percent}% of control cases due to missing score")
 
-        control_cases = pd.merge_asof(treatment_cases, candidates, on=score_label, suffixes=('_treatment', ''), tolerance=0.06, direction='nearest')
+        tolerances = {
+            'is_parent': 0.06,
+            'firstborn': 0.02,
+        }
+        control_cases = pd.merge_asof(treatment_cases, candidates, on=score_label, suffixes=('_treatment', ''), tolerance=tolerances[comparator_treatment or treatment], direction='nearest')
         control_cases = self.filter_na(control_cases, 'caseid')
         if not comparator_desc:
             covariate_means = self.add_covariate_means(treatment_cases, covariate_means, 'control')
