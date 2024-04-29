@@ -166,7 +166,7 @@ if _should_run("explore"):
     # Maybe curiously, these numbers are a lot higher for the composite - people often change pid or ideo but not both
     # new_child: 22% more liberal, 19% more conservative
     # Non-new_child: 21% more liberal, 17% more conservative
-    ces.log_verbose(ces.count_percentages(two_years, 'new_child', 'ideo_composite_direction'), "Ideological composite direction change")
+    ces.log_verbose(ces.count_percentages(two_years, 'new_child', '_ideo_composite_direction'), "Ideological composite direction change")
     ces.log_verbose(ces.count_percentages(two_years, 'new_child', 'ideo_direction'), "Ideological direction change")
     ces.log_verbose(ces.count_percentages(two_years, 'new_child', 'pid_direction'), "Party direction change")
 
