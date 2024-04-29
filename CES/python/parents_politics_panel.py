@@ -511,17 +511,27 @@ class ParentsPoliticsPanel():
         elif type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
 
-        summary = df.loc[:,['weight'] + group_by_labels + columns].copy()
-        if not do_weight:
-            summary['weight'] = 1
+        # Calculate each outcome separately, because they may have NAs and in that case we need to skip the corresponding weight
+        summary = None
         for col in columns:
-            summary[col] = np.multiply(summary[col], summary['weight'])
-        if group_by_labels:
-            summary = summary.groupby(group_by_labels, as_index=False)
-        summary = summary.sum()
-        for col in columns:
-            summary[col] = round(np.divide(summary[col], summary['weight']), 2)
-        summary = summary.drop(['weight'], axis=(1 if type(summary) == pd.DataFrame else 0))
+            col_data = df.loc[:,['weight', col] + group_by_labels].copy()
+            col_data = self.filter_na(col_data, col)
+            if not do_weight:
+                col_data['weight'] = 1
+            col_data[col] = np.multiply(col_data[col], col_data['weight'])
+            if group_by_labels:
+                col_data = col_data.groupby(group_by_labels, as_index=False)
+            col_data = col_data.sum()
+            col_data[col] = round(np.divide(col_data[col], col_data['weight']), 2)
+            col_data = col_data.drop(['weight'], axis=(1 if type(col_data) == pd.DataFrame else 0))
+            if summary is None:
+                summary = col_data
+            elif group_by_labels:
+                summary = pd.merge(summary, col_data, left_index=True, right_index=True, suffixes=('', '_drop'))
+                summary.drop([f'{l}_drop' for l in group_by_labels], axis=0, inplace=True)
+            else:
+                summary = pd.concat([summary, col_data], axis=0)
+
         return summary
 
     def summarize_all_persistence(self, treatment):
