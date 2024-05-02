@@ -14,16 +14,6 @@ static_data <- tibble(
 )
 palette <- c("#009E73", "#0072B2", "#F0E442")
 
-# Histogram
-ggplot(static_data,
-       aes(x = as_factor(x), y = y,
-             fill = as_factor(z))) +
-  geom_col(alpha = 0.8, position = position_dodge(), show.legend = FALSE) +
-  geom_errorbar(aes(ymin = low, ymax = upp), width = 0.3, position = position_dodge(0.9)) +
-  scale_fill_manual(values=palette) +
-  labs(x = "", y = "", title="Too Much Happening") +
-  theme_minimal()
-
 # Dot plot
 ggplot(static_data,
        aes(x = as_factor(x), y = y,
