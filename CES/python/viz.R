@@ -1,6 +1,5 @@
 library(ggplot2)
 
-# Set up sample data
 covariate_data <- tibble(
   # Values are (pool, matched_set)
   demographic = c(
@@ -30,3 +29,28 @@ ggplot(covariate_data,
   scale_colour_manual(values=palette) +
   labs(x = "", y = "", color="group", title="Covariate comparison of entire pool and matched set") +
   theme_minimal()
+
+
+attitude_data <- tibble(
+  issue = c("abortion", "aff_action", "gay_rights"),
+  control_before = c(2.1, 1.2, 1.7),
+  control_after = c(2.7, 1.4, 1.6),
+  treatment_before = c(2.3, 2.1, 1.5),
+  treatment_after = c(3.1, 2.0, 1.4)
+)
+
+# Line range
+ggplot(attitude_data) +
+  geom_linerange(aes(
+    x=issue,
+    ymin=control_before,
+    ymax=control_after
+  )) +
+  geom_linerange(aes(
+    x=issue,
+    ymin=treatment_before,
+    ymax=treatment_after
+  )) +
+  scale_y_continuous(limits=c(0, 10)) 
+  theme_minimal()
+  
