@@ -283,7 +283,11 @@ class ParentsPoliticsPanel():
 
         self._log_for_paper(pd.DataFrame(paper_outcomes), description)
 
-    def log_panel(self, issues, description=''):
+    def log_panel(self, issues_and_messages, description=''):
+        (issues, messages) = issues_and_messages
+        if messages:
+            description = description + "\n" + "\n".join(messages)
+
         self.log_findings(issues, description)
 
         paper_issues = defaultdict(list)
@@ -378,6 +382,14 @@ class ParentsPoliticsPanel():
         return ''
 
     def all_t_test_pvalues(self, df, demographic_label, age_limit=None, comparator_treatment=None, comparator_desc=None, **test_kwargs):
+        messages = []
+        a_value = test_kwargs.get('a_value', 0)
+        b_value = test_kwargs.get('b_value', 1)
+        a_count = len(self.filter_demographic(df, demographic_label, a_value))
+        b_count = len(self.filter_demographic(df, demographic_label, b_value))
+        verified = a_count + b_count == len(df)
+        messages.append(f"{demographic_label}={a_value}, n={a_count}; {demographic_label}={b_value}, n={b_count}; reasonable={verified}")
+
         issues = list(self.ISSUES)
         issues.sort()
         all_results = pd.DataFrame(data={'issue': issues})
@@ -387,7 +399,7 @@ class ParentsPoliticsPanel():
             all_results = all_results.merge(issue_results.loc[:,['issue', 'a', 'b', 'diff', 'pvalue']], on='issue')
             all_results.rename(columns={'diff': f'{metric}-', 'pvalue': f'{metric}*', 'a': f'{metric}_a', 'b': f'{metric}_b'}, inplace=True)
 
-        return all_results
+        return (all_results, messages)
 
     def t_tests(self, df, metric, demographic_label, a_value=0, b_value=1, age_limit=None, do_weight=True,
                 comparator_treatment=None, comparator_desc=None):

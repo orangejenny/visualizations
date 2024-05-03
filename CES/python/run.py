@@ -52,6 +52,8 @@ exploratory_data = ces.get_paired_waves()
 panel_data = waves_1012
 matching_data = waves_1012
 
+waves_1012 = ces.filter_age(waves_1012, 40)
+
 
 ### Build samples for matching: treatment group plus the relevant control
 sample_1012 = {}
