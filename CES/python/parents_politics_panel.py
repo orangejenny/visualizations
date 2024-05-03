@@ -147,6 +147,10 @@ class ParentsPoliticsPanel():
     def end_waves(self):
         return self.waves[1:]
 
+    @property
+    def VIZ_DIR(self):
+        return os.path.join(self.OUTPUT_DIR, 'viz')
+
     def __init__(self, output_suffix=''):
         self.ISSUES = set()
         self.ISSUE_BOUNDS = {}
@@ -156,6 +160,9 @@ class ParentsPoliticsPanel():
         if not os.path.isdir(self.OUTPUT_DIR):
             print("Making directory " + self.OUTPUT_DIR)
             os.mkdir(self.OUTPUT_DIR)
+        if not os.path.isdir(self.VIZ_DIR):
+            print("Making directory " + self.VIZ_DIR)
+            os.mkdir(self.VIZ_DIR)
         self._truncate_output()
 
         self.panel = self._load_panel()
