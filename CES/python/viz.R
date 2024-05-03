@@ -18,7 +18,7 @@ covariate_data <- tibble(
     "treatment", "pool", "matched"
   )
 )
-palette <- c("#009E73", "#0072B2", "#F0E442")
+palette <- c("#0072B2", "#F0E442", "#009E73")
 
 # Dot plot
 ggplot(covariate_data,
@@ -33,24 +33,31 @@ ggplot(covariate_data,
 
 attitude_data <- tibble(
   issue = c("abortion", "aff_action", "gay_rights"),
-  control_before = c(2.1, 1.2, 1.7),
-  control_after = c(2.7, 1.4, 1.6),
-  treatment_before = c(2.3, 2.1, 1.5),
-  treatment_after = c(3.1, 2.0, 1.4)
+  control_before = c(2.1, 3.2, 5.7),
+  control_after = c(4.7, 6.4, 5.6),
+  treatment_before = c(1.3, 5.1, 5.5),
+  treatment_after = c(3.1, 1.0, 4.4)
 )
 
 # Line range
 ggplot(attitude_data) +
-  geom_linerange(aes(
+  geom_segment(aes(
     x=issue,
-    ymin=control_before,
-    ymax=control_after
-  )) +
-  geom_linerange(aes(
+    xend=issue,
+    y=control_before,
+    yend=control_after,
+    color='control',
+    alpha = 0.7,
+  ), arrow = arrow(), size=2, lineend = 'round', linejoin = 'round') +
+  geom_segment(aes(
     x=issue,
-    ymin=treatment_before,
-    ymax=treatment_after
-  )) +
-  scale_y_continuous(limits=c(0, 10)) 
+    xend=issue,
+    y=treatment_before,
+    yend=treatment_after,
+    color='treatment',
+    alpha = 0.7,
+  ), arrow = arrow(), size=2, lineend = 'round', linejoin = 'round') +
+  scale_colour_manual(values=palette) +
+  scale_y_continuous(limits=c(0, 10)) +
   theme_minimal()
   
