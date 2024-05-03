@@ -578,7 +578,7 @@ class ParentsPoliticsPanel():
         if age_limit is not None:
             df = self.filter_age(df, age_limit)
 
-        covariates = "gender + race + employ + educ + marstat + pew_churatd + division + age + income".split(" + ")
+        covariates = ['gender', 'race', 'employ', 'marstat', 'pew_churatd', 'ownhome', 'RUCC_2023', 'division', 'age', 'income']
         columns = ['caseid', treatment, score_label, f'{score_label}_copy', 'weight'] + outcomes
         if not comparator_desc:
             columns = columns + covariates
@@ -680,7 +680,7 @@ class ParentsPoliticsPanel():
             for index, chosen in enumerate(combos):
                 print(f"Trying {index} of {len(combos)}: {chosen}")
                 formula = treatment + " ~ " + " + ".join([
-                    c if self.demographics[c].dtype == DemographicType.CONTINUOUS else f'C({c})' for c in chosen
+                    f'C({c})' if self.demographics[c].dtype == DemographicType.CATEGORICAL else c for c in chosen
                 ])
                 logit = smf.glm(formula=formula,
                                 family=sm.families.Binomial(),
@@ -694,7 +694,7 @@ class ParentsPoliticsPanel():
         by_r_squared = sorted(models.values(), key=lambda t: t[1]) # higher is better
         by_aic = sorted(models.values(), key=lambda t: t[2]) # lower is better
 
-        max_models = int(len(models) * 0.5)
+        max_models = 20  #int(len(models) * 0.5)
         decent_r_squared = by_r_squared[-max_models:]
         decent_aic = by_aic[:max_models]
         decent_formulas = list(set([x[0] for x in decent_r_squared]) & set([x[0] for x in decent_aic]))[:10]

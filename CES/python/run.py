@@ -67,12 +67,9 @@ sample_1012['is_parent'] = waves_1012  # Treatment is is_parent, control is non-
 
 
 if _should_run("match"):
-    formulas = {
-        'firstborn': 'C(race) + C(employ) + C(marstat) + C(pew_churatd) + C(ownhome) + C(division) + C(income)',
-        'is_parent': 'C(gender) + C(race) + C(marstat) + C(pew_churatd) + C(ownhome) + C(RUCC_2023) + age + C(income)',
-    }
+    formula = 'C(gender) + C(race) + C(employ) + C(marstat) + pew_churatd + C(ownhome) + RUCC_2023 + C(division) + age + income'
 
-    for treatment, formula in formulas.items():
+    for treatment in ces.treatments - {'new_child'}:
         ces.add_score(waves_1012, f"{treatment} ~ {formula}", label=f'{treatment}_score')
         ces.add_score(sample_1012[treatment], f"{treatment} ~ {formula}", label=f'{treatment}_score')
 
@@ -88,7 +85,7 @@ if _should_run("match"):
             outcomes = ces.get_matched_outcomes(ces.filter_dummy(waves_1012, treatment), demo_label, score_label=f"{treatment}_score",
                                                 control_value=demo_a, treatment_value=demo_b, age_limit=40,
                                                 comparator_treatment=treatment, comparator_desc=comparator_desc)
-            ces.log_matching(outcomes, f"{demo_label}, {treatment}=1, respondents under 40, by {comparator_desc}, matched on {formulas[treatment]}")
+            ces.log_matching(outcomes, f"{demo_label}, {treatment}=1, respondents under 40, by {comparator_desc}, matched on {formula}")
 
         # Within each demographic group, compare those receiving and not receiving treatment
         for demo_value in (demo_a, demo_b):
@@ -96,7 +93,7 @@ if _should_run("match"):
                 comparator_desc = f"{demo_label}={demo_value}"
                 demo_subset = ces.filter_demographic(sample_1012[treatment], demo_label, demo_value)
                 outcomes = ces.get_matched_outcomes(demo_subset, treatment, age_limit=40, comparator_desc=comparator_desc)
-                ces.log_matching(outcomes, f"{comparator_desc}, respondents under 40, treatment={treatment}, matched on {formulas[treatment]}")
+                ces.log_matching(outcomes, f"{comparator_desc}, respondents under 40, treatment={treatment}, matched on {formula}")
 
     ces.log_header('''
     ####################
