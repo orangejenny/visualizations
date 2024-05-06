@@ -1,5 +1,7 @@
 library(ggplot2)
 
+setwd('~/Documents/visualizations/CES/python')
+
 covariate_data <- tibble(
   # Values are (pool, matched_set)
   demographic = c(
@@ -31,7 +33,7 @@ ggplot(covariate_data,
   theme_minimal()
 
 
-attitude_data <- tibble(
+panel_data <- tibble(
   issue = c("abortion", "aff_action", "gay_rights"),
   control_before = c(2.1, 3.2, 5.7),
   control_after = c(4.7, 6.4, 5.6),
@@ -39,8 +41,10 @@ attitude_data <- tibble(
   treatment_after = c(3.1, 1.0, 4.4)
 )
 
+panel_data <- read.csv('output/viz/panel_firstborn.csv')
+
 # Line range
-ggplot(attitude_data) +
+ggplot(panel_data) +
   geom_segment(aes(
     x=issue,
     xend=issue,

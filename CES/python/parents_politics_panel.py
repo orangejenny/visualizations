@@ -1,3 +1,4 @@
+import csv
 import numpy as np
 import os
 import pandas as pd
@@ -211,6 +212,24 @@ class ParentsPoliticsPanel():
     def _log_for_paper(self, data, description=''):
         self._output('paper.log', data, description)
 
+    def _log_viz_data(self, df, filename):
+        filename = os.path.join(self.VIZ_DIR, f'{filename}.csv')
+        cols = ['issue', 'before_a', 'after_a', 'delta_a', 'before_b', 'after_b', 'delta_b']
+        # TODO: normalize data (0-10 scale)
+        renames = {
+            'before_a': 'control_before',
+            'after_a': 'control_after',
+            'delta_a': 'control_delta',
+            'before_b': 'treatment_before',
+            'after_b': 'treatment_after',
+            'delta_b': 'treatment_delta',
+        }
+        with open(filename, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow([renames.get(c, c) for c in cols])
+            for row in df.itertuples():
+                writer.writerow([getattr(row, c) for c in cols])
+
     def log_findings(self, data, description=''):
         self._output('all.log', data, description)
         significant = self._limit_to_significant(data)
@@ -290,7 +309,7 @@ class ParentsPoliticsPanel():
 
         self._log_for_paper(pd.DataFrame(paper_outcomes), description)
 
-    def log_panel(self, issues_and_messages, description=''):
+    def log_panel(self, issues_and_messages, description='', viz_filename=None):
         (issues, messages) = issues_and_messages
         if messages:
             description = description + "\n" + "\n".join(messages)
@@ -301,14 +320,18 @@ class ParentsPoliticsPanel():
         for index, row in issues.iterrows():
             issue = row['issue']
             paper_issues['issue'].append(issue)
-            for metric in ['delta', 'persists']:
+            for metric in ['before', 'after', 'delta', 'persists']:
                 paper_issues[f'{metric}_a'].append(row[f'{metric}_a'])
                 paper_issues[f'{metric}_b'].append(row[f'{metric}_b'])
                 paper_issues[f'{metric}-'].append(row[f'{metric}-'])
                 paper_issues[f'{metric}*'].append(row[f'{metric}*'])
                 paper_issues[f'{metric}%'].append(self.normalize_substance(issue, row[f'{metric}-']))
 
-        self._log_for_paper(pd.DataFrame(paper_issues), description)
+        paper_issues = pd.DataFrame(paper_issues)
+        self._log_for_paper(paper_issues, description)
+
+        if viz_filename:
+            self._log_viz_data(paper_issues, viz_filename)
 
     def _load_panel(self):
         raise NotImplementedError()

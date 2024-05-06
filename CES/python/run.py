@@ -191,7 +191,7 @@ if _should_run("panel"):
     for treatment in ces.treatments:
         #ces.log_findings(ces.all_t_test_pvalues(sample_1012[treatment], treatment), f"T test p values for {treatment}")
         #ces.log_verbose(ces.summarize_all_issues(sample_1012[treatment], treatment), f"Summary of issues for {treatment}")
-        ces.log_panel(ces.all_t_test_pvalues(sample_1012[treatment], treatment, age_limit=40), f"T test p values, respondents under 40 years old: {treatment}")
+        ces.log_panel(ces.all_t_test_pvalues(sample_1012[treatment], treatment, age_limit=40), f"T test p values, respondents under 40 years old: {treatment}", viz_filename=f"panel_{treatment}")
         ces.log_verbose(ces.summarize_all_issues(sample_1012[treatment], treatment, age_limit=40), f"Summary of issues, respondents under 40 years old: {treatment}")
 
     # (not logged) Persistence: how common is persistent change?
