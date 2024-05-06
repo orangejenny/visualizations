@@ -18,7 +18,7 @@ DemographicType = Enum('DemographicType', ['CONTINUOUS', 'CATEGORICAL', 'ORDERED
 
 Demographic = namedtuple('Demographic', ['name', 'dtype', 'upper_bound', 'lower_bound', 'top_categories'])
 Result = namedtuple('Result', ['statistic', 'df', 'pvalue'])
-ComparatorKey = namedtuple('ComparatorKey', ['issue', 'metric', 'treatment', 'age_limit', 'demo_desc'])
+ComparatorKey = namedtuple('ComparatorKey', ['issue', 'metric', 'treatment', 'demo_desc'])
 ComparatorValue = namedtuple('ComparatorValue', ['diff', 'norm', 'pvalue'])
 
 
@@ -41,7 +41,7 @@ class ParentsPoliticsApproachComparator():
         self.comparison = None
         self.core_comparison = None
 
-    def add(self, approach, outcome, treatment, substance, pvalue, age_limit=None, demo_desc=None):
+    def add(self, approach, outcome, treatment, substance, pvalue, demo_desc=None):
         assert approach in self.approaches.keys(), f"{approach} is not an approach"
 
         # Matching doesn't use new_child
@@ -50,12 +50,12 @@ class ParentsPoliticsApproachComparator():
 
         (issue, metric) = self.ppp.parse_outcome(outcome)
         normalized_substance = self.ppp.normalize_substance(issue, substance)
-        key = ComparatorKey(issue, metric, treatment, age_limit, demo_desc)
+        key = ComparatorKey(issue, metric, treatment, demo_desc)
         self.data[approach][key] = ComparatorValue(substance, normalized_substance, pvalue)
 
-    def set_smallest_n(self, approach, outcome, treatment, smallest_n, age_limit=None, demo_desc=None):
+    def set_smallest_n(self, approach, outcome, treatment, smallest_n, demo_desc=None):
         (issue, metric) = self.ppp.parse_outcome(outcome)
-        key = ComparatorKey(issue, metric, treatment, age_limit, demo_desc)
+        key = ComparatorKey(issue, metric, treatment, demo_desc)
         self.smallest_n[key] = smallest_n
 
     def get_comparison(self):
@@ -65,7 +65,6 @@ class ParentsPoliticsApproachComparator():
                 'issue': [k.issue for k in keys],
                 'metric': [k.metric for k in keys],
                 'treatment': [k.treatment for k in keys],
-                'age cohort': [f"under {k.age_limit}" if k.age_limit else "--" for k in keys],
                 'demographic': [k.demo_desc if k.demo_desc else "--" for k in keys],
                 'smallest_n': [self.smallest_n.get(k, '?') for k in keys],
             }
@@ -89,14 +88,10 @@ class ParentsPoliticsApproachComparator():
         if self.core_comparison is None:
             full = self.get_comparison()
             core = full.loc[
-                np.logical_and(
-                    full['age cohort'] == "under 40",
-                    #np.logical_and(full['demographic'] == "--", full['age cohort'] == "under 40"),
-                    np.logical_or(full['treatment'] == 'firstborn', full['treatment'] == 'is_parent'),
-                )
+                np.logical_or(full['treatment'] == 'firstborn', full['treatment'] == 'is_parent')
             ,:].copy()
 
-            key_columns = ['issue', 'treatment', 'age cohort', 'demographic']
+            key_columns = ['issue', 'treatment', 'demographic']
             adata = {}
             acols = {}
             for approach, core_metric in self.approaches.items():
@@ -434,7 +429,7 @@ class ParentsPoliticsPanel():
             return '*'
         return ''
 
-    def all_t_test_pvalues(self, df, demographic_label, age_limit=None, comparator_treatment=None, comparator_desc=None, **test_kwargs):
+    def all_t_test_pvalues(self, df, demographic_label, comparator_treatment=None, comparator_desc=None, **test_kwargs):
         messages = []
         a_value = test_kwargs.get('a_value', 0)
         b_value = test_kwargs.get('b_value', 1)
@@ -447,18 +442,15 @@ class ParentsPoliticsPanel():
         issues.sort()
         all_results = pd.DataFrame(data={'issue': issues})
         for metric in self.METRICS:
-            issue_results = self.t_tests(df, metric, demographic_label, age_limit=age_limit,
+            issue_results = self.t_tests(df, metric, demographic_label,
                                          comparator_treatment=comparator_treatment, comparator_desc=comparator_desc, **test_kwargs)
             all_results = all_results.merge(issue_results.loc[:,['issue', 'a', 'b', 'diff', 'pvalue']], on='issue')
             all_results.rename(columns={'diff': f'{metric}-', 'pvalue': f'{metric}*', 'a': f'{metric}_a', 'b': f'{metric}_b'}, inplace=True)
 
         return (all_results, messages)
 
-    def t_tests(self, df, metric, demographic_label, a_value=0, b_value=1, age_limit=None, do_weight=True,
+    def t_tests(self, df, metric, demographic_label, a_value=0, b_value=1, do_weight=True,
                 comparator_treatment=None, comparator_desc=None):
-        if age_limit is not None:
-            df = self.filter_age(df, age_limit)
-
         results = {
             'metric': [],
             'a': [],
@@ -494,11 +486,9 @@ class ParentsPoliticsPanel():
 
             if 'persist' not in metric:
                 self.comparator.set_smallest_n(self.comparator.PANEL, label, comparator_treatment or demographic_label,
-                                               min([len(a_values), len(b_values)]),
-                                               age_limit=age_limit, demo_desc=comparator_desc)
+                                               min([len(a_values), len(b_values)]), demo_desc=comparator_desc)
                 self.comparator.add(self.comparator.PANEL, label, comparator_treatment or demographic_label,
-                                    results['diff'][-1], results['pvalue'][-1],
-                                    age_limit=age_limit, demo_desc=comparator_desc)
+                                    results['diff'][-1], results['pvalue'][-1], demo_desc=comparator_desc)
 
         df = DataFrame.from_dict(results)
         df.sort_values('metric', inplace=True)
@@ -521,9 +511,7 @@ class ParentsPoliticsPanel():
     #####################
     # Summary functions #
     #####################
-    def summarize_all_issues(self, df, group_by_labels, age_limit=None, do_weight=True):
-        if age_limit is not None:
-            df = self.filter_age(df, age_limit)
+    def summarize_all_issues(self, df, group_by_labels, do_weight=True):
         if type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
         all_issues = pd.DataFrame({k: [] for k in ['issue'] + group_by_labels + self.METRICS})
@@ -628,7 +616,7 @@ class ParentsPoliticsPanel():
     ######################
     # Matching functions #
     ######################
-    def get_matched_outcomes(self, df, treatment, score_label=None, control_value=0, treatment_value=1, age_limit=None, do_weight=True,
+    def get_matched_outcomes(self, df, treatment, score_label=None, control_value=0, treatment_value=1, do_weight=True,
                              comparator_treatment=None, comparator_desc=None, covariates_for_viz=None):
         outcomes = [
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
@@ -641,9 +629,6 @@ class ParentsPoliticsPanel():
 
         if len(df['caseid'].unique()) != len(df['caseid']):
             raise ParentsPoliticsPanelException("Data frame given to get_matched_outcomes does not have unique cases")
-
-        if age_limit is not None:
-            df = self.filter_age(df, age_limit)
 
         columns = ['caseid', treatment, score_label, f'{score_label}_copy', 'weight'] + outcomes
         columns = columns + covariates_for_viz
@@ -714,8 +699,7 @@ class ParentsPoliticsPanel():
             result = self.t_test(reduced_df, o, treatment, a_value=control_value, b_value=treatment_value, do_weight=do_weight)
             pvalue = str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue)
             pvalues.append(pvalue)
-            self.comparator.add(self.comparator.MATCH, o, comparator_treatment or treatment, diff, pvalue,
-                                age_limit=age_limit, demo_desc=comparator_desc)
+            self.comparator.add(self.comparator.MATCH, o, comparator_treatment or treatment, diff, pvalue, demo_desc=comparator_desc)
 
         summary = pd.DataFrame(data={
             'control': agg_matched_outcomes,
