@@ -46,7 +46,6 @@ def _should_run(section, skip_header=False):
 ces = CESPanel(args.output)
 two_years = ces.get_paired_waves()
 waves_1012 = two_years.loc[two_years['start_wave'] == 10,:].copy()
-waves_1012 = ces.filter_age(waves_1012, 40)
 
 
 ### Build samples for matching: treatment group plus the relevant control
@@ -107,27 +106,20 @@ if _should_run("match"):
 
 if _should_run("model"):
     top_formulas = {}
-    for df, do_weight, addendum in [
-        #(waves_1012, False, ""),
-        #(waves_1012, True, ""),
-        #(ces.filter_age(waves_1012, 40), False, ", limited to respondents under 40, unweighted"),
-        (ces.filter_age(waves_1012, 40), True, ", limited to respondents under 40, weighted"),
-    ]:
-        for treatment in ces.treatments - {'new_child'}:
-            tag = f"{treatment}{addendum}"
-            print("Looking at " + tag)
-            models = ces.consider_models(df, treatment, do_weight=do_weight)
-            ces.log_verbose(models, f"Comparison of models to predict {treatment}{addendum}")
-            if len(models):
-                top_formula = models['formula'][1]  # 1 because these are indexed based on DataFrame.rank
-                #ces.log_verbose(ces.scores_histogram_table(df, top_formula, treatment), f"Score histogram for top model: {top_formula}")
-                top_formulas[tag] = [
-                    models['formula'][1],
-                    models['formula'][2],
-                    models['formula'][3],
-                    models['formula'][4],
-                    models['formula'][5],
-                ]
+    for treatment in ces.treatments - {'new_child'}:
+        print("Looking at {treatment}")
+        models = ces.consider_models(waves_1012, treatment, do_weight=True)
+        ces.log_verbose(models, f"Comparison of models to predict {treatment}, weighted")
+        if len(models):
+            top_formula = models['formula'][1]  # 1 because these are indexed based on DataFrame.rank
+            #ces.log_verbose(ces.scores_histogram_table(waves_1012, top_formula, treatment), f"Score histogram for top model: {top_formula}")
+            top_formulas = [
+                models['formula'][1],
+                models['formula'][2],
+                models['formula'][3],
+                models['formula'][4],
+                models['formula'][5],
+            ]
 
 if _should_run("explore"):
     ces.log_verbose("### All of this is unweighted")

@@ -101,7 +101,8 @@ class CESPanel(ParentsPoliticsPanel):
         df = df.assign(age=lambda x: 2000 + x.start_wave - x.birthyr_10)
         df = self.nan_out_of_bounds(df, 'age', 1, 200)
         df['age_zscore'] = zscore(df['age'], nan_policy='omit')
-        return df
+        df = df.loc[np.less_equal(df['age'], 40),:]
+        return df.copy()
 
     def _recode_issues(self, df):
         # Recode a few columns to streamline later calculations

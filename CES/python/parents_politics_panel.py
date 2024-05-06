@@ -383,9 +383,6 @@ class ParentsPoliticsPanel():
     def filter_dummy(self, df, dummy):
         return df.loc[df[dummy] == 1,:].copy()
 
-    def filter_age(self, df, age):
-        return df.loc[np.less_equal(df['age'], age),:].copy()
-
     def filter_demographic(self, df, label, value):
         return df.loc[df[label] == value,:].copy()
 
