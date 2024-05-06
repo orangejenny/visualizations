@@ -10,21 +10,21 @@ class CESPanel(ParentsPoliticsPanel):
     treatments = {'firstborn', 'new_child', 'is_parent'}
     # These do change. Not gender, but even race, and definitely employment, marital status, education, church, even division.
     _demographics = [
-        Demographic(name="gender", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=2),
-        Demographic(name="race", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=8),
-        Demographic(name="employ", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=8),
-        #Demographic(name="investor", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=2),
-        Demographic(name="educ", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=1, upper_bound=6),
-        Demographic(name="marstat", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=6),
-        Demographic(name="pew_churatd", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=1, upper_bound=6),  # There are other religion questions, but this one is used in CES's own sample matching
-        Demographic(name="ownhome", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=3),
+        Demographic(name="gender", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=2, top_categories=[1,2]),    # male / female
+        Demographic(name="race", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=8, top_categories=[1,2,3]),    # white / black / hispanic
+        Demographic(name="employ", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=8, top_categories=[1,2,4]),  # full-time / part-time / unemployed
+        #Demographic(name="investor", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=2, top_categories=None),
+        Demographic(name="educ", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=1, upper_bound=6, top_categories=None),
+        Demographic(name="marstat", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=6, top_categories=[1,5]),  # married / single
+        Demographic(name="pew_churatd", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=1, upper_bound=6, top_categories=None),  # There are other religion questions, but this one is used in CES's own sample matching
+        Demographic(name="ownhome", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=3, top_categories=[1,2]),
 
         # constructed
-        Demographic(name="RUCC_2023", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None),  # From USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
-        Demographic(name="division", dtype=DemographicType.CATEGORICAL, lower_bound=None, upper_bound=None),  # Census division: https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
-        Demographic(name="age", dtype=DemographicType.CONTINUOUS, lower_bound=None, upper_bound=None),
-        Demographic(name="income", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None),
-        #Demographic(name="income_quintile", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None),  # Duplicative with income and less granular, although it's linear in some sense
+        Demographic(name="RUCC_2023", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None, top_categories=None),  # From USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
+        Demographic(name="division", dtype=DemographicType.CATEGORICAL, lower_bound=None, upper_bound=None, top_categories=None),  # Census division: https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
+        Demographic(name="age", dtype=DemographicType.CONTINUOUS, lower_bound=None, upper_bound=None, top_categories=None),
+        Demographic(name="income", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None, top_categories=None),
+        #Demographic(name="income_quintile", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None, top_categories=None),  # Duplicative with income and less granular, although it's linear in some sense
     ]
 
     def _load_panel(cls):

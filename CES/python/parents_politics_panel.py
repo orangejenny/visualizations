@@ -16,7 +16,7 @@ from statsmodels.stats.weightstats import ttest_ind
 
 DemographicType = Enum('DemographicType', ['CONTINUOUS', 'CATEGORICAL', 'ORDERED_CATEGORICAL'])
 
-Demographic = namedtuple('Demographic', ['name', 'dtype', 'upper_bound', 'lower_bound'])
+Demographic = namedtuple('Demographic', ['name', 'dtype', 'upper_bound', 'lower_bound', 'top_categories'])
 Result = namedtuple('Result', ['statistic', 'df', 'pvalue'])
 ComparatorKey = namedtuple('ComparatorKey', ['issue', 'metric', 'treatment', 'age_limit', 'demo_desc'])
 ComparatorValue = namedtuple('ComparatorValue', ['diff', 'norm', 'pvalue'])
@@ -279,8 +279,8 @@ class ParentsPoliticsPanel():
         range_size = upper_bound - lower_bound
         return round(amount * 100 / range_size, 1)
 
-    def log_matching(self, outcomes_and_messages, description='', viz_filename=None):
-        (outcomes, messages) = outcomes_and_messages
+    def log_matching(self, matching_output, description='', viz_filename=None):
+        (outcomes, covariates, messages) = matching_output
         if messages:
             description = description + "\n" + "\n".join(messages)
 
@@ -301,12 +301,23 @@ class ParentsPoliticsPanel():
         self._log_for_paper(paper_outcomes, description)
 
         if viz_filename:
+            # Viz for results
             headers = ['issue', 'value', 'is_matched']
             csv_rows = []
             for row in paper_outcomes.itertuples():
                 csv_rows.append([row.issue, row.control, "control"])
                 csv_rows.append([row.issue, row.treatment, "treatment"])
             self._log_viz_data(viz_filename, headers, csv_rows)
+
+            # Viz for covariates
+            headers = ['demographic', 'value', 'is_matched']
+            csv_rows = []
+            groups = covariates['group'].to_list()
+            for label in covariates.columns[1:]:
+                values = covariates[label].to_list()
+                for group, value, in zip(groups, values):
+                    csv_rows.append([label, value, group])
+            self._log_viz_data('covariates_' + viz_filename, headers, csv_rows)
 
     def log_panel(self, issues_and_messages, description='', viz_filename=None):
         (issues, messages) = issues_and_messages
@@ -618,12 +629,14 @@ class ParentsPoliticsPanel():
     # Matching functions #
     ######################
     def get_matched_outcomes(self, df, treatment, score_label=None, control_value=0, treatment_value=1, age_limit=None, do_weight=True,
-                             comparator_treatment=None, comparator_desc=None):
+                             comparator_treatment=None, comparator_desc=None, covariates_for_viz=None):
         outcomes = [
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
         if score_label is None:
             score_label = f'{treatment}_score'
+        if covariates_for_viz is None:
+            covariates_for_viz = []
         messages = []
 
         if len(df['caseid'].unique()) != len(df['caseid']):
@@ -632,17 +645,23 @@ class ParentsPoliticsPanel():
         if age_limit is not None:
             df = self.filter_age(df, age_limit)
 
-        covariates = ['gender', 'race', 'employ', 'marstat', 'pew_churatd', 'ownhome', 'RUCC_2023', 'division', 'age', 'income']
         columns = ['caseid', treatment, score_label, f'{score_label}_copy', 'weight'] + outcomes
-        if not comparator_desc:
-            columns = columns + covariates
+        columns = columns + covariates_for_viz
         treatment_cases = df.loc[df[treatment] == treatment_value, columns].copy()
         candidates = df.loc[df[treatment] == control_value, columns].copy()
 
-        covariate_means = {k: [] for k in ['group'] + covariates}
-        if not comparator_desc:
-            covariate_means = self.add_covariate_means(treatment_cases, covariate_means, 'treatment')
-            covariate_means = self.add_covariate_means(candidates, covariate_means, 'candidates')
+        expanded_covariates = []
+        for covariate in covariates_for_viz:
+            demo = self.demographics[covariate]
+            if demo.dtype == DemographicType.CATEGORICAL:
+                if demo.top_categories:
+                    expanded_covariates.extend([f'{covariate}_{c}' for c in demo.top_categories])
+            else:
+                expanded_covariates.append(covariate)
+        covariate_means = {k: [] for k in ['group'] + expanded_covariates}
+        if covariates_for_viz:
+            covariate_means = self.add_covariate_means(candidates, covariate_means, covariates_for_viz, 'candidates')
+            covariate_means = self.add_covariate_means(treatment_cases, covariate_means, covariates_for_viz, 'treatment')
 
         # Match up treatment and control groups
         treatment_cases.sort_values(score_label, inplace=True)
@@ -663,13 +682,11 @@ class ParentsPoliticsPanel():
         }
         control_cases = pd.merge_asof(treatment_cases, candidates, on=score_label, suffixes=('_treatment', ''), tolerance=tolerances[comparator_treatment or treatment], direction='nearest')
         control_cases = self.filter_na(control_cases, 'caseid')
-        if not comparator_desc:
-            covariate_means = self.add_covariate_means(treatment_cases, covariate_means, 'control')
+        if covariates_for_viz:
+            covariate_means = self.add_covariate_means(treatment_cases, covariate_means, covariates_for_viz, 'control')
             covariate_means = pd.DataFrame(covariate_means)
-            messages.append(covariate_means.to_string())
-        if not comparator_desc:
-            treatment_cases.drop([col for col in covariates], axis=1, inplace=True)
-            control_cases.drop([col for col in covariates], axis=1, inplace=True)
+        treatment_cases.drop([col for col in covariates_for_viz], axis=1, inplace=True)
+        control_cases.drop([col for col in covariates_for_viz], axis=1, inplace=True)
 
         if len(control_cases) < len(treatment_cases):
             percent = round((len(treatment_cases) - len(control_cases)) * 100 / len(treatment_cases), 1)
@@ -707,14 +724,23 @@ class ParentsPoliticsPanel():
             'pvalue': pvalues,
         })
         summary.sort_index(inplace=True)
-        return (summary, messages)
+        return (summary, covariate_means, messages)
 
-    def add_covariate_means(self, df, results, label):
-        means = df.mean()
-        for key in results.keys():
-            if key != 'group':
-                results[key].append(round(means[key], 2))
+    def add_covariate_means(self, df, results, covariates, label):
         results['group'].append(label)
+        for covariate in covariates:
+            demo = self.demographics[covariate]
+            if demo.dtype == DemographicType.CATEGORICAL:
+                if demo.top_categories:
+                    counts = df.groupby(covariate, as_index=False).count()
+                    total = counts['caseid'].sum()
+                    for category in demo.top_categories:
+                        count = counts.loc[counts[covariate] == category, ['caseid']].iloc[0, 0]
+                        prop = count * 100 / total
+                        results[f'{covariate}_{category}'].append(round(prop, 2))
+            else:
+                mean = df[covariate].mean()
+                results[covariate].append(round(mean, 2))
         return results
 
     def add_score(self, df, formula, label='score', do_weight=True):

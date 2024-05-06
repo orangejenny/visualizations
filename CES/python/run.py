@@ -76,7 +76,8 @@ if _should_run("match"):
         ces.add_score(sample_1012[treatment], f"{treatment} ~ {formula}", label=f'{treatment}_score')
 
     for treatment in ces.treatments - {'new_child'}:
-        outcomes = ces.get_matched_outcomes(sample_1012[treatment], treatment, age_limit=40)
+        covariates = formula.replace('C(', '').replace(')', '').split(' + ')
+        outcomes = ces.get_matched_outcomes(sample_1012[treatment], treatment, age_limit=40, covariates_for_viz=covariates)
         ces.log_matching(outcomes, f"All respondents under 40, treatment={treatment}", viz_filename=f"matching_{treatment}")
 
     # diff is control - treatment, or a -b for t tests, so negatives mean treatment group (women, high_income, low_income) is more liberal

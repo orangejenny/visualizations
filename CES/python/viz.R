@@ -23,6 +23,8 @@ covariate_data <- tibble(
   )
 )
 
+covariate_data <- read.csv('output/viz/covariates_matching_firstborn.csv')
+
 # Dot plot
 ggplot(covariate_data,
        aes(x = as_factor(demographic), y = value,
