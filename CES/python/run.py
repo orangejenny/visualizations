@@ -77,7 +77,7 @@ if _should_run("match"):
 
     for treatment in ces.treatments - {'new_child'}:
         outcomes = ces.get_matched_outcomes(sample_1012[treatment], treatment, age_limit=40)
-        ces.log_matching(outcomes, f"All respondents under 40, treatment={treatment}")
+        ces.log_matching(outcomes, f"All respondents under 40, treatment={treatment}", viz_filename=f"matching_{treatment}")
 
     # diff is control - treatment, or a -b for t tests, so negatives mean treatment group (women, high_income, low_income) is more liberal
     def matching_for_subset(demo_label, demo_a, demo_b):

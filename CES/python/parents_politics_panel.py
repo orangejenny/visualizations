@@ -212,23 +212,13 @@ class ParentsPoliticsPanel():
     def _log_for_paper(self, data, description=''):
         self._output('paper.log', data, description)
 
-    def _log_viz_data(self, df, filename):
+    def _log_viz_data(self, filename, headers, rows):
         filename = os.path.join(self.VIZ_DIR, f'{filename}.csv')
-        cols = ['issue', 'before_a', 'after_a', 'delta_a', 'before_b', 'after_b', 'delta_b']
-        # TODO: normalize data (0-10 scale)
-        renames = {
-            'before_a': 'control_before',
-            'after_a': 'control_after',
-            'delta_a': 'control_delta',
-            'before_b': 'treatment_before',
-            'after_b': 'treatment_after',
-            'delta_b': 'treatment_delta',
-        }
         with open(filename, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow([renames.get(c, c) for c in cols])
-            for row in df.itertuples():
-                writer.writerow([getattr(row, c) for c in cols])
+            writer.writerow(headers)
+            for row in rows:
+                writer.writerow(row)
 
     def log_findings(self, data, description=''):
         self._output('all.log', data, description)
@@ -289,7 +279,7 @@ class ParentsPoliticsPanel():
         range_size = upper_bound - lower_bound
         return round(amount * 100 / range_size, 1)
 
-    def log_matching(self, outcomes_and_messages, description=''):
+    def log_matching(self, outcomes_and_messages, description='', viz_filename=None):
         (outcomes, messages) = outcomes_and_messages
         if messages:
             description = description + "\n" + "\n".join(messages)
@@ -307,7 +297,16 @@ class ParentsPoliticsPanel():
                 paper_outcomes['norm'].append(self.normalize_substance(issue, row['diff']))
                 paper_outcomes['pvalue'].append(row['pvalue'])
 
-        self._log_for_paper(pd.DataFrame(paper_outcomes), description)
+        paper_outcomes = pd.DataFrame(paper_outcomes)
+        self._log_for_paper(paper_outcomes, description)
+
+        if viz_filename:
+            headers = ['issue', 'value', 'is_matched']
+            csv_rows = []
+            for row in paper_outcomes.itertuples():
+                csv_rows.append([row.issue, row.control, "control"])
+                csv_rows.append([row.issue, row.treatment, "treatment"])
+            self._log_viz_data(viz_filename, headers, csv_rows)
 
     def log_panel(self, issues_and_messages, description='', viz_filename=None):
         (issues, messages) = issues_and_messages
@@ -331,7 +330,20 @@ class ParentsPoliticsPanel():
         self._log_for_paper(paper_issues, description)
 
         if viz_filename:
-            self._log_viz_data(paper_issues, viz_filename)
+            cols = ['issue', 'before_a', 'after_a', 'delta_a', 'before_b', 'after_b', 'delta_b']
+            renames = {
+                'before_a': 'control_before',
+                'after_a': 'control_after',
+                'delta_a': 'control_delta',
+                'before_b': 'treatment_before',
+                'after_b': 'treatment_after',
+                'delta_b': 'treatment_delta',
+            }
+            headers = [renames.get(c, c) for c in cols]
+            csv_rows = []
+            for row in paper_issues.itertuples():
+                csv_rows.append([getattr(row, c) for c in cols])
+            self._log_viz_data(viz_filename, headers, csv_rows)
 
     def _load_panel(self):
         raise NotImplementedError()

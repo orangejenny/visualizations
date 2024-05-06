@@ -90,6 +90,8 @@ matching_data <- tibble(
   )
 )
 
+matching_data <- read.csv('output/viz/matching_is_parent.csv')
+
 # Dot plot
 ggplot(matching_data,
        aes(x = as_factor(issue), y = value,
