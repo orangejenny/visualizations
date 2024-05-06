@@ -1,7 +1,9 @@
 library(ggplot2)
 
 setwd('~/Documents/visualizations/CES/python')
+palette <- c("#0072B2", "#F0E442", "#009E73")
 
+### Covariate visualization
 covariate_data <- tibble(
   # Values are (pool, matched_set)
   demographic = c(
@@ -20,7 +22,6 @@ covariate_data <- tibble(
     "treatment", "pool", "matched"
   )
 )
-palette <- c("#0072B2", "#F0E442", "#009E73")
 
 # Dot plot
 ggplot(covariate_data,
@@ -32,7 +33,7 @@ ggplot(covariate_data,
   labs(x = "", y = "", color="group", title="Covariate comparison of entire pool and matched set") +
   theme_minimal()
 
-
+### Panel visualization
 panel_data <- tibble(
   issue = c("abortion", "aff_action", "gay_rights"),
   control_before = c(2.1, 3.2, 5.7),
@@ -64,4 +65,37 @@ ggplot(panel_data) +
   scale_colour_manual(values=palette) +
   scale_y_continuous(limits=c(0, 10)) +
   theme_minimal()
-  
+
+
+### Matching visualization
+# TODO: Consider switching to linerange and adding matches for different treatments, gender, and income
+matching_data <- tibble(
+  issue = c(
+    "abortion", "abortion",
+    "aff_action", "aff_action",
+    "budget", "budget",
+    "climate", "climate"
+  ),
+  value = c(
+    1.2, 3.4,
+    4.5, 4.7,
+    2.4, 3.1,
+    5.1, 6.5
+  ),
+  is_matched = c(
+    "control", "treatment",
+    "control", "treatment",
+    "control", "treatment",
+    "control", "treatment"
+  )
+)
+
+# Dot plot
+ggplot(matching_data,
+       aes(x = as_factor(issue), y = value,
+           color = as_factor(is_matched))) +
+  geom_point(alpha = 0.8, size=5) +
+  scale_y_continuous(limits=c(0, 10)) +
+  scale_colour_manual(values=palette) +
+  labs(x = "", y = "", color="group", title="Attitude comparison of treatment group and matched control group") +
+  theme_minimal()
