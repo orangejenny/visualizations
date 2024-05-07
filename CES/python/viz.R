@@ -29,11 +29,12 @@ covariate_data <- read.csv('output/viz/covariates_matching_firstborn.csv')
 ggplot(covariate_data,
        aes(x = as_factor(demographic), y = value,
            color = as_factor(is_matched))) +
-  geom_point(alpha = 0.8, size=5) +
-  scale_y_continuous(limits=c(0, 10)) +
+  geom_point(alpha = 0.5, size=3) +
+  scale_y_continuous(limits=c(0, 100)) +
   scale_colour_manual(values=palette) +
-  labs(x = "", y = "", color="group", title="Covariate comparison of entire pool and matched set") +
-  theme_minimal()
+  labs(x = "", y = "", color="group", title="Covariate comparison") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=90, hjust=1))
 
 ### Panel visualization
 panel_data <- tibble(
@@ -66,7 +67,9 @@ ggplot(panel_data) +
   ), arrow = arrow(), size=2, lineend = 'round', linejoin = 'round') +
   scale_colour_manual(values=palette) +
   scale_y_continuous(limits=c(0, 10)) +
-  theme_minimal()
+  labs(x = "", y = "", color="group", title="Comparison of attitude trends") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=90, hjust=1))
 
 
 ### Matching visualization
@@ -102,4 +105,5 @@ ggplot(matching_data,
   scale_y_continuous(limits=c(0, 10)) +
   scale_colour_manual(values=palette) +
   labs(x = "", y = "", color="group", title="Attitude comparison of treatment group and matched control group") +
-  theme_minimal()
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=90, hjust=1))
