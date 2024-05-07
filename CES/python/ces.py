@@ -10,22 +10,48 @@ class CESPanel(ParentsPoliticsPanel):
     treatments = {'firstborn', 'new_child', 'is_parent'}
     # These do change. Not gender, but even race, and definitely employment, marital status, education, church, even division.
     _demographics = [
-        Demographic(name="gender", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=2, top_categories=[1,2]),    # male / female
-        Demographic(name="race", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=8, top_categories=[1,2,3]),    # white / black / hispanic
-        Demographic(name="employ", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=8, top_categories=[1,2,4]),  # full-time / part-time / unemployed
+        Demographic(name="gender", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=2, top_categories=[1,2]),
+        Demographic(name="race", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=8, top_categories=[1,2,3]),
+        Demographic(name="employ", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=8, top_categories=[1,2,4]),
         #Demographic(name="investor", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=2, top_categories=None),
         Demographic(name="educ", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=1, upper_bound=6, top_categories=None),
-        Demographic(name="marstat", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=6, top_categories=[1,5]),  # married / single
-        Demographic(name="pew_churatd", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=1, upper_bound=6, top_categories=None),  # There are other religion questions, but this one is used in CES's own sample matching
+        Demographic(name="marstat", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=6, top_categories=[1,5]),
+        # There are other religion questions, but this one is used in CES's own sample matching
+        Demographic(name="pew_churatd", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=1, upper_bound=6, top_categories=None),
         Demographic(name="ownhome", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=3, top_categories=[1,2]),
 
         # constructed
-        Demographic(name="RUCC_2023", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None, top_categories=None),  # From USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
-        Demographic(name="division", dtype=DemographicType.CATEGORICAL, lower_bound=None, upper_bound=None, top_categories=None),  # Census division: https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
+        # From USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
+        Demographic(name="RUCC_2023", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None, top_categories=None),
+        # Census division: https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
+        Demographic(name="division", dtype=DemographicType.CATEGORICAL, lower_bound=None, upper_bound=None, top_categories=None),
         Demographic(name="age", dtype=DemographicType.CONTINUOUS, lower_bound=None, upper_bound=None, top_categories=None),
         Demographic(name="income", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None, top_categories=None),
-        #Demographic(name="income_quintile", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None, top_categories=None),  # Duplicative with income and less granular, although it's linear in some sense
+        # Duplicative with income and less granular, although it's linear in some sense
+        #Demographic(name="income_quintile", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None, top_categories=None),
     ]
+    _demographic_viz_labels = {
+        'employ': 'Employment',
+        'educ': 'Education',
+        'marstat': 'Marital Status',
+        'pew_churatd': 'Religiosity',
+        'ownhome': 'Homeowner',
+        'RUCC_2023': 'Urbanization',
+    }
+    _demographic_category_names = {
+        "gender": {1: 'male', 2: 'female'},
+        "race": {1: 'white', 2: 'black', 3: 'hispanic'},
+        "employ": {1: 'full-time', 2: 'part-time', 4: 'unemployed'},
+        "marstat": {1: 'married', 5: 'single'},
+        "ownhome": {1: 'own', 2: 'rent'},
+    }
+    _issue_viz_labels = {
+        '_ideo_composite': 'Ideology',
+        'aff_action': 'Affirmative action',
+        'budget_composite': 'Budget priorities',
+        'gay_composite': 'Gay rights',
+        'guns': 'Gun control',
+    }
 
     def _load_panel(cls):
         return pd.read_stata("~/Documents/visualizations/midterm/CCES_Panel_Full3waves_VV_V4.dta", convert_categoricals=False)  # n=9500

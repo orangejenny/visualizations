@@ -129,11 +129,29 @@ class ParentsPoliticsPanel():
 
     METRICS = ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']
     waves = []
+
     _demographics = []
+    _demographic_viz_labels = {}
+    _demographic_category_names = {}
+    _issue_viz_labels = {}
 
     @property
     def demographics(self):
         return {d.name: d for d in self._demographics}
+
+    def demographic_viz_label(self, dname):
+        category = None
+        match = re.match(r'^(\w+)_([1-9])$', dname)
+        if match:
+            dname = match.group(1)
+            category = match.group(2)
+        label = self._demographic_viz_labels.get(dname, dname.title())
+        if category is not None:
+            label += ': % ' + self._demographic_category_names.get(dname, {}).get(int(category), '?')
+        return label
+
+    def issue_viz_label(self, issue):
+        return self._issue_viz_labels.get(issue, issue.replace('_composite', '').title())
 
     @property
     def start_waves(self):
@@ -304,8 +322,8 @@ class ParentsPoliticsPanel():
             headers = ['issue', 'value', 'is_matched']
             csv_rows = []
             for row in paper_outcomes.itertuples():
-                csv_rows.append([row.issue, row.control, "control"])
-                csv_rows.append([row.issue, row.treatment, "treatment"])
+                csv_rows.append([self.issue_viz_label(row.issue), row.control, "control"])
+                csv_rows.append([self.issue_viz_label(row.issue), row.treatment, "treatment"])
             self._log_viz_data(viz_filename, headers, csv_rows)
 
             # Viz for covariates
@@ -315,7 +333,7 @@ class ParentsPoliticsPanel():
             for label in covariates.columns[1:]:
                 values = covariates[label].to_list()
                 for group, value, in zip(groups, values):
-                    csv_rows.append([label, value, group])
+                    csv_rows.append([self.demographic_viz_label(label), value, group])
             self._log_viz_data('covariates_' + viz_filename, headers, csv_rows)
 
     def log_panel(self, issues_and_messages, description='', viz_filename=None):
@@ -352,7 +370,7 @@ class ParentsPoliticsPanel():
             headers = [renames.get(c, c) for c in cols]
             csv_rows = []
             for row in paper_issues.itertuples():
-                csv_rows.append([getattr(row, c) for c in cols])
+                csv_rows.append([self.issue_viz_label(row.issue)] + [getattr(row, c) for c in cols[1:]])
             self._log_viz_data(viz_filename, headers, csv_rows)
 
     def _load_panel(self):
