@@ -10,6 +10,7 @@ from ces import CESPanel
 
 parser = argparse.ArgumentParser(description="Analyze parenting political data")
 parser.add_argument('-o', '--output', help='Suffix for output directory')
+parser.add_argument('-s', '--no-output', action='store_true')
 parser.add_argument('-m', '--only-match', action='store_true')
 parser.add_argument('-l', '--only-model', action='store_true')
 parser.add_argument('-p', '--only-panel', action='store_true')
@@ -43,7 +44,7 @@ def _should_run(section, skip_header=False):
     return should_run
 
 
-ces = CESPanel(args.output)
+ces = CESPanel(args.output, args.no_output)
 two_years = ces.get_paired_waves()
 waves_1012 = two_years.loc[two_years['start_wave'] == 10,:].copy()
 

@@ -147,19 +147,21 @@ class ParentsPoliticsPanel():
     def VIZ_DIR(self):
         return os.path.join(self.OUTPUT_DIR, 'viz')
 
-    def __init__(self, output_suffix=''):
+    def __init__(self, output_suffix='', no_output=False):
         self.ISSUES = set()
         self.ISSUE_BOUNDS = {}
 
-        if output_suffix:
-            self.OUTPUT_DIR = f'{self.OUTPUT_DIR}_{output_suffix}'
-        if not os.path.isdir(self.OUTPUT_DIR):
-            print("Making directory " + self.OUTPUT_DIR)
-            os.mkdir(self.OUTPUT_DIR)
-        if not os.path.isdir(self.VIZ_DIR):
-            print("Making directory " + self.VIZ_DIR)
-            os.mkdir(self.VIZ_DIR)
-        self._truncate_output()
+        self.no_output = no_output
+        if not self.no_output:
+            if output_suffix:
+                self.OUTPUT_DIR = f'{self.OUTPUT_DIR}_{output_suffix}'
+            if not os.path.isdir(self.OUTPUT_DIR):
+                print("Making directory " + self.OUTPUT_DIR)
+                os.mkdir(self.OUTPUT_DIR)
+            if not os.path.isdir(self.VIZ_DIR):
+                print("Making directory " + self.VIZ_DIR)
+                os.mkdir(self.VIZ_DIR)
+            self._truncate_output()
 
         self.panel = self._load_panel()
         self.paired_waves = self._build_paired_waves(self._trimmed_panel())
@@ -254,6 +256,8 @@ class ParentsPoliticsPanel():
         return data
 
     def _output(self, filename, data, description=''):
+        if self.no_output:
+            return
         if type(data) == pd.DataFrame:
             data = data.to_string(max_rows=100)
         else:
