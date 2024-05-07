@@ -68,6 +68,12 @@ if _should_run("match"):
         ces.add_score(waves_1012, f"{treatment} ~ {formula}", label=f'{treatment}_score')
         ces.add_score(sample_1012[treatment], f"{treatment} ~ {formula}", label=f'{treatment}_score')
 
+        # Caliper width
+        nonparent_var = np.var(waves_1012.loc[waves_1012[treatment] == 0, [f'{treatment}_score']], axis=0).iloc[0]
+        parent_var = np.var(waves_1012.loc[waves_1012[treatment] == 1, [f'{treatment}_score']], axis=0).iloc[0]
+        std = np.std(waves_1012[treatment])
+        ces.log_for_paper(f"nonparent var={nonparent_var}, parent var={parent_var}, std={std}, width={std * 0.2}", f"Caliper width calculation for {treatment}")
+
     for treatment in ces.treatments - {'new_child'}:
         covariates = formula.replace('C(', '').replace(')', '').split(' + ')
         outcomes = ces.get_matched_outcomes(sample_1012[treatment], treatment, covariates_for_viz=covariates)

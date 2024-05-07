@@ -204,7 +204,7 @@ class ParentsPoliticsPanel():
     def log_verbose(self, data, description=''):
         self._output('all.log', data, description)
 
-    def _log_for_paper(self, data, description=''):
+    def log_for_paper(self, data, description=''):
         self._output('paper.log', data, description)
 
     def _log_viz_data(self, filename, headers, rows):
@@ -293,7 +293,7 @@ class ParentsPoliticsPanel():
                 paper_outcomes['pvalue'].append(row['pvalue'])
 
         paper_outcomes = pd.DataFrame(paper_outcomes)
-        self._log_for_paper(paper_outcomes, description)
+        self.log_for_paper(paper_outcomes, description)
 
         if viz_filename:
             # Viz for results
@@ -333,7 +333,7 @@ class ParentsPoliticsPanel():
                 paper_issues[f'{metric}%'].append(self.normalize_substance(issue, row[f'{metric}-']))
 
         paper_issues = pd.DataFrame(paper_issues)
-        self._log_for_paper(paper_issues, description)
+        self.log_for_paper(paper_issues, description)
 
         if viz_filename:
             cols = ['issue', 'before_a', 'after_a', 'delta_a', 'before_b', 'after_b', 'delta_b']
@@ -659,8 +659,8 @@ class ParentsPoliticsPanel():
             messages.append(f"Lost {treatment_percent}% of treatment cases and {candidate_percent}% of control cases due to missing score")
 
         tolerances = {
-            'is_parent': 0.06,
-            'firstborn': 0.02,
+            'is_parent': 0.10,
+            'firstborn': 0.04,
         }
         control_cases = pd.merge_asof(treatment_cases, candidates, on=score_label, suffixes=('_treatment', ''), tolerance=tolerances[comparator_treatment or treatment], direction='nearest')
         control_cases = self.filter_na(control_cases, 'caseid')
