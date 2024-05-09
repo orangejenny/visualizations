@@ -30,7 +30,15 @@ class CESPanel(ParentsPoliticsPanel):
         # Duplicative with income and less granular, although it's linear in some sense
         #Demographic(name="income_quintile", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None, top_categories=None),
     ]
+    # For constructed demographics; these can probably be moved into normal Demographic.lower_bound and Demographic.upper_bound
+    _demographic_viz_boundaries = {
+        'age': (18, 40),
+        'income': (1, 17),
+        'pew_churatd': (1, 6),
+        'RUCC_2023': (1, 9),
+    }
     _demographic_viz_labels = {
+        'age': 'Age (18-40)',
         'employ': 'Employment',
         'educ': 'Education',
         'marstat': 'Marital Status',

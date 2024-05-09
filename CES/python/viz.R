@@ -1,7 +1,7 @@
 library(ggplot2)
 
 setwd('~/Documents/visualizations/CES/python')
-palette <- c("#0072B2", "#F0E442", "#009E73")
+palette <- c("#0072B2", "#B3257F", "#527200")
 
 ### Covariate visualization
 covariate_data <- tibble(
@@ -31,8 +31,8 @@ ggplot(covariate_data,
            color = as_factor(is_matched))) +
   geom_point(alpha = 0.5, size=3) +
   scale_y_continuous(limits=c(0, 100)) +
-  scale_colour_manual(values=palette) +
-  labs(x = "", y = "", color="group", title="Covariate comparison") +
+  scale_colour_manual(values=palette, guide = guide_legend(title = "")) +
+  labs(x = "", y = "", color="group", title="Matching: Covariate comparison") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle=90, hjust=1))
 
@@ -52,22 +52,20 @@ ggplot(panel_data) +
   geom_segment(aes(
     x=issue,
     xend=issue,
-    y=control_before,
-    yend=control_after,
-    color='control',
-    alpha = 0.7,
-  ), arrow = arrow(), size=2, lineend = 'round', linejoin = 'round') +
+    y=treatment_before,
+    yend=treatment_after,
+    color='parents',
+  ), arrow = arrow(length = unit(0.1, "inches")), size=1, lineend = 'round', linejoin = 'round', alpha = 0.6) +
   geom_segment(aes(
     x=issue,
     xend=issue,
-    y=treatment_before,
-    yend=treatment_after,
-    color='treatment',
-    alpha = 0.7,
-  ), arrow = arrow(), size=2, lineend = 'round', linejoin = 'round') +
-  scale_colour_manual(values=palette) +
-  scale_y_continuous(limits=c(0, 10)) +
-  labs(x = "", y = "", color="group", title="Comparison of attitude trends") +
+    y=control_before,
+    yend=control_after,
+    color='non-parents',
+  ), arrow = arrow(length = unit(0.1, "inches")), size=1, lineend = 'round', linejoin = 'round', alpha = 0.6) +
+  scale_colour_manual(values=palette, guide = guide_legend(title = "")) +
+  scale_y_continuous(limits=c(0, 10), breaks=c(0,10), labels=c('liberal', 'conservative')) +
+  labs(x = "", y = "", color="group", title="Panel: Comparing attitude changes, 2010-2012") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle=90, hjust=1))
 
@@ -101,9 +99,9 @@ matching_data <- read.csv('output/viz/matching_is_parent.csv')
 ggplot(matching_data,
        aes(x = as_factor(issue), y = value,
            color = as_factor(is_matched))) +
-  geom_point(alpha = 0.8, size=5) +
-  scale_y_continuous(limits=c(0, 10)) +
-  scale_colour_manual(values=palette) +
-  labs(x = "", y = "", color="group", title="Attitude comparison of treatment group and matched control group") +
+  geom_point(alpha = 0.6, size=5) +
+  scale_y_continuous(limits=c(0, 10), breaks=c(0,10), labels=c('liberal', 'conservative')) +
+  scale_colour_manual(values=palette, guide = guide_legend(title = "")) +
+  labs(x = "", y = "", color="group", title="Matching: Comparing 2012 attitudes of parents and non-parents") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle=90, hjust=1))

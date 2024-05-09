@@ -63,7 +63,7 @@ sample_1012['is_parent'] = waves_1012  # Treatment is is_parent, control is non-
 
 
 if _should_run("match"):
-    formula = 'C(gender) + C(race) + C(employ) + C(marstat) + pew_churatd + C(ownhome) + RUCC_2023 + C(division) + age + income'
+    formula = 'C(gender) + C(race) + C(employ) + C(marstat) + pew_churatd + C(ownhome) + RUCC_2023 + C(division) + income + age'
 
     for treatment in ces.treatments - {'new_child'}:
         ces.add_score(waves_1012, f"{treatment} ~ {formula}", label=f'{treatment}_score')

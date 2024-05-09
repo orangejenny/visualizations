@@ -49,7 +49,7 @@ class ParentsPoliticsApproachComparator():
             return
 
         (issue, metric) = self.ppp.parse_outcome(outcome)
-        normalized_substance = self.ppp.normalize_substance(issue, substance)
+        normalized_substance = self.ppp.normalize_diff(issue, substance)
         key = ComparatorKey(issue, metric, treatment, demo_desc)
         self.data[approach][key] = ComparatorValue(substance, normalized_substance, pvalue)
 
@@ -131,6 +131,7 @@ class ParentsPoliticsPanel():
     waves = []
 
     _demographics = []
+    _demographic_viz_boundaries = {}
     _demographic_viz_labels = {}
     _demographic_category_names = {}
     _issue_viz_labels = {}
@@ -139,12 +140,25 @@ class ParentsPoliticsPanel():
     def demographics(self):
         return {d.name: d for d in self._demographics}
 
-    def demographic_viz_label(self, dname):
+    def _parse_viz_demographic(self, dname):
         category = None
         match = re.match(r'^(\w+)_([1-9])$', dname)
         if match:
             dname = match.group(1)
             category = match.group(2)
+        return (dname, category)
+
+    def demographic_viz_boundaries(self, dname):
+        (dname, category) = self._parse_viz_demographic(dname)
+        if dname in self._demographic_viz_boundaries:
+            return self._demographic_viz_boundaries[dname]
+        elif category:
+            return (0, 100)
+        demo = self.demographics[dname]
+        return (demo.lower_bound, demo.upper_bound)
+
+    def demographic_viz_label(self, dname):
+        (dname, category) = self._parse_viz_demographic(dname)
         label = self._demographic_viz_labels.get(dname, dname.title())
         if category is not None:
             label += ': % ' + self._demographic_category_names.get(dname, {}).get(int(category), '?')
@@ -291,10 +305,20 @@ class ParentsPoliticsPanel():
                 return (outcome.replace(f"_{m}", ""), m)
         raise ParentsPoliticsPanelException(f"Could not parse outcome {outcome}")
 
-    def normalize_substance(self, issue, amount):
+    def normalize_diff(self, issue, amount):
         (lower_bound, upper_bound) = self.ISSUE_BOUNDS[issue]
         range_size = upper_bound - lower_bound
         return round(amount * 100 / range_size, 1)
+
+    def normalize_issue(self, issue, value):
+        (lower_bound, upper_bound) = self.ISSUE_BOUNDS[issue]
+        return self.normalize_value(value, lower_bound, upper_bound) / 10
+
+    def normalize_value(self, value, lower_bound, upper_bound):
+        range_size = upper_bound - lower_bound
+        value -= lower_bound
+        value = round(value * 100 / range_size, 1)
+        return value
 
     def log_matching(self, matching_output, description='', viz_filename=None):
         (outcomes, covariates, messages) = matching_output
@@ -311,7 +335,7 @@ class ParentsPoliticsPanel():
                 paper_outcomes['control'].append(round(row['control'], 2))
                 paper_outcomes['treatment'].append(round(row['treatment'], 2))
                 paper_outcomes['diff'].append(round(row['diff'], 2))
-                paper_outcomes['norm'].append(self.normalize_substance(issue, row['diff']))
+                paper_outcomes['norm'].append(self.normalize_diff(issue, row['diff']))
                 paper_outcomes['pvalue'].append(row['pvalue'])
 
         paper_outcomes = pd.DataFrame(paper_outcomes)
@@ -322,8 +346,8 @@ class ParentsPoliticsPanel():
             headers = ['issue', 'value', 'is_matched']
             csv_rows = []
             for row in paper_outcomes.itertuples():
-                csv_rows.append([self.issue_viz_label(row.issue), row.control, "control"])
-                csv_rows.append([self.issue_viz_label(row.issue), row.treatment, "treatment"])
+                csv_rows.append([self.issue_viz_label(row.issue), self.normalize_issue(row.issue, row.treatment), "parents"])
+                csv_rows.append([self.issue_viz_label(row.issue), self.normalize_issue(row.issue, row.control), "matched non-parents"])
             self._log_viz_data(viz_filename, headers, csv_rows)
 
             # Viz for covariates
@@ -333,7 +357,12 @@ class ParentsPoliticsPanel():
             for label in covariates.columns[1:]:
                 values = covariates[label].to_list()
                 for group, value, in zip(groups, values):
-                    csv_rows.append([self.demographic_viz_label(label), value, group])
+                    (lower_bound, upper_bound) = self.demographic_viz_boundaries(label)
+                    csv_rows.append([
+                        self.demographic_viz_label(label),
+                        self.normalize_value(value, lower_bound, upper_bound),
+                        group
+                    ])
             self._log_viz_data('covariates_' + viz_filename, headers, csv_rows)
 
     def log_panel(self, issues_and_messages, description='', viz_filename=None):
@@ -352,25 +381,26 @@ class ParentsPoliticsPanel():
                 paper_issues[f'{metric}_b'].append(row[f'{metric}_b'])
                 paper_issues[f'{metric}-'].append(row[f'{metric}-'])
                 paper_issues[f'{metric}*'].append(row[f'{metric}*'])
-                paper_issues[f'{metric}%'].append(self.normalize_substance(issue, row[f'{metric}-']))
+                paper_issues[f'{metric}%'].append(self.normalize_diff(issue, row[f'{metric}-']))
 
         paper_issues = pd.DataFrame(paper_issues)
         self.log_for_paper(paper_issues, description)
 
         if viz_filename:
-            cols = ['issue', 'before_a', 'after_a', 'delta_a', 'before_b', 'after_b', 'delta_b']
+            cols = ['issue', 'before_a', 'after_a', 'before_b', 'after_b']
             renames = {
                 'before_a': 'control_before',
                 'after_a': 'control_after',
-                'delta_a': 'control_delta',
                 'before_b': 'treatment_before',
                 'after_b': 'treatment_after',
-                'delta_b': 'treatment_delta',
             }
             headers = [renames.get(c, c) for c in cols]
             csv_rows = []
             for row in paper_issues.itertuples():
-                csv_rows.append([self.issue_viz_label(row.issue)] + [getattr(row, c) for c in cols[1:]])
+                csv_rows.append([self.issue_viz_label(row.issue)] + [
+                    self.normalize_issue(row.issue, getattr(row, c))
+                    for c in cols[1:]
+                ])
             self._log_viz_data(viz_filename, headers, csv_rows)
 
     def _load_panel(self):
@@ -664,8 +694,8 @@ class ParentsPoliticsPanel():
                 expanded_covariates.append(covariate)
         covariate_means = {k: [] for k in ['group'] + expanded_covariates}
         if covariates_for_viz:
-            covariate_means = self.add_covariate_means(candidates, covariate_means, covariates_for_viz, 'candidates')
-            covariate_means = self.add_covariate_means(treatment_cases, covariate_means, covariates_for_viz, 'treatment')
+            covariate_means = self.add_covariate_means(treatment_cases, covariate_means, covariates_for_viz, 'parents')
+            covariate_means = self.add_covariate_means(candidates, covariate_means, covariates_for_viz, 'all non-parents')
 
         # Match up treatment and control groups
         treatment_cases.sort_values(score_label, inplace=True)
@@ -687,7 +717,7 @@ class ParentsPoliticsPanel():
         control_cases = pd.merge_asof(treatment_cases, candidates, on=score_label, suffixes=('_treatment', ''), tolerance=tolerances[comparator_treatment or treatment], direction='nearest')
         control_cases = self.filter_na(control_cases, 'caseid')
         if covariates_for_viz:
-            covariate_means = self.add_covariate_means(treatment_cases, covariate_means, covariates_for_viz, 'control')
+            covariate_means = self.add_covariate_means(treatment_cases, covariate_means, covariates_for_viz, 'matched non-parents')
             covariate_means = pd.DataFrame(covariate_means)
         treatment_cases.drop([col for col in covariates_for_viz], axis=1, inplace=True)
         control_cases.drop([col for col in covariates_for_viz], axis=1, inplace=True)
