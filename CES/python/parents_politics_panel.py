@@ -351,6 +351,7 @@ class ParentsPoliticsPanel():
             self._log_viz_data(viz_filename, headers, csv_rows)
 
             # Viz for covariates
+            self.log_for_paper(covariates, "Covariate means")
             headers = ['demographic', 'value', 'is_matched']
             csv_rows = []
             groups = covariates['group'].to_list()
@@ -689,7 +690,7 @@ class ParentsPoliticsPanel():
             demo = self.demographics[covariate]
             if demo.dtype == DemographicType.CATEGORICAL:
                 if demo.top_categories:
-                    expanded_covariates.extend([f'{covariate}_{c}' for c in demo.top_categories])
+                    expanded_covariates.extend([f'{covariate}_{c}' for c in reversed(demo.top_categories)])
             else:
                 expanded_covariates.append(covariate)
         covariate_means = {k: [] for k in ['group'] + expanded_covariates}

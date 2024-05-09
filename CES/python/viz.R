@@ -62,11 +62,14 @@ covariate_dot_plot <- function(treatment) {
          aes(x = as_factor(demographic), y = value,
              color = as_factor(is_matched))) +
     geom_point(alpha = 0.5, size=3) +
+    scale_x_discrete(limits=levels(as_factor(covariate_data$demographic))) +
     scale_y_continuous(limits=c(0, 100)) +
     scale_colour_manual(values=palette, guide = guide_legend(title = "")) +
     labs(x = "", y = "", color="group", title=titles[treatment]) +
+    coord_flip() +
     theme_minimal() +
-    theme(axis.text.x = element_text(angle=90, hjust=1))
+    theme(axis.text.x = element_text(hjust=1)) +
+    theme(legend.position = "bottom")
 }
 covariate_dot_plot("firstborn")
 covariate_dot_plot("is_parent")
@@ -76,7 +79,7 @@ panel_arrows = function(treatment) {
   panel_data <- read.csv(sprintf("output/viz/panel_%s.csv", treatment))
   titles = c(
     "firstborn" = "Panel: Attitude changes, 2010-2012, first-time parents",
-    "new_child" = "Panel: Attitude changes, 2010-2012, recent parents"
+    "new_child" = "Panel: Attitude changes, 2010-2012, parents with a recent birth"
   )
   ggplot(panel_data) +
     geom_segment(aes(
@@ -94,10 +97,13 @@ panel_arrows = function(treatment) {
       color='non-parents',
     ), arrow = arrow(length = unit(0.1, "inches")), size=1, lineend = 'round', linejoin = 'round', alpha = 0.6) +
     scale_colour_manual(values=palette, guide = guide_legend(title = "")) +
+    scale_x_discrete(limits=rev(levels(as_factor(panel_data$issue)))) +
     scale_y_continuous(limits=c(0, 10), breaks=c(0,10), labels=c('liberal', 'conservative')) +
     labs(x = "", y = "", color="group", title=titles[treatment]) +
+    coord_flip() +
     theme_minimal() +
-    theme(axis.text.x = element_text(angle=90, hjust=1))
+    theme(axis.text.x = element_text(hjust=1)) +
+    theme(legend.position = "bottom")
 }
 panel_arrows("firstborn")
 panel_arrows("new_child")
@@ -113,11 +119,14 @@ matching_dot_plot <- function(treatment) {
          aes(x = as_factor(issue), y = value,
              color = as_factor(is_matched))) +
     geom_point(alpha = 0.6, size=5) +
+    scale_x_discrete(limits=rev(levels(as_factor(matching_data$issue)))) +
     scale_y_continuous(limits=c(0, 10), breaks=c(0,10), labels=c('liberal', 'conservative')) +
     scale_colour_manual(values=palette, guide = guide_legend(title = "")) +
     labs(x = "", y = "", color="group", title=titles[treatment]) +
+    coord_flip() +
     theme_minimal() +
-    theme(axis.text.x = element_text(angle=90, hjust=1))
+    theme(axis.text.x = element_text(hjust=1)) +
+    theme(legend.position = "bottom")
 }
 matching_dot_plot("firstborn")
 matching_dot_plot("is_parent")
