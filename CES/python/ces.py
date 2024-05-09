@@ -3,28 +3,63 @@ import pandas as pd
 
 from scipy.stats import zscore
 
-from parents_politics_panel import ParentsPoliticsPanel
+from parents_politics_panel import Demographic, DemographicType, ParentsPoliticsPanel
 
 class CESPanel(ParentsPoliticsPanel):
     waves = [10, 12, 14]
     treatments = {'firstborn', 'new_child', 'is_parent'}
-    demographics_with_bounds = [
-        ('gender', 1, 2),
-        ('race', 1, 8),
-        ('employ', 1, 8),
-        #('investor', 1, 2),
-        ('educ', 1, 6),
-        ('marstat', 1, 6),
-        ('pew_churatd', 1, 6),  # There are other religion questions, but this one is used in CES's own sample matching
-        ('ownhome', 1, 3),
+    # These do change. Not gender, but even race, and definitely employment, marital status, education, church, even division.
+    _demographics = [
+        Demographic(name="gender", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=2, top_categories=[1,2]),
+        Demographic(name="race", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=8, top_categories=[1,2,3]),
+        Demographic(name="employ", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=8, top_categories=[1,2,4]),
+        #Demographic(name="investor", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=2, top_categories=None),
+        Demographic(name="educ", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=1, upper_bound=6, top_categories=None),
+        Demographic(name="marstat", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=6, top_categories=[1,5]),
+        # There are other religion questions, but this one is used in CES's own sample matching
+        Demographic(name="pew_churatd", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=1, upper_bound=6, top_categories=None),
+        Demographic(name="ownhome", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=3, top_categories=[1,2]),
 
         # constructed
-        ('RUCC_2023', None, None),  # From USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
-        ('division', None, None),  # Census division: https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
-        ('age', None, None),
-        ('income', None, None),
-        #('income_quintile', None, None),   # Duplicative with income and less granular
+        # From USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
+        Demographic(name="RUCC_2023", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None, top_categories=None),
+        # Census division: https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
+        Demographic(name="division", dtype=DemographicType.CATEGORICAL, lower_bound=None, upper_bound=None, top_categories=None),
+        Demographic(name="age", dtype=DemographicType.CONTINUOUS, lower_bound=None, upper_bound=None, top_categories=None),
+        Demographic(name="income", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None, top_categories=None),
+        # Duplicative with income and less granular, although it's linear in some sense
+        #Demographic(name="income_quintile", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=None, upper_bound=None, top_categories=None),
     ]
+    # For constructed demographics; these can probably be moved into normal Demographic.lower_bound and Demographic.upper_bound
+    _demographic_viz_boundaries = {
+        'age': (18, 40),
+        'income': (1, 17),
+        'pew_churatd': (1, 6),
+        'RUCC_2023': (1, 9),
+    }
+    _demographic_viz_labels = {
+        'age': 'Age (18-40)',
+        'employ': 'Employment',
+        'educ': 'Education',
+        'marstat': 'Marital Status',
+        'pew_churatd': 'Religiosity',
+        'ownhome': 'Homeowner',
+        'RUCC_2023': 'Urbanization',
+    }
+    _demographic_category_names = {
+        "gender": {1: 'male', 2: 'female'},
+        "race": {1: 'white', 2: 'black', 3: 'hispanic'},
+        "employ": {1: 'full-time', 2: 'part-time', 4: 'unemployed'},
+        "marstat": {1: 'married', 5: 'single'},
+        "ownhome": {1: 'own', 2: 'rent'},
+    }
+    _issue_viz_labels = {
+        '_ideo_composite': 'Ideology',
+        'aff_action': 'Affirmative action',
+        'budget_composite': 'Budget priorities',
+        'gay_composite': 'Gay rights',
+        'guns': 'Gun control',
+    }
 
     def _load_panel(cls):
         return pd.read_stata("~/Documents/visualizations/midterm/CCES_Panel_Full3waves_VV_V4.dta", convert_categoricals=False)  # n=9500
@@ -100,7 +135,8 @@ class CESPanel(ParentsPoliticsPanel):
         df = df.assign(age=lambda x: 2000 + x.start_wave - x.birthyr_10)
         df = self.nan_out_of_bounds(df, 'age', 1, 200)
         df['age_zscore'] = zscore(df['age'], nan_policy='omit')
-        return df
+        df = df.loc[np.less_equal(df['age'], 40),:]
+        return df.copy()
 
     def _recode_issues(self, df):
         # Recode a few columns to streamline later calculations
@@ -137,20 +173,20 @@ class CESPanel(ParentsPoliticsPanel):
         return df
 
     def _consolidate_demographics(self, df):
-        for demo, lower_bound, upper_bound in self.demographics_with_bounds:
-            if lower_bound is None and upper_bound is None:
+        for dname, demographic in self.demographics.items():
+            if demographic.lower_bound is None and demographic.upper_bound is None:
                 continue
 
-            old_labels = [f'{demo}_{wave}' for wave in self.waves]
+            old_labels = [f'{dname}_{wave}' for wave in self.waves]
             for old_label in old_labels:
-                df = self.nan_out_of_bounds(df, old_label, lower_bound, upper_bound)
+                df = self.nan_out_of_bounds(df, old_label, demographic.lower_bound, demographic.upper_bound)
 
             # Use "after" data if available, else use most recent value
-            df = df.assign(**{demo: lambda x: np.select(
+            df = df.assign(**{dname: lambda x: np.select(
                 [x.end_wave == w for w in self.end_waves],
                 [np.where(
-                    pd.notna(x[f'{demo}_{w}']),
-                    x[f'{demo}_{w}'],
+                    pd.notna(x[f'{dname}_{w}']),
+                    x[f'{dname}_{w}'],
                     x[old_labels].bfill(axis=1).iloc[:, 0]
                 ) for i, w in enumerate(self.end_waves)],
             )})
@@ -158,15 +194,20 @@ class CESPanel(ParentsPoliticsPanel):
         return df
 
     def add_rural_urban(self, df):
-        codes = pd.read_csv("~/Documents/visualizations/midterm/ruralurbancontinuumcodes2023/rural_urban.csv")
+        df = df.assign(countyfips_14=np.logical_or(df['countyfips_14'], 0))
+        df = df.astype({
+            'countyfips_10': 'int64',
+            'countyfips_12': 'int64',
+            'countyfips_14': 'int64',
+        })
         df = df.assign(
             countyfips_before=lambda x:np.select(
                 [x.start_wave == w for w in self.start_waves],
                 [x[f'countyfips_{w}'] for w in self.start_waves],
             )
         )
-        df = df.astype({'countyfips_before': 'int64'})
-        df = df.merge(codes, how='left', left_on='countyfips_before', right_on='FIPS')
+        codes = pd.read_csv("~/Documents/visualizations/midterm/ruralurbancontinuumcodes2023/rural_urban.csv")
+        codes = codes.loc[:,['FIPS', 'State', 'RUCC_2023']] #, 'Description']]
         # https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
         states = [
             ['CT', 'ME', 'MA', 'NH', 'RI', 'VT'],
@@ -181,7 +222,15 @@ class CESPanel(ParentsPoliticsPanel):
         ]
         divisions = pd.DataFrame(data=[(a, i + 1) for i, abbreviations in enumerate(states) for a in abbreviations])
         divisions.rename(columns={0: 'state', 1: 'division'}, inplace=True)
-        df = df.merge(divisions, how='left', left_on='State', right_on='state')
+
+        divisions = divisions.merge(codes, how='inner', left_on='state', right_on='State')
+        df = df.merge(codes, how='left', left_on='countyfips_before', right_on='FIPS')
+
+        divisions.drop(['state', 'State'], axis=1, inplace=True)
+        df = df.merge(divisions, how='left', left_on='countyfips_10', right_on='FIPS', suffixes=('', '_10'))
+        df = df.merge(divisions, how='left', left_on='countyfips_12', right_on='FIPS', suffixes=('', '_12'))
+        df = df.merge(divisions, how='left', left_on='countyfips_14', right_on='FIPS', suffixes=('', '_14'))
+
         return df
 
     def add_income_brackets(self, df):
@@ -350,7 +399,7 @@ class CESPanel(ParentsPoliticsPanel):
         df = self._add_issue(df, 'budget_composite_20XX', 'budget_composite', 1, 2)
         df = self._add_issue(df, 'climate_composite_20XX', 'climate_composite', 1, 5)
         df = self._add_issue(df, 'gay_composite_20XX', 'gay_composite', 1, 2)
-        df = self._add_issue(df, 'ideo_composite_20XX', 'ideo_composite', 6, 35)
+        df = self._add_issue(df, '_ideo_composite_20XX', '_ideo_composite', 6, 35)
         df = self._add_issue(df, 'military_composite_20XX', 'military_composite', 1, 2)
         df = self._add_issue(df, 'immigration_composite_20XX', 'immigration_composite', 1, 2)
 
@@ -401,7 +450,7 @@ class CESPanel(ParentsPoliticsPanel):
 
     def add_ideo_composite(self, df, year):
         # Ideology composite that combines ideo and pid
-        df[f'ideo_composite_20{year}'] = (df[f'ideo5_{year}'] * 7 + df[f'pid7_{year}'] * 5) / 2  # ~5-point composite scale
+        df[f'_ideo_composite_20{year}'] = (df[f'ideo5_{year}'] * 7 + df[f'pid7_{year}'] * 5) / 2  # ~5-point composite scale
         return df
 
     def add_immigration_composite(self, df):

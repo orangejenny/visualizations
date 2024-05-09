@@ -1,3 +1,4 @@
+import csv
 import numpy as np
 import os
 import pandas as pd
@@ -6,13 +7,18 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 
 from collections import defaultdict, namedtuple
+from enum import Enum
 from datetime import datetime
 from itertools import combinations
 from pandas import DataFrame
 from statsmodels.stats.weightstats import ttest_ind
 
+
+DemographicType = Enum('DemographicType', ['CONTINUOUS', 'CATEGORICAL', 'ORDERED_CATEGORICAL'])
+
+Demographic = namedtuple('Demographic', ['name', 'dtype', 'upper_bound', 'lower_bound', 'top_categories'])
 Result = namedtuple('Result', ['statistic', 'df', 'pvalue'])
-ComparatorKey = namedtuple('ComparatorKey', ['issue', 'metric', 'treatment', 'age_limit', 'demo_desc'])
+ComparatorKey = namedtuple('ComparatorKey', ['issue', 'metric', 'treatment', 'demo_desc'])
 ComparatorValue = namedtuple('ComparatorValue', ['diff', 'norm', 'pvalue'])
 
 
@@ -35,17 +41,21 @@ class ParentsPoliticsApproachComparator():
         self.comparison = None
         self.core_comparison = None
 
-    def add(self, approach, outcome, treatment, substance, pvalue, age_limit=None, demo_desc=None):
+    def add(self, approach, outcome, treatment, substance, pvalue, demo_desc=None):
         assert approach in self.approaches.keys(), f"{approach} is not an approach"
 
+        # Matching doesn't use new_child
+        if treatment == 'new_child':
+            return
+
         (issue, metric) = self.ppp.parse_outcome(outcome)
-        normalized_substance = self.ppp.normalize_substance(issue, substance)
-        key = ComparatorKey(issue, metric, treatment, age_limit, demo_desc)
+        normalized_substance = self.ppp.normalize_diff(issue, substance)
+        key = ComparatorKey(issue, metric, treatment, demo_desc)
         self.data[approach][key] = ComparatorValue(substance, normalized_substance, pvalue)
 
-    def set_smallest_n(self, approach, outcome, treatment, smallest_n, age_limit=None, demo_desc=None):
+    def set_smallest_n(self, approach, outcome, treatment, smallest_n, demo_desc=None):
         (issue, metric) = self.ppp.parse_outcome(outcome)
-        key = ComparatorKey(issue, metric, treatment, age_limit, demo_desc)
+        key = ComparatorKey(issue, metric, treatment, demo_desc)
         self.smallest_n[key] = smallest_n
 
     def get_comparison(self):
@@ -55,7 +65,6 @@ class ParentsPoliticsApproachComparator():
                 'issue': [k.issue for k in keys],
                 'metric': [k.metric for k in keys],
                 'treatment': [k.treatment for k in keys],
-                'age cohort': [f"under {k.age_limit}" if k.age_limit else "--" for k in keys],
                 'demographic': [k.demo_desc if k.demo_desc else "--" for k in keys],
                 'smallest_n': [self.smallest_n.get(k, '?') for k in keys],
             }
@@ -79,14 +88,10 @@ class ParentsPoliticsApproachComparator():
         if self.core_comparison is None:
             full = self.get_comparison()
             core = full.loc[
-                np.logical_and(
-                    full['age cohort'] == "under 40",
-                    #np.logical_and(full['demographic'] == "--", full['age cohort'] == "under 40"),
-                    np.logical_or(full['treatment'] == 'firstborn', full['treatment'] == 'is_parent'),
-                )
+                np.logical_or(full['treatment'] == 'firstborn', full['treatment'] == 'is_parent')
             ,:].copy()
 
-            key_columns = ['issue', 'treatment', 'age cohort', 'demographic']
+            key_columns = ['issue', 'treatment', 'demographic']
             adata = {}
             acols = {}
             for approach, core_metric in self.approaches.items():
@@ -124,7 +129,43 @@ class ParentsPoliticsPanel():
 
     METRICS = ['before', 'after', 'delta', 'delta_abs', 'persists', 'persists_abs']
     waves = []
-    demographics_with_bounds = []
+
+    _demographics = []
+    _demographic_viz_boundaries = {}
+    _demographic_viz_labels = {}
+    _demographic_category_names = {}
+    _issue_viz_labels = {}
+
+    @property
+    def demographics(self):
+        return {d.name: d for d in self._demographics}
+
+    def _parse_viz_demographic(self, dname):
+        category = None
+        match = re.match(r'^(\w+)_([1-9])$', dname)
+        if match:
+            dname = match.group(1)
+            category = match.group(2)
+        return (dname, category)
+
+    def demographic_viz_boundaries(self, dname):
+        (dname, category) = self._parse_viz_demographic(dname)
+        if dname in self._demographic_viz_boundaries:
+            return self._demographic_viz_boundaries[dname]
+        elif category:
+            return (0, 100)
+        demo = self.demographics[dname]
+        return (demo.lower_bound, demo.upper_bound)
+
+    def demographic_viz_label(self, dname):
+        (dname, category) = self._parse_viz_demographic(dname)
+        label = self._demographic_viz_labels.get(dname, dname.title())
+        if category is not None:
+            label += ': % ' + self._demographic_category_names.get(dname, {}).get(int(category), '?')
+        return label
+
+    def issue_viz_label(self, issue):
+        return self._issue_viz_labels.get(issue, issue.replace('_composite', '').title())
 
     @property
     def start_waves(self):
@@ -135,19 +176,24 @@ class ParentsPoliticsPanel():
         return self.waves[1:]
 
     @property
-    def demographics(self):
-        return [d[0] for d in self.demographics_with_bounds]
+    def VIZ_DIR(self):
+        return os.path.join(self.OUTPUT_DIR, 'viz')
 
-    def __init__(self, output_suffix=''):
+    def __init__(self, output_suffix='', no_output=False):
         self.ISSUES = set()
         self.ISSUE_BOUNDS = {}
 
-        if output_suffix:
-            self.OUTPUT_DIR = f'{self.OUTPUT_DIR}_{output_suffix}'
-        if not os.path.isdir(self.OUTPUT_DIR):
-            print("Making directory " + self.OUTPUT_DIR)
-            os.mkdir(self.OUTPUT_DIR)
-        self._truncate_output()
+        self.no_output = no_output
+        if not self.no_output:
+            if output_suffix:
+                self.OUTPUT_DIR = f'{self.OUTPUT_DIR}_{output_suffix}'
+            if not os.path.isdir(self.OUTPUT_DIR):
+                print("Making directory " + self.OUTPUT_DIR)
+                os.mkdir(self.OUTPUT_DIR)
+            if not os.path.isdir(self.VIZ_DIR):
+                print("Making directory " + self.VIZ_DIR)
+                os.mkdir(self.VIZ_DIR)
+            self._truncate_output()
 
         self.panel = self._load_panel()
         self.paired_waves = self._build_paired_waves(self._trimmed_panel())
@@ -192,8 +238,16 @@ class ParentsPoliticsPanel():
     def log_verbose(self, data, description=''):
         self._output('all.log', data, description)
 
-    def _log_for_paper(self, data, description=''):
+    def log_for_paper(self, data, description=''):
         self._output('paper.log', data, description)
+
+    def _log_viz_data(self, filename, headers, rows):
+        filename = os.path.join(self.VIZ_DIR, f'{filename}.csv')
+        with open(filename, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(headers)
+            for row in rows:
+                writer.writerow(row)
 
     def log_findings(self, data, description=''):
         self._output('all.log', data, description)
@@ -234,6 +288,8 @@ class ParentsPoliticsPanel():
         return data
 
     def _output(self, filename, data, description=''):
+        if self.no_output:
+            return
         if type(data) == pd.DataFrame:
             data = data.to_string(max_rows=100)
         else:
@@ -249,13 +305,23 @@ class ParentsPoliticsPanel():
                 return (outcome.replace(f"_{m}", ""), m)
         raise ParentsPoliticsPanelException(f"Could not parse outcome {outcome}")
 
-    def normalize_substance(self, issue, amount):
+    def normalize_diff(self, issue, amount):
         (lower_bound, upper_bound) = self.ISSUE_BOUNDS[issue]
         range_size = upper_bound - lower_bound
         return round(amount * 100 / range_size, 1)
 
-    def log_matching(self, outcomes_and_messages, description=''):
-        (outcomes, messages) = outcomes_and_messages
+    def normalize_issue(self, issue, value):
+        (lower_bound, upper_bound) = self.ISSUE_BOUNDS[issue]
+        return self.normalize_value(value, lower_bound, upper_bound) / 10
+
+    def normalize_value(self, value, lower_bound, upper_bound):
+        range_size = upper_bound - lower_bound
+        value -= lower_bound
+        value = round(value * 100 / range_size, 1)
+        return value
+
+    def log_matching(self, matching_output, description='', viz_filename=None):
+        (outcomes, covariates, messages) = matching_output
         if messages:
             description = description + "\n" + "\n".join(messages)
 
@@ -269,26 +335,74 @@ class ParentsPoliticsPanel():
                 paper_outcomes['control'].append(round(row['control'], 2))
                 paper_outcomes['treatment'].append(round(row['treatment'], 2))
                 paper_outcomes['diff'].append(round(row['diff'], 2))
-                paper_outcomes['norm'].append(self.normalize_substance(issue, row['diff']))
+                paper_outcomes['norm'].append(self.normalize_diff(issue, row['diff']))
                 paper_outcomes['pvalue'].append(row['pvalue'])
 
-        self._log_for_paper(pd.DataFrame(paper_outcomes), description)
+        paper_outcomes = pd.DataFrame(paper_outcomes)
+        self.log_for_paper(paper_outcomes, description)
 
-    def log_panel(self, issues, description=''):
+        if viz_filename:
+            # Viz for results
+            headers = ['issue', 'value', 'is_matched']
+            csv_rows = []
+            for row in paper_outcomes.itertuples():
+                csv_rows.append([self.issue_viz_label(row.issue), self.normalize_issue(row.issue, row.treatment), "parents"])
+                csv_rows.append([self.issue_viz_label(row.issue), self.normalize_issue(row.issue, row.control), "matched non-parents"])
+            self._log_viz_data(viz_filename, headers, csv_rows)
+
+            # Viz for covariates
+            self.log_for_paper(covariates, "Covariate means")
+            headers = ['demographic', 'value', 'is_matched']
+            csv_rows = []
+            groups = covariates['group'].to_list()
+            for label in covariates.columns[1:]:
+                values = covariates[label].to_list()
+                for group, value, in zip(groups, values):
+                    (lower_bound, upper_bound) = self.demographic_viz_boundaries(label)
+                    csv_rows.append([
+                        self.demographic_viz_label(label),
+                        self.normalize_value(value, lower_bound, upper_bound),
+                        group
+                    ])
+            self._log_viz_data('covariates_' + viz_filename, headers, csv_rows)
+
+    def log_panel(self, issues_and_messages, description='', viz_filename=None):
+        (issues, messages) = issues_and_messages
+        if messages:
+            description = description + "\n" + "\n".join(messages)
+
         self.log_findings(issues, description)
 
         paper_issues = defaultdict(list)
         for index, row in issues.iterrows():
             issue = row['issue']
             paper_issues['issue'].append(issue)
-            for metric in ['delta', 'persists']:
+            for metric in ['before', 'after', 'delta', 'persists']:
                 paper_issues[f'{metric}_a'].append(row[f'{metric}_a'])
                 paper_issues[f'{metric}_b'].append(row[f'{metric}_b'])
                 paper_issues[f'{metric}-'].append(row[f'{metric}-'])
                 paper_issues[f'{metric}*'].append(row[f'{metric}*'])
-                paper_issues[f'{metric}%'].append(self.normalize_substance(issue, row[f'{metric}-']))
+                paper_issues[f'{metric}%'].append(self.normalize_diff(issue, row[f'{metric}-']))
 
-        self._log_for_paper(pd.DataFrame(paper_issues), description)
+        paper_issues = pd.DataFrame(paper_issues)
+        self.log_for_paper(paper_issues, description)
+
+        if viz_filename:
+            cols = ['issue', 'before_a', 'after_a', 'before_b', 'after_b']
+            renames = {
+                'before_a': 'control_before',
+                'after_a': 'control_after',
+                'before_b': 'treatment_before',
+                'after_b': 'treatment_after',
+            }
+            headers = [renames.get(c, c) for c in cols]
+            csv_rows = []
+            for row in paper_issues.itertuples():
+                csv_rows.append([self.issue_viz_label(row.issue)] + [
+                    self.normalize_issue(row.issue, getattr(row, c))
+                    for c in cols[1:]
+                ])
+            self._log_viz_data(viz_filename, headers, csv_rows)
 
     def _load_panel(self):
         raise NotImplementedError()
@@ -321,9 +435,6 @@ class ParentsPoliticsPanel():
 
     def filter_dummy(self, df, dummy):
         return df.loc[df[dummy] == 1,:].copy()
-
-    def filter_age(self, df, age):
-        return df.loc[np.less_equal(df['age'], age),:].copy()
 
     def filter_demographic(self, df, label, value):
         return df.loc[df[label] == value,:].copy()
@@ -368,23 +479,28 @@ class ParentsPoliticsPanel():
             return '*'
         return ''
 
-    def all_t_test_pvalues(self, df, demographic_label, age_limit=None, comparator_treatment=None, comparator_desc=None, **test_kwargs):
+    def all_t_test_pvalues(self, df, demographic_label, comparator_treatment=None, comparator_desc=None, **test_kwargs):
+        messages = []
+        a_value = test_kwargs.get('a_value', 0)
+        b_value = test_kwargs.get('b_value', 1)
+        a_count = len(self.filter_demographic(df, demographic_label, a_value))
+        b_count = len(self.filter_demographic(df, demographic_label, b_value))
+        verified = a_count + b_count == len(df)
+        messages.append(f"{demographic_label}={a_value}, n={a_count}; {demographic_label}={b_value}, n={b_count}; reasonable={verified}")
+
         issues = list(self.ISSUES)
         issues.sort()
         all_results = pd.DataFrame(data={'issue': issues})
         for metric in self.METRICS:
-            issue_results = self.t_tests(df, metric, demographic_label, age_limit=age_limit,
+            issue_results = self.t_tests(df, metric, demographic_label,
                                          comparator_treatment=comparator_treatment, comparator_desc=comparator_desc, **test_kwargs)
             all_results = all_results.merge(issue_results.loc[:,['issue', 'a', 'b', 'diff', 'pvalue']], on='issue')
             all_results.rename(columns={'diff': f'{metric}-', 'pvalue': f'{metric}*', 'a': f'{metric}_a', 'b': f'{metric}_b'}, inplace=True)
 
-        return all_results
+        return (all_results, messages)
 
-    def t_tests(self, df, metric, demographic_label, a_value=0, b_value=1, age_limit=None, do_weight=True,
+    def t_tests(self, df, metric, demographic_label, a_value=0, b_value=1, do_weight=True,
                 comparator_treatment=None, comparator_desc=None):
-        if age_limit is not None:
-            df = self.filter_age(df, age_limit)
-
         results = {
             'metric': [],
             'a': [],
@@ -420,11 +536,9 @@ class ParentsPoliticsPanel():
 
             if 'persist' not in metric:
                 self.comparator.set_smallest_n(self.comparator.PANEL, label, comparator_treatment or demographic_label,
-                                               min([len(a_values), len(b_values)]),
-                                               age_limit=age_limit, demo_desc=comparator_desc)
+                                               min([len(a_values), len(b_values)]), demo_desc=comparator_desc)
                 self.comparator.add(self.comparator.PANEL, label, comparator_treatment or demographic_label,
-                                    results['diff'][-1], results['pvalue'][-1],
-                                    age_limit=age_limit, demo_desc=comparator_desc)
+                                    results['diff'][-1], results['pvalue'][-1], demo_desc=comparator_desc)
 
         df = DataFrame.from_dict(results)
         df.sort_values('metric', inplace=True)
@@ -436,6 +550,8 @@ class ParentsPoliticsPanel():
         group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), ['weight', issue_label]]
         if group_a.empty or group_b.empty:
             (statistic, pvalue, df) = (np.nan, np.nan, np.nan)
+        elif np.var(group_a[issue_label]) == 0 or np.var(group_b[issue_label]) == 0:  # can happen in very small groups
+           (statistic, pvalue, df) = (np.nan, np.nan, np.nan)
         else:
             (statistic, pvalue, df) = ttest_ind(group_a[issue_label], group_b[issue_label],
                                                 usevar='unequal',
@@ -445,9 +561,7 @@ class ParentsPoliticsPanel():
     #####################
     # Summary functions #
     #####################
-    def summarize_all_issues(self, df, group_by_labels, age_limit=None, do_weight=True):
-        if age_limit is not None:
-            df = self.filter_age(df, age_limit)
+    def summarize_all_issues(self, df, group_by_labels, do_weight=True):
         if type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
         all_issues = pd.DataFrame({k: [] for k in ['issue'] + group_by_labels + self.METRICS})
@@ -479,7 +593,7 @@ class ParentsPoliticsPanel():
         total = len(df)
         rates = defaultdict(list)
 
-        for demographic in self.demographics:
+        for demographic in self.demographics.keys():
             missing = len(df.loc[np.isnan(df[demographic]),:])
             rates['demographic'].append(demographic)
             rates['rate'].append(str(round(missing * 100 / total, 2)) + '%')
@@ -500,17 +614,27 @@ class ParentsPoliticsPanel():
         elif type(group_by_labels) == type(''):
             group_by_labels = [group_by_labels]
 
-        summary = df.loc[:,['weight'] + group_by_labels + columns].copy()
-        if not do_weight:
-            summary['weight'] = 1
+        # Calculate each outcome separately, because they may have NAs and in that case we need to skip the corresponding weight
+        summary = None
         for col in columns:
-            summary[col] = np.multiply(summary[col], summary['weight'])
-        if group_by_labels:
-            summary = summary.groupby(group_by_labels, as_index=False)
-        summary = summary.sum()
-        for col in columns:
-            summary[col] = round(np.divide(summary[col], summary['weight']), 2)
-        summary = summary.drop(['weight'], axis=(1 if type(summary) == pd.DataFrame else 0))
+            col_data = df.loc[:,['weight', col] + group_by_labels].copy()
+            col_data = self.filter_na(col_data, col)
+            if not do_weight:
+                col_data['weight'] = 1
+            col_data[col] = np.multiply(col_data[col], col_data['weight'])
+            if group_by_labels:
+                col_data = col_data.groupby(group_by_labels, as_index=False)
+            col_data = col_data.sum()
+            col_data[col] = round(np.divide(col_data[col], col_data['weight']), 2)
+            col_data = col_data.drop(['weight'], axis=(1 if type(col_data) == pd.DataFrame else 0))
+            if summary is None:
+                summary = col_data
+            elif group_by_labels:
+                summary = pd.merge(summary, col_data, left_index=True, right_index=True, suffixes=('', '_drop'))
+                summary.drop([f'{l}_drop' for l in group_by_labels], axis=0, inplace=True)
+            else:
+                summary = pd.concat([summary, col_data], axis=0)
+
         return summary
 
     def summarize_all_persistence(self, treatment):
@@ -542,41 +666,62 @@ class ParentsPoliticsPanel():
     ######################
     # Matching functions #
     ######################
-    def get_matched_outcomes(self, df, formula, treatment, control_value=0, treatment_value=1, age_limit=None, do_weight=True,
-                             comparator_treatment=None, comparator_desc=None):
+    def get_matched_outcomes(self, df, treatment, score_label=None, control_value=0, treatment_value=1, do_weight=True,
+                             comparator_treatment=None, comparator_desc=None, covariates_for_viz=None):
         outcomes = [
             f'{issue}_{metric}' for issue in self.ISSUES for metric in set(self.METRICS) - set(['persists', 'persists_abs'])
         ]
-        columns = ['caseid', treatment, 'score', 'score_copy', 'weight'] + outcomes
+        if score_label is None:
+            score_label = f'{treatment}_score'
+        if covariates_for_viz is None:
+            covariates_for_viz = []
         messages = []
 
         if len(df['caseid'].unique()) != len(df['caseid']):
             raise ParentsPoliticsPanelException("Data frame given to get_matched_outcomes does not have unique cases")
 
-        if age_limit is not None:
-            df = self.filter_age(df, age_limit)
-
-        if "~" not in formula:
-            formula = f"{treatment} ~ {formula}"
-        df = self._add_score(df, formula, do_weight=do_weight)
+        columns = ['caseid', treatment, score_label, f'{score_label}_copy', 'weight'] + outcomes
+        columns = columns + covariates_for_viz
         treatment_cases = df.loc[df[treatment] == treatment_value, columns].copy()
         candidates = df.loc[df[treatment] == control_value, columns].copy()
 
+        expanded_covariates = []
+        for covariate in covariates_for_viz:
+            demo = self.demographics[covariate]
+            if demo.dtype == DemographicType.CATEGORICAL:
+                if demo.top_categories:
+                    expanded_covariates.extend([f'{covariate}_{c}' for c in reversed(demo.top_categories)])
+            else:
+                expanded_covariates.append(covariate)
+        covariate_means = {k: [] for k in ['group'] + expanded_covariates}
+        if covariates_for_viz:
+            covariate_means = self.add_covariate_means(treatment_cases, covariate_means, covariates_for_viz, 'parents')
+            covariate_means = self.add_covariate_means(candidates, covariate_means, covariates_for_viz, 'all non-parents')
+
         # Match up treatment and control groups
-        treatment_cases.sort_values('score', inplace=True)
-        candidates.sort_values('score', inplace=True)
+        treatment_cases.sort_values(score_label, inplace=True)
+        candidates.sort_values(score_label, inplace=True)
 
         before_counts = (len(treatment_cases), len(candidates))
-        treatment_cases = self.filter_na(treatment_cases, 'score')
-        candidates = self.filter_na(candidates, 'score')
+        treatment_cases = self.filter_na(treatment_cases, score_label)
+        candidates = self.filter_na(candidates, score_label)
         after_counts = (len(treatment_cases), len(candidates))
         if any(np.subtract(before_counts, after_counts)):
             treatment_percent = round((before_counts[0] - after_counts[0]) * 100 / before_counts[0], 1) if before_counts[0] != after_counts[0] else 0
             candidate_percent = round((before_counts[1] - after_counts[1]) * 100 / before_counts[1], 1) if before_counts[1] != after_counts[1] else 0
             messages.append(f"Lost {treatment_percent}% of treatment cases and {candidate_percent}% of control cases due to missing score")
 
-        control_cases = pd.merge_asof(treatment_cases, candidates, on='score', suffixes=('_treatment', ''), tolerance=0.05, direction='nearest')
+        tolerances = {
+            'is_parent': 0.10,
+            'firstborn': 0.04,
+        }
+        control_cases = pd.merge_asof(treatment_cases, candidates, on=score_label, suffixes=('_treatment', ''), tolerance=tolerances[comparator_treatment or treatment], direction='nearest')
         control_cases = self.filter_na(control_cases, 'caseid')
+        if covariates_for_viz:
+            covariate_means = self.add_covariate_means(treatment_cases, covariate_means, covariates_for_viz, 'matched non-parents')
+            covariate_means = pd.DataFrame(covariate_means)
+        treatment_cases.drop([col for col in covariates_for_viz], axis=1, inplace=True)
+        control_cases.drop([col for col in covariates_for_viz], axis=1, inplace=True)
 
         if len(control_cases) < len(treatment_cases):
             percent = round((len(treatment_cases) - len(control_cases)) * 100 / len(treatment_cases), 1)
@@ -586,7 +731,7 @@ class ParentsPoliticsPanel():
             treatment_cases = pd.merge(treatment_cases, control_cases['caseid_treatment'], how='inner', left_on='caseid', right_on='caseid_treatment')
         messages.append(f"Final n: {len(control_cases)} control, {len(treatment_cases)} treatment cases")
 
-        control_cases['score_diff'] = control_cases['score_copy'] - control_cases['score_copy_treatment']
+        control_cases['score_diff'] = control_cases[f'{score_label}_copy'] - control_cases[f'{score_label}_copy_treatment']
         messages.append(f"Max score difference: {round(max(control_cases['score_diff']), 4)}")
 
         # Calculate average treatment effect for control & treatment groups
@@ -604,8 +749,7 @@ class ParentsPoliticsPanel():
             result = self.t_test(reduced_df, o, treatment, a_value=control_value, b_value=treatment_value, do_weight=do_weight)
             pvalue = str(round(result.pvalue, 4)) + self.pvalue_stars(result.pvalue)
             pvalues.append(pvalue)
-            self.comparator.add(self.comparator.MATCH, o, comparator_treatment or treatment, diff, pvalue,
-                                age_limit=age_limit, demo_desc=comparator_desc)
+            self.comparator.add(self.comparator.MATCH, o, comparator_treatment or treatment, diff, pvalue, demo_desc=comparator_desc)
 
         summary = pd.DataFrame(data={
             'control': agg_matched_outcomes,
@@ -614,22 +758,44 @@ class ParentsPoliticsPanel():
             'pvalue': pvalues,
         })
         summary.sort_index(inplace=True)
-        return (summary, messages)
+        return (summary, covariate_means, messages)
 
-    def _add_score(self, df, formula, do_weight=True):
+    def add_covariate_means(self, df, results, covariates, label):
+        results['group'].append(label)
+        for covariate in covariates:
+            demo = self.demographics[covariate]
+            if demo.dtype == DemographicType.CATEGORICAL:
+                if demo.top_categories:
+                    counts = df.groupby(covariate, as_index=False).count()
+                    total = counts['caseid'].sum()
+                    for category in demo.top_categories:
+                        count = counts.loc[counts[covariate] == category, ['caseid']].iloc[0, 0]
+                        prop = count * 100 / total
+                        results[f'{covariate}_{category}'].append(round(prop, 2))
+            else:
+                mean = df[covariate].mean()
+                results[covariate].append(round(mean, 2))
+        return results
+
+    def add_score(self, df, formula, label='score', do_weight=True):
         logit = smf.glm(formula=formula,
                         family=sm.families.Binomial(),
                         data=df,
                         freq_weights=(df['weight'] if do_weight else None)).fit()
-        df['score'] = logit.predict(df)
-        df['score_copy'] = df['score']
+        df[label] = logit.predict(df)
+        df[f'{label}_copy'] = df[label]
         return df
 
     def consider_models(self, df, treatment, do_weight=True):
         models = {}
         for choose_count in range(1, len(self.demographics) + 1):
-            for chosen in list(combinations(self.demographics, choose_count)):
-                formula = treatment + " ~ " + " + ".join(chosen)
+            print(f"Trying formulas with {choose_count} options")
+            combos = list(combinations([d for d in self.demographics.keys()], choose_count))
+            for index, chosen in enumerate(combos):
+                print(f"Trying {index} of {len(combos)}: {chosen}")
+                formula = treatment + " ~ " + " + ".join([
+                    f'C({c})' if self.demographics[c].dtype == DemographicType.CATEGORICAL else c for c in chosen
+                ])
                 logit = smf.glm(formula=formula,
                                 family=sm.families.Binomial(),
                                 data=df,
@@ -642,7 +808,7 @@ class ParentsPoliticsPanel():
         by_r_squared = sorted(models.values(), key=lambda t: t[1]) # higher is better
         by_aic = sorted(models.values(), key=lambda t: t[2]) # lower is better
 
-        max_models = int(len(models) * 0.05)
+        max_models = 20  #int(len(models) * 0.5)
         decent_r_squared = by_r_squared[-max_models:]
         decent_aic = by_aic[:max_models]
         decent_formulas = list(set([x[0] for x in decent_r_squared]) & set([x[0] for x in decent_aic]))[:10]
@@ -659,7 +825,7 @@ class ParentsPoliticsPanel():
         return summary
 
     def scores_histogram_table(self, df, formula, treatment, weight_score=True):
-        self._add_score(df, f"{treatment} ~ {formula}", do_weight=weight_score)
+        self.add_score(df, f"{treatment} ~ {formula}", do_weight=weight_score)
         scores = df.loc[:,['score', treatment]].copy()
         scores.sort_values('score', inplace=True)
         scores = scores.loc[pd.notna(scores['score']),:]
