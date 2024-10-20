@@ -28,27 +28,20 @@ from plotnine import (
 )
 
 
-def load_asher_data():
-    screened_sample = pd.read_spss(f"{utils.WORKING_DIRECTORY}/asher_data/Dissertation Kathryn Asher (Weighted Cleaned Sample).sav")  # 3 seconds
-    analytic_sample = pd.read_spss(f"{utils.WORKING_DIRECTORY}/asher_data/Dissertation Kathryn Asher (Frozen Analytic Sample).sav")
-    return (screened_sample, analytic_sample)
 
-
-# See how many respondents from each state are in each sample
-def show_extreme_state_counts(sample, n=3):
-    counter = Counter(sample['STATE'])
-    print(f"Largest state samples: {counter.most_common(n)}")
-    print(f"Smallest state samples: {counter.most_common()[:-(len(counter))-1:-1][:n]}\n")
-
-
-(screened_sample, analytic_sample) = load_asher_data()
-show_extreme_state_counts(screened_sample)
-show_extreme_state_counts(analytic_sample)
+### LOAD DATA ###
+# Load Asher data
+screened_sample = pd.read_spss(f"{utils.WORKING_DIRECTORY}/asher_data/Dissertation Kathryn Asher (Weighted Cleaned Sample).sav")  # 3 seconds
 
 # Add geographic data to sample
 states = pd.read_csv(f"{utils.WORKING_DIRECTORY}/{utils.STATES_CSV}")
 geo_sample = pd.merge(screened_sample, states, how='left', left_on='STATE', right_on='state')
 
+# See how many respondents from each state are in each sample
+counter = Counter(geo_sample['STATE'])
+n = 3
+print(f"Largest state samples: {counter.most_common(n)}")
+print(f"Smallest state samples: {counter.most_common()[:-(len(counter))-1:-1][:n]}\n")
 
 # Histograms of agricultural metrics
 def show_histogram(metric="population", bins=20, per_capita=False):
