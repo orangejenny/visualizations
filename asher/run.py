@@ -174,6 +174,7 @@ ranked_thermometer(REGION4, 'reducer')
 # So reducers are more likely than omnis to Cconsider food negative elements in their lives
 # This is consistent across major regions and looks mostly consistent across minor regions.
 # Do meat reducers feel like they're reducing their meat intake involuntarily?
+# This is also corroborated by reducers being more likely to be motivated by cost (in motivation analysis below)
 meaters = geo_sample.loc[np.logical_or(geo_sample['PREVALENCES'] == "Non-Reducing Omnivores", geo_sample['PREVALENCES'] == "Reducers"),:].copy()
 swfl_means = {}
 swfl_counts = {}
