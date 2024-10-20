@@ -37,6 +37,22 @@ screened_sample = pd.read_spss(f"{utils.WORKING_DIRECTORY}/asher_data/Dissertati
 states = pd.read_csv(f"{utils.WORKING_DIRECTORY}/{utils.STATES_CSV}")
 geo_sample = pd.merge(screened_sample, states, how='left', left_on='STATE', right_on='state')
 
+# Convert SWFL data to numeric
+likert = {
+    'Strongly agree': 5,
+    'Agree': 4,
+    'Neither agree nor disagree': 3,
+    'Disagree': 2,
+    'Strongly disagree': 1,
+}
+for index in range(1, 6):
+    key = f"SWFL{index}"
+    key2 = f"{key}_numeric"
+    geo_sample[key2] = geo_sample.apply(lambda df: likert.get(df[key], np.nan), axis=1)
+
+
+
+
 # See how many respondents from each state are in each sample
 counter = Counter(geo_sample['STATE'])
 n = 3
@@ -158,21 +174,12 @@ ranked_thermometer(REGION4, 'reducer')
 # So reducers are more likely than omnis to Cconsider food negative elements in their lives
 # This is consistent across major regions and looks mostly consistent across minor regions.
 # Do meat reducers feel like they're reducing their meat intake involuntarily?
-likert = {
-    'Strongly agree': 5,
-    'Agree': 4,
-    'Neither agree nor disagree': 3,
-    'Disagree': 2,
-    'Strongly disagree': 1,
-}
 meaters = geo_sample.loc[np.logical_or(geo_sample['PREVALENCES'] == "Non-Reducing Omnivores", geo_sample['PREVALENCES'] == "Reducers"),:].copy()
 swfl_means = {}
 swfl_counts = {}
 for index in range(1, 6):
     key = f"SWFL{index}"
     key2 = f"{key}_numeric"
-    meaters[key2] = meaters.apply(lambda df: likert.get(df[key], np.nan), axis=1)
-    # motivations['HEALTH']['r'][REGION4]
     swfl_means[key] = geo_levels(meaters, lambda df, level: df.loc[:,[level, 'PREVALENCES', key2]].groupby([level, 'PREVALENCES'], observed=True, as_index=False).mean())
     swfl_counts[key] = geo_levels(meaters, lambda df, level: df.loc[:,[level, 'PREVALENCES', key2]].groupby([level, 'PREVALENCES', key2], observed=True, as_index=False).count())
 
