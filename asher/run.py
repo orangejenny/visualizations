@@ -52,6 +52,20 @@ for index in range(1, 6):
 
 
 
+STATE = 'state'
+REGION9 = 'region9'
+REGION4 = 'region4'
+LEVELS = [STATE, REGION9, REGION4]
+
+def geo_levels(df, process_df):
+    levels = {}
+    for level in LEVELS:
+        levels[level] = process_df(df, level)
+    return levels
+
+total_by_level = geo_levels(geo_sample, lambda df, level: df.groupby([level], observed=True, as_index=False).count().loc[:,[level, 'ID']])
+
+
 
 # See how many respondents from each state are in each sample
 counter = Counter(geo_sample['STATE'])
@@ -83,7 +97,7 @@ def show_scatter(df, x, y):
     )
     trends.show()
 
-chicken_options = {
+species_options = {
     "1 time per DAY (1.000)": 1,
     "1 time per MONTH (0.033)": 0.033,
     "1 time per WEEK (0.142)": 0.142,
@@ -94,30 +108,34 @@ chicken_options = {
     "5-6 times per WEEK (0.784)": 0.784,
     "Never (0.000)": 0,
 }
-df = screened_sample.loc[:,['STATE', 'CHICKENDAILY']]
-df['chicken_numeric_old'] = df.apply(lambda L: chicken_options.get(L.CHICKENDAILY, np.nan), axis=1)
-df['chicken_numeric'] = df.apply(lambda L: float(re.sub(r'.* \(([\d.]+)\)$', r"\1", L.CHICKENDAILY)), axis=1)
+species_keys = ['BEEF', 'PORK', 'CHICKEN', 'TURKEY', 'FISH', 'SHELLFISH', 'OTHERMEATS']
+for species in species_keys:
+    key = f"{species}DAILY"
+    key2 = f"{key}_numeric"
+    geo_sample[key2] = geo_sample.apply(lambda df: species_options.get(df[key], np.nan), axis=1)
+    #geo_sample[key2] = df.apply(lambda L: float(re.sub(r'.* \(([\d.]+)\)$', r"\1", L[key])), axis=1)
 
-national_prevalences = geo_sample.groupby(['PREVALENCES'], observed=True).count()['ID']
-print(national_prevalences)
+geo_sample['allmeatdaily'] = geo_sample.apply(lambda df: sum([df[f"{k}DAILY_numeric"] for k in species_keys]), axis=1)
 
-STATE = 'state'
-REGION9 = 'region9'
-REGION4 = 'region4'
-LEVELS = [STATE, REGION9, REGION4]
+# Difference between omnis and reducers in daily servings of meat
+def _allmeatdaily_diffs(df, level):
+    omnis = geo_sample.loc[geo_sample['PREVALENCES'] == "Non-Reducing Omnivores",[level,'allmeatdaily']].groupby(level, observed=True, as_index=False).mean()
+    reducers = geo_sample.loc[geo_sample['PREVALENCES'] == "Reducers",[level,'allmeatdaily']].groupby(level, observed=True, as_index=False).mean()
+    combined = pd.merge(omnis, reducers, how='left', left_on=level, right_on=level, suffixes=("_omnis", "_reducers"))
+    combined['diff'] = combined['allmeatdaily_omnis'] - combined['allmeatdaily_reducers']
+    return combined
 
-def geo_levels(df, process_df):
-    levels = {}
-    for level in LEVELS:
-        levels[level] = process_df(df, level)
-    return levels
-
-
-total_by_level = geo_levels(geo_sample, lambda df, level: df.groupby([level], observed=True, as_index=False).count().loc[:,[level, 'ID']])
+# Not obvious regional trends here. In general, by major or minor region, reducers eat a tiny bit more chicken than omnis
+# At the state level, there's some variation and some states where omnis eat more meat than semis
+diffs_by_level = geo_levels(geo_sample, _allmeatdaily_diffs)
+pd.merge(diffs_by_level[STATE], total_by_level[STATE], how='left', left_on=STATE, right_on=STATE).sort_values('diff')
 
 
 ### Prevalence of diets ###
 # There's lots of prevalence data! All 20-somethingK
+national_prevalences = geo_sample.groupby(['PREVALENCES'], observed=True).count()['ID']
+print(national_prevalences)
+
 prevalence_by_level = geo_levels(geo_sample, lambda df, level: df.groupby([level, 'PREVALENCES'], observed=True, as_index=False).count().loc[:,[level, 'PREVALENCES', 'ID']])
 for level in LEVELS:
     prevalence_by_level[level] = pd.merge(prevalence_by_level[level], total_by_level[level], how='left', left_on=level, right_on=level)
@@ -126,12 +144,41 @@ for level in LEVELS:
 def ranked_prevalence(level, diet):
     return prevalence_by_level[level].loc[prevalence_by_level[level]['PREVALENCES'] == diet,:].sort_values('proportion')
 
+
+def _meater_prop(df, level):
+    df = df.loc[np.logical_or(df['PREVALENCES'] == "Non-Reducing Omnivores", df['PREVALENCES'] == "Reducers")].copy()
+    df = df.groupby([level, 'PREVALENCES'], observed=True, as_index=False).count().loc[:,[level, 'PREVALENCES', 'ID']]
+    omnis = df.loc[df['PREVALENCES'] == "Non-Reducing Omnivores",:].copy()
+    reducers = df.loc[df['PREVALENCES'] == "Reducers",:].copy()
+    both = pd.merge(omnis, reducers, how='left', left_on=level, right_on=level, suffixes=("_omnis", "_reducers"))
+    both['reducer_prop'] = both['ID_reducers'] * 100 / (both['ID_reducers'] + both['ID_omnis'])
+    return both
+
+meater_prop_by_level = geo_levels(geo_sample, _meater_prop)
+
 # Non-reducing omni proportion varies from 55% (Hawaii) to 80% (Vermont)
 # Region9 varies from 62% to 75%
 # Region4 varies from 64% to 72%
 ranked_prevalence(STATE, "Non-Reducing Omnivores")
 ranked_prevalence(REGION9, "Non-Reducing Omnivores")
 ranked_prevalence(REGION4, "Non-Reducing Omnivores")
+
+# Scatter plot of proportion vs difference in states
+# No relationship
+'''
+scatter_data = pd.merge(meater_prop_by_level[STATE], diffs_by_level[STATE], how='left', left_on=STATE, right_on=STATE)
+scatter_data = pd.merge(scatter_data, total_by_level[STATE], how='left', left_on=STATE, right_on=STATE)
+scatter_data = scatter_data.loc[scatter_data['ID'] > 100,:]
+scatter_plot = (
+    ggplot(scatter_data, aes(x = 'reducer_prop', y = 'diff', size = 'ID'))
+    + geom_point(alpha = 0.3)
+    + stat_smooth(method = "lm", alpha = 0.5)
+    + labs(x = "Proportion of omnivores who are reducing their meat consumption", y = "Difference in meat servings per day", title = f"Anything meaningful?")
+)
+scatter_plot.show()
+'''
+
+
 
 # Reducer proportion varies from 16% (Wyoming) to 42% (Delaware)
 # Region9 is 24% to 35%
@@ -203,29 +250,8 @@ age_plot = (
     + facet_wrap("PREVALENCES")
     + labs(x = "", y = "", title = f"Age histogram")
 )
-age_plot.show()
+#age_plot.show()
 
-
-### Consumption: daily chicken ###
-# Not obvious regional trends here. In general, by major or minor region, reducers eat a tiny bit more chicken than omnis
-meaters['chicken_numeric'] = meaters.apply(lambda df: float(re.sub(r'.* \(([\d.]+)\)$', r"\1", df.CHICKENDAILY)), axis=1)
-chicken = geo_levels(meaters, lambda df, level: df.loc[:,[level, 'PREVALENCES', 'chicken_numeric']].groupby([level, 'PREVALENCES'], observed=True, as_index=False).mean())
-import pdb; pdb.set_trace()
-
-# TODO: look at different species, and at the deltas between omnis and reducers
-'''
-BEEFDAILY
-PORKDAILY
-CHICKENDAILY
-TURKEYDAILY
-FISHDAILY
-SHELLFISHDAILY
-OTHERMEATSDAILY
-MEAT
-LANDMEAT
-MEATDAILY
-LANDMEATDAILY
-'''
 
 ### Motivations (yes/no) ###
 # There just aren't enough people to analyze here. As an example:
