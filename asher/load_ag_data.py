@@ -30,6 +30,7 @@ population = pd.read_excel(f"{utils.WORKING_DIRECTORY}/ag_data/NST-EST2023-POP.x
 population = population.iloc[range(8, 59), [0, 4]]   # grab 2022 data
 population.rename(columns={population.columns[0]: 'State', population.columns[1]: 'Value'}, inplace=True)
 population.State = population.apply(lambda L: L.State.replace('.', ''), axis=1)
+states.drop('id', axis=1, inplace=True)
 states = add_state_indicator(states, population, 'State', 'Value', 'population')
 
 farms = pd.read_excel(f"{utils.WORKING_DIRECTORY}/ag_data/ag-number-of-farms.xls", sheet_name=1)
@@ -67,9 +68,11 @@ for indicator in ag_indicators:
     for state in top_n['state']:
         top_states[state] += 1
 
+# Animals/acres per resident - as this increases, farming is MORE influential
 for indicator in ['acres', 'cows', 'broilers', 'hogs', 'layers']:
     states[f"{indicator}_adjusted"] = states.apply(lambda df: df[indicator] / df.population if df[indicator] else 0, axis=1)
 
+# Residents per farm/farmer/employee - as this increases, farming is LESS influential
 for indicator in ['farms', 'farmers', 'employees']:
     states[f"{indicator}_adjusted"] = states.apply(lambda df: df.population / df[indicator] if df[indicator] else 0, axis=1)
 
@@ -77,6 +80,8 @@ print("Ranking states by indicator")
 for indicator in ag_indicators:
     states[f"rank_{indicator}"] = states[f"{indicator}"].rank(ascending=False)
     states[f"rank_{indicator}_adjusted"] = states[f"{indicator}_adjusted"].rank(ascending=False)
+
+states.drop('state_upper', axis=1, inplace=True)
 
 # Write CSV
 if input(f"Write to {utils.AG_CSV}? ") == "y":
