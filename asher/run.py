@@ -127,6 +127,7 @@ def _allmeatdaily_diffs(df, level):
 
 # Not obvious regional trends here. In general, by major or minor region, reducers eat a tiny bit more chicken than omnis
 # At the state level, there's some variation and some states where omnis eat more meat than semis
+servings_by_level = geo_levels(geo_sample, lambda df, level: df.loc[:, ['PREVALENCES', level, 'allmeatdaily']].groupby([level, 'PREVALENCES'], observed=True, as_index=False).mean())
 diffs_by_level = geo_levels(geo_sample, _allmeatdaily_diffs)
 pd.merge(diffs_by_level[STATE], total_by_level[STATE], how='left', left_on=STATE, right_on=STATE).sort_values('diff')
 
@@ -177,8 +178,6 @@ scatter_plot = (
 )
 scatter_plot.show()
 '''
-
-
 
 # Reducer proportion varies from 16% (Wyoming) to 42% (Delaware)
 # Region9 is 24% to 35%
@@ -252,6 +251,12 @@ age_plot = (
 )
 #age_plot.show()
 
+# Other reducer demographics
+meaters.groupby(['SEX', 'PREVALENCES'], observed=True).count()['ID']     # men & women almost identical, which is a little interesting given the veg skews female
+meaters.groupby(['RACE', 'PREVALENCES'], observed=True).count()['ID']    # fewer reducers in white population, more in Asian population
+meaters.groupby(['EDUCATION', 'PREVALENCES'], observed=True).count()['ID']
+meaters.groupby(['INCOME', 'PREVALENCES'], observed=True).count()['ID']
+
 
 ### Motivations (yes/no) ###
 # There just aren't enough people to analyze here. As an example:
@@ -271,22 +276,30 @@ for motivation in motivation_keys:
         motivations[motivation][diet] = geo_levels(geo_sample, lambda df, level: df.loc[:,[level, key2]].groupby([level], observed=True, as_index=False).mean())
 
 records = []
+regional_records = []
 for motivation in motivation_keys:
     for diet in diets:
         key = f"{diet[0]}MOTIVATIONS_{motivation}_numeric"
         (no, yes) = geo_sample.groupby(key).count()['PREVALENCES']
-        prop = yes * 100 / (yes + no)
         records.append({
             'motivation': motivation,
             'diet': diet,
-            'proportion': prop,
+            'proportion': yes * 100 / (yes + no),
         })
+
+        regional_counts = geo_sample.groupby([REGION4, key]).count()['ID']
+        for region, value in regional_counts.index:
+            if value:
+                continue
+            (no, yes) = regional_counts[region]
+            regional_records.append({
+                'region': region,
+                'motivation': motivation,
+                'diet': diet,
+                'proportion': yes * 100 / (yes + no),
+            })
 motivation_plot_data = pd.DataFrame.from_records(records)
-palette = {
-    'vegetarian v': "#0072B2",
-    'no chicken c': "#339933",
-    'reducing meat r': "#FF9933",
-}
+
 motivation_plot = (
     ggplot(motivation_plot_data, aes(x = "factor(motivation)", y = "proportion", fill = "factor(diet)"))
         + geom_col(position = "dodge2")
@@ -295,6 +308,13 @@ motivation_plot = (
         + labs(x = "", y = "", title = "Motivations")
 )
 #motivation_plot.show()
+
+# There's a fair amount of region4 variation in motivations for meat reducers
+# For example, ANIMAL ranges from 31% (Midwets) to 50% (Northeast), and ENVIRO is 31%-55%
+# But COST is more consistent, 43%-49%
+# Motivations also vary regionally for vegetarisn, though perhaps not quite as much
+regional_motivations = pd.DataFrame.from_records(regional_records)
+regional_motivations.loc[regional_motivations['diet'] == "reducing meat",:]
 
 ### Barriers (1-5) ###
 # Same problem:
@@ -309,6 +329,7 @@ for barrier in barrier_keys:
             geo_sample[key2] = geo_sample.apply(lambda df: likert.get(df[key], np.nan), axis=1)
 
 records = []
+regional_means = None
 for barrier in barrier_keys:
     for diet in diets:
         for omni in ["o", ""]:
@@ -321,8 +342,21 @@ for barrier in barrier_keys:
                     'value':  index + 1,
                     'proportion': value * 100 / sum(values),
                 })
-barrier_plot_data = pd.DataFrame.from_records(records)
+            diet_means = geo_sample.loc[:,[REGION4, key]].groupby([REGION4]).mean()
+            diet_means.rename({key: 'metric'}, axis=1, inplace=True)
+            match = re.match(r'(.*)BARRIERS_(.*)_numeric', key)
+            diet_means['diet'] = match.group(1)
+            diet_means['barrier'] = match.group(2)
+            if regional_means is None:
+                regional_means = diet_means
+            else:
+                regional_means = pd.concat([diet_means, regional_means])
 
+# These don't vary so much by region, like 0.3 or 0.5
+# One of the bigger differences is IDENTITY, from 2.6 in the midwest to 3.1 in the northeast
+regional_means.loc[regional_means['diet'] == 'r',:]
+
+barrier_plot_data = pd.DataFrame.from_records(records)
 barrier_plot = (
     ggplot(barrier_plot_data, aes(x = "factor(diet)", y = "proportion", fill = "value"))
         + geom_col(position = "dodge2")
