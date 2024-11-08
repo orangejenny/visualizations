@@ -74,26 +74,62 @@ print(f"Largest state samples: {counter.most_common(n)}")
 print(f"Smallest state samples: {counter.most_common()[:-(len(counter))-1:-1][:n]}\n")
 
 # Histograms of agricultural metrics
-def show_histogram(metric="population", bins=20, per_capita=False):
-    df = states.copy()
-    if per_capita:
-        df[f"{metric}_per_capita"] = df.apply(lambda df: df[metric] / df.population if df[metric] else 0, axis=1)
-        metric = f"{metric}_per_capita"
-    trends = (
-        ggplot(df, aes(x = metric))
-        + geom_histogram(bins=bins)
-        + labs(x = "", y = "", title = f"{metric} histogram")
-    )
-    trends.show()
+ag_data = pd.read_csv(f"{utils.WORKING_DIRECTORY}/{utils.AG_CSV}")
+ag_metrics = set(ag_data.columns) - {REGION4, REGION9, STATE, 'state_upper', 'id', 'Unnamed: 0'}
+ag_metrics = [m for m in ag_metrics if not m.startswith("rank_")]
+transformed_ag_data = ag_data.copy()
+transformed_ag_data['transformation'] = 'identity'
+for transformation in [np.log, np.log10]:
+    for_transform = ag_data.copy()
+    for_transform['transformation'] = str(transformation)
+    for metric in ag_metrics:
+        for_transform[metric] = transformation(ag_data[metric])
+    transformed_ag_data = pd.concat([transformed_ag_data, for_transform])
 
+for metric in ag_metrics:
+    for t in ["identity", "<ufunc 'log'>"]:   # , "<ufunc 'log10'>"]:
+        trends = (
+            ggplot(transformed_ag_data.loc[transformed_ag_data["transformation"] == t,:], aes(x = metric))
+            + geom_histogram(bins=20)
+            + labs(x = "", y = "", title = f"{metric} histogram, {t}")
+            #+ facet_wrap("transformation")
+        )
+        #trends.show()
+'''
+    METRIC                  IDENTITY    LOG
+    acres                      N         N
+    acres_adjusted             N         Y
+    broilers                   N         N
+    broilers_adjusted          N         N
+    cows                       N         Y
+    cows_adjusted              N         Y
+    employees                  N         Y
+    employees_adjusted         N         Y
+    farmers                    N         Y
+    farmers_adjusted           N         Y
+    farms                      N         Y
+    farms_adjusted             N         Y
+    hogs                       N         N
+    hogs_adjusted              N         N
+    layers                     N         Y
+    layers_adjusted            N         Y
+    population
+
+'''
 
 # Scatter plots of animal count (or log) vs animal inventory
-def show_scatter(df, x, y):
+def show_scatter(df, x, y, transform=None, filter_low_pop=False):
+    df = df.copy()
+    if transform:
+        df[x] = transform(df[x])
+    if filter_low_pop:
+        df = pd.merge(df, total_by_level[STATE], how='left', left_on=STATE, right_on=STATE)
+        df = df.loc[df['ID'] >= 100,:]
     trends = (
         ggplot(df, aes(x = x, y = y))
         + geom_point(alpha = 0.3)
         + stat_smooth(method = "lm", alpha = 0.5)
-        + labs(x = x, y = y, title = f"Livestock inventory vs consumption")
+        + labs(x = x, y = y, title = "")
     )
     trends.show()
 
@@ -117,6 +153,20 @@ for species in species_keys:
 
 geo_sample['allmeatdaily'] = geo_sample.apply(lambda df: sum([df[f"{k}DAILY_numeric"] for k in species_keys]), axis=1)
 
+# Histograms of allmeatdaily, by diet
+def _serving_histogram(metric):
+    serving_plot = (
+        ggplot(geo_sample.loc[np.logical_or(geo_sample['PREVALENCES'] == "Non-Reducing Omnivores", geo_sample['PREVALENCES'] == "Reducers"),:], aes(x = metric))
+        + geom_histogram()   #binwidth = 5)
+        + facet_wrap("PREVALENCES")
+        + theme(axis_text_x=element_text(rotation = 90))
+        + labs(x = metric, y = "")
+    )
+    serving_plot.show()
+
+_serving_histogram("allmeatdaily")
+
+
 # Difference between omnis and reducers in daily servings of meat
 def _allmeatdaily_diffs(df, level):
     omnis = geo_sample.loc[geo_sample['PREVALENCES'] == "Non-Reducing Omnivores",[level,'allmeatdaily']].groupby(level, observed=True, as_index=False).mean()
@@ -131,6 +181,9 @@ servings_by_level = geo_levels(geo_sample, lambda df, level: df.loc[:, ['PREVALE
 diffs_by_level = geo_levels(geo_sample, _allmeatdaily_diffs)
 pd.merge(diffs_by_level[STATE], total_by_level[STATE], how='left', left_on=STATE, right_on=STATE).sort_values('diff')
 
+# Compare allmeatdaily with ag metrics: nope, nothing meaningful is jumping out
+scatter_data = pd.merge(servings_by_level[STATE], ag_data, how='left', left_on=STATE, right_on=STATE)
+#show_scatter(scatter_data, 'employees_adjusted', 'allmeatdaily', transform=np.log)
 
 ### Prevalence of diets ###
 # There's lots of prevalence data! All 20-somethingK
@@ -156,6 +209,18 @@ def _meater_prop(df, level):
     return both
 
 meater_prop_by_level = geo_levels(geo_sample, _meater_prop)
+# Compare reducer_prop with ag metrics
+# Adjusted metrics for employees, farms, and farmers all positively correlated with proportion of reducers
+# Adjusted metrics for cows, layers, and hogs (but not broilers) all negatively correlated with proportion of reducers
+# Both of these indicate that as the influence of farming increases, the proportion of reducers decreases
+scatter_data = pd.merge(meater_prop_by_level[STATE], ag_data, how='left', left_on=STATE, right_on=STATE)
+#show_scatter(scatter_data, 'employees_adjusted', 'reducer_prop', transform=np.log, filter_low_pop=False)
+
+# Compare diff with ag_metrics
+# As the influence of farming increases, reducers eat more meat as compared to non-reducers
+# This is a weaker relationship than the relationship between farming and proportion of meat reducers
+scatter_data = pd.merge(diffs_by_level[STATE], ag_data, how='left', left_on=STATE, right_on=STATE)
+show_scatter(scatter_data, 'employees_adjusted', 'diff', transform=np.log)
 
 # Non-reducing omni proportion varies from 55% (Hawaii) to 80% (Vermont)
 # Region9 varies from 62% to 75%
