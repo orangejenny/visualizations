@@ -30,25 +30,8 @@ from plotnine import (
 
 
 ### LOAD DATA ###
-# Load Asher data
-screened_sample = pd.read_spss(f"{utils.WORKING_DIRECTORY}/asher_data/Dissertation Kathryn Asher (Weighted Cleaned Sample).sav")  # 3 seconds
-
-# Add geographic data to sample
-states = pd.read_csv(f"{utils.WORKING_DIRECTORY}/{utils.STATES_CSV}")
-geo_sample = pd.merge(screened_sample, states, how='left', left_on='STATE', right_on='state')
-
-# Convert SWFL data to numeric
-likert = {
-    'Strongly agree': 5,
-    'Agree': 4,
-    'Neither agree nor disagree': 3,
-    'Disagree': 2,
-    'Strongly disagree': 1,
-}
-for index in range(1, 6):
-    key = f"SWFL{index}"
-    key2 = f"{key}_numeric"
-    geo_sample[key2] = geo_sample.apply(lambda df: likert.get(df[key], np.nan), axis=1)
+geo_sample = load_asher_data()
+geo_sample = convert_categorical_to_numeric(geo_sample, [f"SWFL{i}" for i in range(1, 6)], overwrite=False)
 
 
 
@@ -133,25 +116,8 @@ def show_scatter(df, x, y, transform=None, filter_low_pop=False):
     )
     trends.show()
 
-species_options = {
-    "1 time per DAY (1.000)": 1,
-    "1 time per MONTH (0.033)": 0.033,
-    "1 time per WEEK (0.142)": 0.142,
-    "1-11 times per YEAR or less frequently (0.016)": 0.016,
-    "2 or more times per DAY (2.500)": 2.5,
-    "2-3 times per MONTH (0.082)": 0.082,
-    "2-4 times per WEEK (0.427)": 0.427,
-    "5-6 times per WEEK (0.784)": 0.784,
-    "Never (0.000)": 0,
-}
-species_keys = ['BEEF', 'PORK', 'CHICKEN', 'TURKEY', 'FISH', 'SHELLFISH', 'OTHERMEATS']
-for species in species_keys:
-    key = f"{species}DAILY"
-    key2 = f"{key}_numeric"
-    geo_sample[key2] = geo_sample.apply(lambda df: species_options.get(df[key], np.nan), axis=1)
-    #geo_sample[key2] = df.apply(lambda L: float(re.sub(r'.* \(([\d.]+)\)$', r"\1", L[key])), axis=1)
-
-geo_sample['allmeatdaily'] = geo_sample.apply(lambda df: sum([df[f"{k}DAILY_numeric"] for k in species_keys]), axis=1)
+data = convert_categorical_to_numeric(data, SPECIES_KEYS, options=CONSUMPTION_OPTIONS, overwrite=False)
+geo_sample['allmeatdaily'] = geo_sample.apply(lambda df: sum([df[f"{k}_numeric"] for k in utils.SPECIES_KEYS]), axis=1)
 
 # Histograms of allmeatdaily, by diet
 def _serving_histogram(metric):
@@ -390,8 +356,7 @@ for barrier in barrier_keys:
     for diet in diets:
         for omni in ["o", ""]:
             key = f"{omni}{diet[0]}BARRIERS_{barrier}"
-            key2 = f"{key}_numeric"
-            geo_sample[key2] = geo_sample.apply(lambda df: likert.get(df[key], np.nan), axis=1)
+            geo_sample = convert_categorical_to_numeric(geo_sample, [key], overwrite=False)
 
 records = []
 regional_means = None
