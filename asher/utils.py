@@ -58,5 +58,15 @@ def convert_categorical_to_numeric(data, labels, options=LIKERT, overwrite=True,
     return data
 
 
+def categorize_daily(df, key=""):
+    if df[key] > 2:     # most meals
+        return 3
+    if df[key] > 1:     # most days
+        return 2
+    if df[key] > 0.5:
+        return 1
+    return 0            # seldom
+
+
 def response_count_for_question(data, key):
     return data.groupby(key, observed=True).count()['ID']
