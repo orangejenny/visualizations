@@ -1,14 +1,6 @@
 import numpy as np
 import pandas as pd
 
-from plotnine import (
-    aes,
-    element_text,
-    geom_histogram,
-    ggplot,
-    labs,
-    theme,
-)
 
 WORKING_DIRECTORY = "~/Dropbox/2024 Fall/thesis"
 
@@ -68,13 +60,3 @@ def convert_categorical_to_numeric(data, labels, options=LIKERT, overwrite=True,
 
 def response_count_for_question(data, key):
     return data.groupby(key, observed=True).count()['ID']
-
-
-def histogram(data, metric):
-    plot = (
-        ggplot(data, aes(x = metric))
-        + geom_histogram()   #binwidth = 5)
-        + theme(axis_text_x=element_text(rotation = 90))
-        + labs(x = metric, y = "")
-    )
-    plot.show()
