@@ -34,30 +34,89 @@ data['BLUEDAILY'] = data.apply(lambda df: sum([df[k] for k in ['FISHDAILY', 'SHE
 # Among omnis, the percentages 0/1/2/3 are 13/26/48/12
 # Among semis, the percentages 0/1/2/3 are 19/27/37/16
 for key in ['MEATDAILY', 'MAMMALDAILY', 'BIRDDAILY', 'REDDAILY', 'WHITEDAILY', 'BLUEDAILY']:
-    data[f'{key}_cat'] = data.apply(partial(categorize_daily, key=key), axis=1)
+    data[key] = data.apply(partial(categorize_daily, key=key), axis=1)
 
 
-all_semis = data.loc[data['PREVALENCES'] == 'Reducers',:]
+# Create diet-specific samples
+#   Primarily interested in omnis and semis
+#   Group chicken-free people with reducers
+meaters = data.loc[data['PREVALENCES'] != 'Vegetarians',:]
+omnis = data.loc[data['PREVALENCES'] == 'Non-Reducing Omnivores',:]
+semis = meaters.loc[data['PREVALENCES'] != 'Non-Reducing Omnivores',:]
+reducers = data.loc[data['PREVALENCES'] == 'Reducers',:]
+nochicks = data.loc[data['PREVALENCES'] == 'Chicken Avoiders',:]
+
+# Primary modeling approach is categorical
+#   That avoids continuous data making the data look more granular than it is
+#   It's also much easier for people to categorize themselves than provide an accurate response to a continuous question
+classes = ['MAMMALDAILY', 'BIRDDAILY', 'BLUEDAILY']
+colors = ['REDDAILY', 'WHITEDAILY', 'BLUEDAILY']
 
 
 
 
-
-
-def fit_model(data, num_classes, measurement="continuous", categories=Ellipsis):
-    data = data.copy()
-    model = StepMix(n_components=num_classes, measurement=measurement, verbose=1, random_state=23)
+def fit_model(data, num_classes, categories):
+    data = data.loc[:,categories].copy()
+    model = StepMix(n_components=num_classes, measurement="categorical", verbose=1, random_state=23)
     model.fit(data)
     data['pred'] = model.predict(data)
 
-    print("How many people are in each class?")
-    print(data.groupby('pred').count())
-
-    if categories is not Ellipsis:
-        print("How many people are in each possible cell?")
-        print(data.groupby(categories).count())
-        print("How did each cell get split up?")
-        print(data.reset_index().groupby(categories + ['pred']).count())
+    '''
+    print("How many people are in each possible cell?")
+    print(data.groupby(categories).count())
+    print("How did each cell get split up?")
+    print(data.reset_index().groupby(categories + ['pred']).count())
+    '''
 
     return (model, data)
 
+
+# Try from 2 to 12 classes. There are 64 cells.
+# After doing this by both class and color, color-based models have lower AIC and BIC than class-based models
+# For the semis:
+#   2 classes is 90/10
+#   3 classes has 1 small, 1 pretty small, and 1 big
+#   4 classes has 2 big and 2 small ones
+#   5 classes has 3 big and 2 small ones
+#for i in range(2, 7):
+#    fit_model(semis, i, colors)
+
+datasets = {
+    'non-reducing': omnis,
+    'reducers': reducers,
+    'all non-veg': meaters,
+}
+for num_classes in [4, 5, 6]:
+    for dataset_label in datasets.keys():
+        filename = f"{num_classes} classes {dataset_label}.png"
+        print(f"Generating model for {filename}")
+        (model, predictions) = fit_model(datasets[dataset_label], num_classes, colors)
+        cells = predictions.reset_index(names='count').groupby(['REDDAILY', 'WHITEDAILY', 'BLUEDAILY', 'pred'], as_index=False).count()
+        n = predictions.groupby('pred').count()['REDDAILY'].to_list()
+        total = sum(n)
+        n = [round(x * 100 / total) for x in n]
+        
+        # Painfully format data because I am too tired to grasp pandas.melt
+        viz_data = None
+        for color in ['RED', 'WHITE', 'BLUE']:
+            subset = cells.groupby(['pred', f'{color}DAILY'], as_index=False).sum()
+            subset['color'] = color
+            subset['value'] = subset[f'{color}DAILY']
+            subset = subset.loc[:,['pred', 'color', 'value', 'count']]
+            if viz_data is None:
+                viz_data = subset
+            else:
+                viz_data = pd.concat([viz_data, subset])
+        
+        value_lookup = ['seldom', 'some days', 'most days', 'most meals']
+        viz_data['value'] = viz_data.apply(lambda df: str(df['value']) + ': ' + value_lookup[df['value']], axis=1)
+        viz_data['pred'] = viz_data.apply(lambda df: f"{dataset_label} C{df['pred']}/{num_classes} ({n[df['pred']]}%)", axis=1)
+        plot = (
+            ggplot(viz_data, aes(x = 'color', y = 'count', fill = 'factor(value)'))
+            + geom_bar(position = "fill", stat = "identity") + facet_wrap('pred', nrow=2)
+            + labs(x = "", y = "")
+        )
+        #plot.show()
+        plot.save(filename=filename)
+
+pass
