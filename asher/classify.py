@@ -13,6 +13,10 @@ from utils import (
     SPECIES_KEYS,
 )
 
+freq = CONSUMPTION_OPTIONS.values()
+red_options = [f for f in freq]
+blue_options = [f1 + f2 for f1 in freq for f2 in freq]
+white_options = [f1 + f2 + f3 for f1 in freq for f2 in freq for f3 in freq]
 
 # Load data
 data = load_asher_data()
@@ -36,7 +40,6 @@ data['BLUEDAILY'] = data.apply(lambda df: sum([df[k] for k in ['FISHDAILY', 'SHE
 for key in ['MEATDAILY', 'MAMMALDAILY', 'BIRDDAILY', 'REDDAILY', 'WHITEDAILY', 'BLUEDAILY']:
     data[key] = data.apply(partial(categorize_daily, key=key), axis=1)
 
-
 # Create diet-specific samples
 #   Primarily interested in omnis and semis
 #   Group chicken-free people with reducers
@@ -57,7 +60,7 @@ colors = ['REDDAILY', 'WHITEDAILY', 'BLUEDAILY']
 
 def fit_model(data, num_classes, categories):
     data = data.loc[:,categories].copy()
-    model = StepMix(n_components=num_classes, measurement="categorical", verbose=1, random_state=23)
+    model = StepMix(n_components=num_classes, n_steps=1, measurement="categorical", verbose=1, random_state=23, max_iter=2000)
     model.fit(data)
     data['pred'] = model.predict(data)
 
@@ -78,20 +81,40 @@ def fit_model(data, num_classes, categories):
 #   3 classes has 1 small, 1 pretty small, and 1 big
 #   4 classes has 2 big and 2 small ones
 #   5 classes has 3 big and 2 small ones
-#for i in range(2, 7):
+#for i in range(2, 12):
 #    fit_model(semis, i, colors)
+indicators = ['REDDAILY', 'WHITEDAILY', 'BLUEDAILY']
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.model_selection import GridSearchCV, ParameterGrid
+import pdb; pdb.set_trace()
+model = StepMix(n_components=3, n_steps=1, measurement="categorical", random_state=23, max_iter=2000)
+grid = {'n_components': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]}
+gs = GridSearchCV(estimator=model, cv=3, param_grid=grid)
+gs.fit(semis.loc[:,indicators])
+results = pd.DataFrame(gs.cv_results_)
+results["Val. Log Likelihood"] = results['mean_test_score']
+sns.set_style("darkgrid")
+plot = sns.lineplot(data=results, x='param_n_components', y='Val. Log Likelihood')
+plt.show()
+import pdb; pdb.set_trace()
+
+
 
 datasets = {
     'non-reducing': omnis,
     'reducers': reducers,
     'all non-veg': meaters,
+    'semis': semis,
 }
-for num_classes in [4, 5, 6]:
+for num_classes in [3, 4, 5, 6]:
     for dataset_label in datasets.keys():
         filename = f"{num_classes} classes {dataset_label}.png"
         print(f"Generating model for {filename}")
-        (model, predictions) = fit_model(datasets[dataset_label], num_classes, colors)
-        cells = predictions.reset_index(names='count').groupby(['REDDAILY', 'WHITEDAILY', 'BLUEDAILY', 'pred'], as_index=False).count()
+        (model, predictions) = fit_model(datasets[dataset_label], num_classes, colors)  # TODO: change convergence criteria?
+        cells = predictions.reset_index(names='count').groupby(indicators + ['pred'], as_index=False).count()
+
         n = predictions.groupby('pred').count()['REDDAILY'].to_list()
         total = sum(n)
         n = [round(x * 100 / total) for x in n]
