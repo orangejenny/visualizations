@@ -85,30 +85,32 @@ def fit_model(data, num_classes, categories):
 #    fit_model(semis, i, colors)
 indicators = ['REDDAILY', 'WHITEDAILY', 'BLUEDAILY']
 
+'''
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.model_selection import GridSearchCV, ParameterGrid
-import pdb; pdb.set_trace()
 model = StepMix(n_components=3, n_steps=1, measurement="categorical", random_state=23, max_iter=2000)
-grid = {'n_components': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]}
-gs = GridSearchCV(estimator=model, cv=3, param_grid=grid)
+grid = {'n_components': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+gs = GridSearchCV(estimator=model, cv=5, param_grid=grid)
 gs.fit(semis.loc[:,indicators])
 results = pd.DataFrame(gs.cv_results_)
-results["Val. Log Likelihood"] = results['mean_test_score']
-sns.set_style("darkgrid")
-plot = sns.lineplot(data=results, x='param_n_components', y='Val. Log Likelihood')
+results["Validation Log Likelihood"] = results['mean_test_score']
+results["Number of classes"] = results['param_n_components']
+plot = sns.lineplot(data=results, x='Number of classes', y='Validation Log Likelihood')
 plt.show()
-import pdb; pdb.set_trace()
+'''
 
 
 
 datasets = {
-    'non-reducing': omnis,
-    'reducers': reducers,
-    'all non-veg': meaters,
+    #'non-reducing': omnis,
+    #'reducers': reducers,
+    #'all non-veg': meaters,
     'semis': semis,
 }
-for num_classes in [3, 4, 5, 6]:
+greek_letters = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta', 'Iota']
+#for num_classes in [2, 3, 4, 5, 6]:
+for num_classes in [2, 3, 4]:
     for dataset_label in datasets.keys():
         filename = f"{num_classes} classes {dataset_label}.png"
         print(f"Generating model for {filename}")
@@ -123,7 +125,7 @@ for num_classes in [3, 4, 5, 6]:
         viz_data = None
         for color in ['RED', 'WHITE', 'BLUE']:
             subset = cells.groupby(['pred', f'{color}DAILY'], as_index=False).sum()
-            subset['color'] = color
+            subset['color'] = "FISH" if color == "BLUE" else color
             subset['value'] = subset[f'{color}DAILY']
             subset = subset.loc[:,['pred', 'color', 'value', 'count']]
             if viz_data is None:
@@ -133,11 +135,13 @@ for num_classes in [3, 4, 5, 6]:
         
         value_lookup = ['seldom', 'some days', 'most days', 'most meals']
         viz_data['value'] = viz_data.apply(lambda df: str(df['value']) + ': ' + value_lookup[df['value']], axis=1)
-        viz_data['pred'] = viz_data.apply(lambda df: f"{dataset_label} C{df['pred']}/{num_classes} ({n[df['pred']]}%)", axis=1)
+        #viz_data['pred'] = viz_data.apply(lambda df: f"{dataset_label} C{df['pred']}/{num_classes} ({n[df['pred']]}%)", axis=1)
+        viz_data['pred'] = viz_data.apply(lambda df: f"{greek_letters[df['pred']]}{num_classes} ({n[df['pred']]}%)", axis=1)
         plot = (
             ggplot(viz_data, aes(x = 'color', y = 'count', fill = 'factor(value)'))
             + geom_bar(position = "fill", stat = "identity") + facet_wrap('pred', nrow=2)
             + labs(x = "", y = "")
+            + theme(legend_position="left" if num_classes == 2 else "none")
         )
         #plot.show()
         plot.save(filename=filename)
