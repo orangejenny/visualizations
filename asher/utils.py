@@ -7,6 +7,7 @@ WORKING_DIRECTORY = "~/Dropbox/2024 Fall/thesis"
 AG_CSV = "ag_data/ag_data.csv"
 STATES_CSV = "ag_data/states.csv"
 
+MOTIVATION_KEYS = [f'MOTIVATIONS_{x}' for x in ['ANIMAL', 'COST', 'DISGUST', 'ENVIRO', 'HEALTH', 'JUSTICE', 'RELIGION', 'SOCIAL', 'TASTE', 'TREND']]
 SPECIES_KEYS = [f"{s}DAILY" for s in ['BEEF', 'PORK', 'CHICKEN', 'TURKEY', 'FISH', 'SHELLFISH', 'OTHERMEATS']]
 SWFL_KEYS = [f"SWFL{i}" for i in range(1, 6)]
 

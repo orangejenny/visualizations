@@ -297,20 +297,19 @@ meaters.groupby(['INCOME', 'PREVALENCES'], observed=True).count()['ID']
 #       only 44 people in the Northeast
 motivations = defaultdict(dict)
 yes_no = {"Yes": 1, "No": 0}
-motivation_keys = ['ANIMAL', 'COST', 'DISGUST', 'ENVIRO', 'HEALTH', 'JUSTICE', 'RELIGION', 'SOCIAL', 'TASTE', 'TREND']
 diets = ['vegetarian', 'chicken-free', 'reducing meat']
-for motivation in motivation_keys:
+for motivation in utils.MOTIVATION_KEYS:
     for diet in diets:
-        key = f"{diet[0]}MOTIVATIONS_{motivation}"
+        key = f"{diet[0]}{motivation}"
         key2 = f"{key}_numeric"
         geo_sample[key2] = geo_sample.apply(lambda df: yes_no.get(df[key], np.nan), axis=1)
         motivations[motivation][diet] = geo_levels(geo_sample, lambda df, level: df.loc[:,[level, key2]].groupby([level], observed=True, as_index=False).mean())
 
 records = []
 regional_records = []
-for motivation in motivation_keys:
+for motivation in utils.MOTIVATION_KEYS:
     for diet in diets:
-        key = f"{diet[0]}MOTIVATIONS_{motivation}_numeric"
+        key = f"{diet[0]}{motivation}_numeric"
         (no, yes) = geo_sample.groupby(key).count()['PREVALENCES']
         records.append({
             'motivation': motivation,
