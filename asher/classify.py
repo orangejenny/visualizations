@@ -60,7 +60,7 @@ colors = ['REDDAILY', 'WHITEDAILY', 'BLUEDAILY']
 
 def fit_model(data, num_classes, categories):
     data = data.loc[:,categories].copy()
-    model = StepMix(n_components=num_classes, n_steps=1, measurement="categorical", verbose=1, random_state=23, max_iter=2000)
+    model = StepMix(n_components=num_classes, n_steps=3, measurement="categorical", verbose=0, random_state=23, max_iter=2000)
     model.fit(data)
     data['pred'] = model.predict(data)
 
@@ -81,10 +81,14 @@ def fit_model(data, num_classes, categories):
 #   3 classes has 1 small, 1 pretty small, and 1 big
 #   4 classes has 2 big and 2 small ones
 #   5 classes has 3 big and 2 small ones
-#for i in range(2, 12):
-#    fit_model(semis, i, colors)
+'''
+for i in range(2, 12):
+    print(f"Fitting model with {i} classes...")
+    fit_model(semis, i, colors)
+'''
 indicators = ['REDDAILY', 'WHITEDAILY', 'BLUEDAILY']
 
+# Elbow plot comparing different numbers of classes based on log likelihood
 '''
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -103,18 +107,18 @@ plt.show()
 
 
 datasets = {
-    #'non-reducing': omnis,
+    'non-reducing': omnis,
     #'reducers': reducers,
     #'all non-veg': meaters,
-    'semis': semis,
+    #'semis': semis,
 }
 greek_letters = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta', 'Iota']
 #for num_classes in [2, 3, 4, 5, 6]:
-for num_classes in [2, 3, 4]:
+for num_classes in []:
     for dataset_label in datasets.keys():
         filename = f"{num_classes} classes {dataset_label}.png"
         print(f"Generating model for {filename}")
-        (model, predictions) = fit_model(datasets[dataset_label], num_classes, colors)  # TODO: change convergence criteria?
+        (model, predictions) = fit_model(datasets[dataset_label], num_classes, colors)
         cells = predictions.reset_index(names='count').groupby(indicators + ['pred'], as_index=False).count()
 
         n = predictions.groupby('pred').count()['REDDAILY'].to_list()
@@ -143,7 +147,13 @@ for num_classes in [2, 3, 4]:
             + labs(x = "", y = "")
             + theme(legend_position="left" if num_classes == 2 else "none")
         )
-        #plot.show()
-        plot.save(filename=filename)
+        plot.show()
+        #plot.save(filename=f"stacked_class_viz/{filename}")
 
-pass
+
+label = 'non-reducing'
+num_classes = 3
+(model, predictions) = fit_model(datasets[label], num_classes, colors)
+output = datasets[label].join(predictions, how='inner', rsuffix='_model')
+output.drop([f'{c}_model' for c in colors], axis=1, inplace=True)
+output.to_csv(f"{label}_{num_classes}_classes_with_pred.csv")
