@@ -4,6 +4,7 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 
 from plotnine import *
+from stargazer.stargazer import Stargazer
 
 import utils
 
@@ -17,24 +18,36 @@ prefix = 'r'
 data = data.loc[np.logical_or(data[f'{prefix}MOTIVATIONS_ANIMAL'] == 'No', data[f'{prefix}MOTIVATIONS_ANIMAL'] == 'Yes'),:]
 
 # Re-iterate class prevalences
-print(data.loc[:,['ID', 'pred']].groupby('pred').count())
+def _counts(df, label):
+    return df.loc[:, ['ID', label]].groupby(label).count()
+
+print(_counts(data, 'pred'))
 
 # Print out regional counts
-print(data.loc[:,['region9', 'ID']].groupby('region9').count())
-print(data.loc[:,['region4', 'ID']].groupby('region4').count())
+print(_counts(data, 'region9'))
+print(_counts(data, 'region4'))
 
 def _recode_by_dict(df, old_label, new_label, values):
-    df[new_label] = data.apply(lambda df: values[df[old_label]], axis=1)
+    df[new_label] = data.apply(lambda df: values.get(df[old_label], np.nan), axis=1)
     return df
 
 # Recode motivations as 0/1
 overall_motivations = {}
 for key in utils.MOTIVATION_KEYS:
-    (no, yes) = data.groupby(f'{prefix}{key}').count()['ID']
+    (no, yes) = _counts(data, f'{prefix}{key}')['ID']
     percent = round((yes * 100) / (yes + no))
     overall_motivations[key] = percent
     print(f"{prefix}{key} (n={yes + no}) {percent}%")
     data = _recode_by_dict(data, f'r{key}', key, {'Yes': 1, 'No': 0})
+
+# Recode race and white and non-white, due to sample size
+race_values = {
+    'Other race/ethnicity (including two or more)': 1,
+    'Asian': 1,
+    'African American or Black': 1,
+    'White': 0,
+}
+data = _recode_by_dict(data, 'RACE', 'RACE_dummy', race_values)
 
 # Recode demographics
 education_values = {
@@ -59,6 +72,9 @@ data = _recode_by_dict(data, 'INCOME', 'INCOME_cont', income_values)
 data['MOTIVATION_COUNT'] = data.apply(lambda df: sum([df[k] for k in utils.MOTIVATION_KEYS]), axis=1)
 print(data.loc[:,['pred', 'MOTIVATION_COUNT']].groupby('pred').mean())
 
+# Average servings of meat per day: 3, 2.5, 1
+print(data.loc[:,['pred', 'MEATDAILY']].groupby('pred').mean())
+
 # Correlations among motivations. Strongest corrlations are between ANIMAL, ENVIRO, and JUSTICE
 # Visualize as a correlation matrix / heat map
 correlation_list = sorted([(round(data[c1].corr(data[c2]), 3), c1, c2) for c1 in utils.MOTIVATION_KEYS for c2 in utils.MOTIVATION_KEYS])
@@ -78,35 +94,67 @@ matrix = (
     + scale_colour_manual(values=['#ffffff'] * len(utils.MOTIVATION_KEYS))
     + labs(x = "", y = "", title = "Correlations between motivations")
 )
-matrix.show()
+#matrix.show()
+
+def _add_regression(df, formula, score_label):
+    glm_kwargs = {
+        'family': sm.families.Binomial(),
+        'data': df,
+        #'freq_weights': (df['weight'] if do_weight else None),
+    }
+    model = smf.glm(formula=formula, **glm_kwargs).fit()
+    #print(model.summary())
+    df[score_label] = model.predict(df)
+    return model
+
 
 # Logistic regressions
 class_motivations = {}
 for key in utils.MOTIVATION_KEYS:
-    score_key = f'score_{key[12:]}'
-    glm_kwargs = {
-        'family': sm.families.Binomial(),
-        'data': data,
-        #'freq_weights': (df['weight'] if do_weight else None),
-    }
     formula = f"{key} ~ C(pred)"
-    logit = smf.glm(formula=formula, **glm_kwargs).fit()
-    data[f'{score_key}_nc'] = logit.predict(data)
+    key = key[12:]
+    score_key = f'score_{key[12:]}'
+
+    models = []
+    model_names = []
+
+    models.append(_add_regression(data, formula, f'{score_key}_nc'))
+    model_names.append('No controls')
     
     motivations = data.loc[:, ['pred', f'{score_key}_nc']].groupby(['pred']).min().to_dict()[f'{score_key}_nc']
     motivations = {key: round(value * 100) for key, value in motivations.items()}
     class_motivations[key] = motivations
-    #print(logit.summary())
 
-    formula += " + C(SEX) + C(RACE) + AGE + EDUCATION_cont + INCOME_cont"
-    logit = smf.glm(formula=formula, **glm_kwargs).fit()
-    data[f'{score_key}_wc'] = logit.predict(data)
-    #print(logit.summary())
+    formula += " + C(SEX) + AGE + EDUCATION_cont + INCOME_cont"
+    models.append(_add_regression(data, formula, f'{score_key}_wc'))
+    model_names.append('No race')
 
+    formula += " + C(region4)"
+    models.append(_add_regression(data, formula, f'{score_key}_r4'))
+    model_names.append('Regions')
+
+    formula = formula.replace("region4", "region9")
+    models.append(_add_regression(data, formula, f'{score_key}_r9'))
+    model_names.append('Subregions')
+
+    formula += " + C(RACE_dummy)"   # separate and last because it drops 40 observations (14%)
+    models.append(_add_regression(data, formula, f'{score_key}_wc'))
+    model_names.append('All demographics')
+
+    stargazer = Stargazer(models)
+    stargazer.custom_columns(model_names)
+
+    filename = f"stargazers/{key.lower()}.html"
+    with open(filename, "w") as fh:
+        fh.write(stargazer.render_html())
+
+
+
+# Visualize column chart of motivations by class
 motivation_plot_data = pd.DataFrame.from_records([
-    #{'motivation': key[12:], 'pred': 'all', 'prop': value} for key, value in overall_motivations.items()
+    #{'motivation': key, 'pred': 'all', 'prop': value} for key, value in overall_motivations.items()
 ] + [
-    {'motivation': key[12:], 'pred': class_num, 'prop': class_prop}
+    {'motivation': key, 'pred': class_num, 'prop': class_prop}
     for key, values in class_motivations.items() for class_num, class_prop in values.items()
 ])
 motivation_plot = (
@@ -116,11 +164,10 @@ motivation_plot = (
         + theme(axis_text_x=element_text(rotation = 90))
         + labs(x = "", y = "", title = "Motivations")
 )
-motivation_plot.show()
+#motivation_plot.show()
 
 '''
 TODO
-    - Set up model summaries with stargazer: https://github.com/StatsReporting/stargazer
-    - Make more models with fixed effects for region: C(region9) and C(region4)
-    - Learn to interpret models
+    - Look closer only at motivations where classes are significant
+    - Learn to interpret models. Then write a presentation. With a script. I can do this in a day.
 '''
