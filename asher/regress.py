@@ -3,6 +3,7 @@ import pandas as pd
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 
+from collections import defaultdict
 from plotnine import *
 from scipy.stats import zscore
 from stargazer.stargazer import Stargazer
@@ -35,7 +36,7 @@ overall_motivations = {}
 for key in utils.MOTIVATION_KEYS:
     (no, yes) = _counts(data, f'{prefix}{key}')['ID']
     percent = round((yes * 100) / (yes + no))
-    overall_motivations[key] = percent
+    overall_motivations[key[12:]] = percent
     print(f"{prefix}{key} (n={yes + no}) {percent}%")
     data = _recode_by_dict(data, f'r{key}', key, {'Yes': 1, 'No': 0})
 
@@ -156,23 +157,29 @@ def _add_regression(df, formula, score_label):
 
 
 # Logistic regressions
-class_motivations = {}
-for key in utils.MOTIVATION_KEYS:
+class_motivations = defaultdict(dict)
+for key in utils.MOTIVATION_KEYS:  # + ['ANIMAL+ENVIRO', 'ANIMAL+RELIGION', 'ANIMAL+JUSTICE', 'SOCIAL+TREND']:
     formula = f"{key} ~ C(pred)"
-    key = key[12:]
-    score_key = f'score_{key[12:]}'
 
+    if '+' in key:
+        data[key] = data.apply(lambda df: min(1, sum([df[f'MOTIVATIONS_{k}'] for k in key.split('+')])), axis=1)
+
+    motivations = data.loc[:, ['pred', key, 'ID']].groupby(['pred', key]).count().to_dict()['ID']
+    if '+' not in key:
+        key = key[12:]
+
+    for class_index in set(data['pred']):
+        (no, yes) = (motivations[(class_index, 0)], motivations[(class_index, 1)])
+        class_motivations[key][class_index] = round((yes * 100) / (yes + no))
+
+    score_key = f'score_{key[12:]}'
     models = []
     model_names = []
 
     models.append(_add_regression(data, formula, f'{score_key}_nc'))
     model_names.append('No controls')
-    
-    motivations = data.loc[:, ['pred', f'{score_key}_nc']].groupby(['pred']).min().to_dict()[f'{score_key}_nc']
-    motivations = {key: round(value * 100) for key, value in motivations.items()}
-    class_motivations[key] = motivations
 
-    formula += " + C(SEX) + AGE + EDUCATION_cont + INCOME_cont"
+    formula += " + C(SEX) + AGE_zscore + EDUCATION_cont + INCOME_zscore"
     models.append(_add_regression(data, formula, f'{score_key}_wc'))
     model_names.append('No race')
 
