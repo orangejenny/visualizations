@@ -140,7 +140,7 @@ matrix = (
     + geom_text(aes(label="correlation", colour='motivation1'), size=9)
     + theme(axis_text_x=element_text(rotation = 90))
     + scale_colour_manual(values=['#ffffff'] * len(utils.MOTIVATION_KEYS))
-    + labs(x = "", y = "", title = "Correlations between motivations")
+    + labs(x = "", y = "", title = "Figure 1: Correlations between motivations")
 )
 #matrix.show()
 
@@ -197,6 +197,10 @@ for key in utils.MOTIVATION_KEYS:  # + ['ANIMAL+ENVIRO', 'ANIMAL+RELIGION', 'ANI
 
     stargazer = Stargazer(models)
     stargazer.custom_columns(model_names)
+    stargazer.show_model_numbers(False)
+    stargazer.significant_digits(2)
+    #stargazer.covariate_order(['BMI', 'Age', 'S1', 'Sex'])  # TODO
+    #stargazer.rename_covariates({'Age': 'Oldness'})         # TODO
 
     filename = f"stargazers/{key.lower()}.html"
     with open(filename, "w") as fh:
