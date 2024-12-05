@@ -49,6 +49,7 @@ omnis = data.loc[data['PREVALENCES'] == 'Non-Reducing Omnivores',:]
 semis = meaters.loc[data['PREVALENCES'] != 'Non-Reducing Omnivores',:]
 reducers = data.loc[data['PREVALENCES'] == 'Reducers',:]
 nochicks = data.loc[data['PREVALENCES'] == 'Chicken Avoiders',:]
+print(data.loc[:,['PREVALENCES', 'MEATDAILY']].groupby('PREVALENCES', observed=True).mean())    # unweighted, compare to Table 42 in Asher
 
 # Primary modeling approach is categorical
 #   That avoids continuous data making the data look more granular than it is
