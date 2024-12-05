@@ -59,12 +59,17 @@ def convert_categorical_to_numeric(data, labels, options=LIKERT, overwrite=True,
     return data
 
 
-def categorize_daily(df, key=""):
+def categorize_daily(df, key="", levels=4):
+    if levels == 0:
+        return df[key]
+
     if df[key] > 1:         # most meals (more than once a day)
-        return 3
+        return levels - 1
     if df[key] > 0.5:       # most days (more than once every other day)
-        return 2
+        return levels - 2
     if df[key] >= 0.142:     # sometimes (once a week or less)
+        return levels - 3
+    if levels == 5 and df[key] > 0:
         return 1
     return 0                # seldom (once a month or less)
 

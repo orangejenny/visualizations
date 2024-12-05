@@ -37,8 +37,9 @@ data['BLUEDAILY'] = data.apply(lambda df: sum([df[k] for k in ['FISHDAILY', 'SHE
 # (ggplot(data.loc[np.logical_and(data['MEATDAILY'] <= 3, data['PREVALENCES'] == 'Reducers'),:], aes(x = 'MEATDAILY')) + geom_histogram()).show()  # same, for semis only
 # Among omnis, the percentages 0/1/2/3 are 13/26/48/12
 # Among semis, the percentages 0/1/2/3 are 19/27/37/16
+levels = 4
 for key in ['MEATDAILY', 'MAMMALDAILY', 'BIRDDAILY', 'REDDAILY', 'WHITEDAILY', 'BLUEDAILY']:
-    data[key] = data.apply(partial(categorize_daily, key=key), axis=1)
+    data[key] = data.apply(partial(categorize_daily, key=key, levels=levels), axis=1)
 
 # Create diet-specific samples
 #   Primarily interested in omnis and semis
@@ -60,7 +61,8 @@ colors = ['REDDAILY', 'WHITEDAILY', 'BLUEDAILY']
 
 def fit_model(data, num_classes, categories):
     data = data.loc[:,categories].copy()
-    model = StepMix(n_components=num_classes, n_steps=3, measurement="categorical", verbose=0, random_state=23, max_iter=2000)
+    measurement = "categorical" if levels else "continuous"
+    model = StepMix(n_components=num_classes, n_steps=3, measurement=measurement, verbose=0, random_state=23, max_iter=2000)
     model.fit(data)
     data['pred'] = model.predict(data)
 
@@ -116,6 +118,11 @@ greek_letters = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'T
 #for num_classes in [2, 3, 4, 5, 6]:
 for num_classes in []:
     for dataset_label in datasets.keys():
+        if not levels:
+            # For continuous visualizations,cap values at 3, because otherwise the lower values aren't distinguishable
+            datasets[dataset_label]['WHITEDAILY'] = datasets[dataset_label].apply(lambda df: min(df['WHITEDAILY'], 3), axis=1)
+            datasets[dataset_label]['BLUEDAILY'] = datasets[dataset_label].apply(lambda df: min(df['BLUEDAILY'], 3), axis=1)
+
         filename = f"{num_classes} classes {dataset_label}.png"
         print(f"Generating model for {filename}")
         (model, predictions) = fit_model(datasets[dataset_label], num_classes, colors)
@@ -138,17 +145,20 @@ for num_classes in []:
                 viz_data = pd.concat([viz_data, subset])
         
         value_lookup = ['seldom', 'some days', 'most days', 'most meals']
-        viz_data['value'] = viz_data.apply(lambda df: str(df['value']) + ': ' + value_lookup[df['value']], axis=1)
+        if levels == 5:
+            value_lookup = ['never'] + value_lookup
+        if levels:
+            viz_data['value'] = viz_data.apply(lambda df: str(df['value']) + ': ' + value_lookup[df['value']], axis=1)
         #viz_data['pred'] = viz_data.apply(lambda df: f"{dataset_label} C{df['pred']}/{num_classes} ({n[df['pred']]}%)", axis=1)
         viz_data['pred'] = viz_data.apply(lambda df: f"{greek_letters[df['pred']]}{num_classes} ({n[df['pred']]}%)", axis=1)
         plot = (
-            ggplot(viz_data, aes(x = 'color', y = 'count', fill = 'factor(value)'))
+            ggplot(viz_data, aes(x = 'color', y = 'count', fill = 'factor(value)' if levels else 'value'))
             + geom_bar(position = "fill", stat = "identity") + facet_wrap('pred', nrow=2)
             + labs(x = "", y = "")
             + theme(legend_position="left" if num_classes == 2 else "none")
         )
         plot.show()
-        #plot.save(filename=f"stacked_class_viz/{filename}")
+        #plot.save(filename=f"stacked_class_viz_{levels}_levels/{filename}")
 
 
 label = 'non-reducing'
