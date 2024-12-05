@@ -4,18 +4,17 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 
 from plotnine import *
+from scipy.stats import zscore
 from stargazer.stargazer import Stargazer
 
 import utils
 
 data = pd.read_csv("reducers_3_classes_with_pred.csv")
 prefix = 'r'
+num_classes = 3
 
 #data = pd.read_csv("non-reducing_3_classes_with_pred.csv")
 #prefix = 'ov'
-
-# Limit to relevant analytic set
-data = data.loc[np.logical_or(data[f'{prefix}MOTIVATIONS_ANIMAL'] == 'No', data[f'{prefix}MOTIVATIONS_ANIMAL'] == 'Yes'),:]
 
 # Re-iterate class prevalences
 def _counts(df, label):
@@ -68,12 +67,60 @@ income_values = {
 }
 data = _recode_by_dict(data, 'INCOME', 'INCOME_cont', income_values)
 
+# Add zscores for age and income
+data['AGE_zscore'] = zscore(data['AGE'], nan_policy='omit')
+data['INCOME_zscore'] = zscore(data['INCOME_cont'], nan_policy='omit')
+
+# Look at demographics by class
+sex_data = data.loc[:,['SEX', 'ID', 'pred']].groupby(['pred', 'SEX']).count().to_dict()['ID']
+demographic_means = data.loc[:,['pred', 'AGE', 'INCOME_cont', 'EDUCATION_cont']].groupby(['pred']).mean().to_dict()
+demographic_medians = data.loc[:,['pred', 'AGE', 'INCOME_cont', 'EDUCATION_cont']].groupby(['pred']).median().to_dict()
+race_data = data.loc[:,['pred', 'RACE_dummy', 'ID']].groupby(['pred', 'RACE_dummy']).count().to_dict()['ID']
+demographic_records = []
+for class_num in range(num_classes):
+    sex = {key[1]: value for key, value in sex_data.items() if key[0] == class_num}
+    demographic_records.append({
+        "demographic": "female",
+        "value": sex['Female'] * 100 / sum(sex.values()),
+        "pred": class_num,
+    })
+    race = {key[1]: value for key, value in race_data.items() if key[0] == class_num}
+    demographic_records.append({
+        "demographic": "white",
+        "value": race[0] * 100 / sum(race.values()),
+        "pred": class_num,
+    })
+    for metric in ['AGE', 'INCOME_cont', 'EDUCATION_cont']:
+        demographic_records.append({
+            "demographic": metric.replace("_cont", "").lower() + "_mean",
+            "value": demographic_means[metric][class_num],
+            "pred": class_num,
+        })
+        demographic_records.append({
+            "demographic": metric.replace("_cont", "").lower() + "_median",
+            "value": demographic_medians[metric][class_num],
+            "pred": class_num,
+        })
+demographic_data = pd.DataFrame.from_records(demographic_records)
+print(demographic_data)
+# This is hard to interpret because the variables are on different scales
+# The interesting ones are gender, age, and maybe income
+demographic_plot = (
+    ggplot(demographic_data, aes("demographic", "value", fill="factor(pred)"))
+    + geom_point()
+)
+#demographic_plot.show()
+
+# Average servings of meat per day: 2.5, 1, 3 (unweighted)
+print(data.loc[:,['pred', 'MEATDAILY']].groupby('pred').mean())
+
+# Limit to relevant analytic set
+data = data.loc[np.logical_or(data[f'{prefix}MOTIVATIONS_ANIMAL'] == 'No', data[f'{prefix}MOTIVATIONS_ANIMAL'] == 'Yes'),:]
+
 # Calculate total motivations: class 0 selects more motivations
 data['MOTIVATION_COUNT'] = data.apply(lambda df: sum([df[k] for k in utils.MOTIVATION_KEYS]), axis=1)
 print(data.loc[:,['pred', 'MOTIVATION_COUNT']].groupby('pred').mean())
-
-# Average servings of meat per day: 3, 2.5, 1
-print(data.loc[:,['pred', 'MEATDAILY']].groupby('pred').mean())
+print(data.loc[:,['pred', 'MOTIVATION_COUNT']].groupby('pred').median())
 
 # Correlations among motivations. Strongest corrlations are between ANIMAL, ENVIRO, and JUSTICE
 # Visualize as a correlation matrix / heat map
@@ -151,23 +198,19 @@ for key in utils.MOTIVATION_KEYS:
 
 
 # Visualize column chart of motivations by class
+class_names = ["Alpha3", "Beta3", "Gamma3"]
 motivation_plot_data = pd.DataFrame.from_records([
     #{'motivation': key, 'pred': 'all', 'prop': value} for key, value in overall_motivations.items()
 ] + [
-    {'motivation': key, 'pred': class_num, 'prop': class_prop}
+    {'motivation': key, 'pred': class_names[class_num], 'prop': class_prop}
     for key, values in class_motivations.items() for class_num, class_prop in values.items()
 ])
+motivation_plot_data['Class'] = motivation_plot_data['pred']    # for legend label
 motivation_plot = (
-    ggplot(motivation_plot_data, aes(x = "factor(motivation)", y = "prop", fill = "factor(pred)"))
+    ggplot(motivation_plot_data, aes(x = "factor(motivation)", y = "prop", fill = "Class"))
         + geom_col(position = "dodge2")
         + scale_y_continuous(limits = [0, 100])
         + theme(axis_text_x=element_text(rotation = 90))
-        + labs(x = "", y = "", title = "Motivations")
+        + labs(x = "", y = "% of class citing reason", title = "Figure 5: Motivations by class")
 )
 #motivation_plot.show()
-
-'''
-TODO
-    - Look closer only at motivations where classes are significant
-    - Learn to interpret models. Then write a presentation. With a script. I can do this in a day.
-'''
