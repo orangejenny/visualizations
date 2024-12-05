@@ -66,6 +66,10 @@ def fit_model(data, num_classes, categories):
     model = StepMix(n_components=num_classes, n_steps=3, measurement=measurement, verbose=0, random_state=23, max_iter=2000)
     model.fit(data)
     data['pred'] = model.predict(data)
+    if num_classes == 3:
+        # Recode so that biggest class is first and will be used as reference category
+        values = {0: 2, 1: 0, 2: 1}
+        data['pred'] = data.apply(lambda df: values.get(df['pred'], df['pred']), axis=1)
 
     '''
     print("How many people are in each possible cell?")
