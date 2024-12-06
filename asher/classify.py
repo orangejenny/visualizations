@@ -18,6 +18,11 @@ red_options = [f for f in freq]
 blue_options = [f1 + f2 for f1 in freq for f2 in freq]
 white_options = [f1 + f2 + f3 for f1 in freq for f2 in freq for f3 in freq]
 
+# High-level parameters for this run
+levels = 4
+weighted = True
+measurement = "categorical" if levels else "continuous"
+
 # Load data
 data = load_asher_data()
 item_counts = pd.DataFrame(data.count())
@@ -37,7 +42,6 @@ data['BLUEDAILY'] = data.apply(lambda df: sum([df[k] for k in ['FISHDAILY', 'SHE
 # (ggplot(data.loc[np.logical_and(data['MEATDAILY'] <= 3, data['PREVALENCES'] == 'Reducers'),:], aes(x = 'MEATDAILY')) + geom_histogram()).show()  # same, for semis only
 # Among omnis, the percentages 0/1/2/3 are 13/26/48/12
 # Among semis, the percentages 0/1/2/3 are 19/27/37/16
-levels = 4
 for key in ['MEATDAILY', 'MAMMALDAILY', 'BIRDDAILY', 'REDDAILY', 'WHITEDAILY', 'BLUEDAILY']:
     data[key] = data.apply(partial(categorize_daily, key=key, levels=levels), axis=1)
 
@@ -61,10 +65,10 @@ colors = ['REDDAILY', 'WHITEDAILY', 'BLUEDAILY']
 
 
 def fit_model(data, num_classes, categories):
+    weights = data['Wts'] if weighted else None
     data = data.loc[:,categories].copy()
-    measurement = "categorical" if levels else "continuous"
     model = StepMix(n_components=num_classes, n_steps=3, measurement=measurement, verbose=0, random_state=23, max_iter=2000)
-    model.fit(data)
+    model.fit(data, sample_weight=weights)
     data['pred'] = model.predict(data)
     if num_classes == 3:
         # Recode so that biggest class is first and will be used as reference category
@@ -100,10 +104,10 @@ indicators = ['REDDAILY', 'WHITEDAILY', 'BLUEDAILY']
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.model_selection import GridSearchCV, ParameterGrid
-model = StepMix(n_components=3, n_steps=1, measurement="categorical", random_state=23, max_iter=2000)
+model = StepMix(n_components=3, n_steps=1, measurement=measurement, random_state=23, max_iter=2000)
 grid = {'n_components': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
 gs = GridSearchCV(estimator=model, cv=5, param_grid=grid)
-gs.fit(semis.loc[:,indicators])
+gs.fit(reducers.loc[:,indicators], sample_weight=reducers['Wts'])
 results = pd.DataFrame(gs.cv_results_)
 results["Validation Log Likelihood"] = results['mean_test_score']
 results["Number of classes"] = results['param_n_components']
@@ -121,14 +125,15 @@ datasets = {
 }
 greek_letters = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta', 'Iota']
 #for num_classes in [2, 3, 4, 5, 6]:
-for num_classes in []:
+for num_classes in [3]:
     for dataset_label in datasets.keys():
         if not levels:
             # For continuous visualizations,cap values at 3, because otherwise the lower values aren't distinguishable
             datasets[dataset_label]['WHITEDAILY'] = datasets[dataset_label].apply(lambda df: min(df['WHITEDAILY'], 3), axis=1)
             datasets[dataset_label]['BLUEDAILY'] = datasets[dataset_label].apply(lambda df: min(df['BLUEDAILY'], 3), axis=1)
 
-        filename = f"{num_classes} classes {dataset_label}.png"
+        weight_label = "_weighted" if weighted else ""
+        filename = f"{num_classes} classes {dataset_label}{weight_label}.png"
         print(f"Generating model for {filename}")
         (model, predictions) = fit_model(datasets[dataset_label], num_classes, colors)
         cells = predictions.reset_index(names='count').groupby(indicators + ['pred'], as_index=False).count()
@@ -162,8 +167,9 @@ for num_classes in []:
             + labs(x = "", y = "")
             + theme(legend_position="left" if num_classes == 2 else "none")
         )
-        plot.show()
+        #plot.show()
         #plot.save(filename=f"stacked_class_viz_{levels}_levels/{filename}")
+exit(0)    
 
 
 label = 'non-reducing'
