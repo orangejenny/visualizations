@@ -7,6 +7,7 @@ WORKING_DIRECTORY = "~/Dropbox/2024 Fall/thesis"
 AG_CSV = "ag_data/ag_data.csv"
 STATES_CSV = "ag_data/states.csv"
 
+BARRIER_KEYS = [f'BARRIERS_{x}' for x in ['COST', 'FOODSATISFACTION', 'HEALTH', 'IDENTITY', 'INCONVENIENCE', 'MOTIVATION', 'SOCIALISSUES']]
 MOTIVATION_KEYS = [f'MOTIVATIONS_{x}' for x in ['ANIMAL', 'COST', 'DISGUST', 'ENVIRO', 'HEALTH', 'JUSTICE', 'RELIGION', 'SOCIAL', 'TASTE', 'TREND']]
 SPECIES_KEYS = [f"{s}DAILY" for s in ['BEEF', 'PORK', 'CHICKEN', 'TURKEY', 'FISH', 'SHELLFISH', 'OTHERMEATS']]
 SWFL_KEYS = [f"SWFL{i}" for i in range(1, 6)]
@@ -29,6 +30,14 @@ CONSUMPTION_OPTIONS = {
     "5-6 times per WEEK (0.784)": 0.784,
     "1 time per DAY (1.000)": 1,
     "2 or more times per DAY (2.500)": 2.5,
+}
+
+GENERIC_OPTIONS = {
+    "Answer 1": 1,
+    "Answer 2": 2,
+    "Answer 3": 3,
+    "Answer 4": 4,
+    "Answer 5": 5,
 }
 
 

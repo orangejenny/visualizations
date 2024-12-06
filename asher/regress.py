@@ -19,7 +19,9 @@ num_classes = 3
 
 # Re-iterate class prevalences
 def _counts(df, label):
-    return df.loc[:, ['ID', label]].groupby(label).count()
+    if type(label) != list:
+        label = [label]
+    return df.loc[:, ['ID'] + label].groupby(label).count()
 
 print(_counts(data, 'pred'))
 
@@ -73,7 +75,7 @@ data['AGE_zscore'] = zscore(data['AGE'], nan_policy='omit')
 data['INCOME_zscore'] = zscore(data['INCOME_cont'], nan_policy='omit')
 
 # Look at demographics by class
-sex_data = data.loc[:,['SEX', 'ID', 'pred']].groupby(['pred', 'SEX']).count().to_dict()['ID']
+sex_data = _counts(data, ['pred', 'SEX']).to_dict()['ID']
 demographic_means = data.loc[:,['pred', 'AGE', 'INCOME_cont', 'EDUCATION_cont']].groupby(['pred']).mean().to_dict()
 demographic_medians = data.loc[:,['pred', 'AGE', 'INCOME_cont', 'EDUCATION_cont']].groupby(['pred']).median().to_dict()
 race_data = data.loc[:,['pred', 'RACE_dummy', 'ID']].groupby(['pred', 'RACE_dummy']).count().to_dict()['ID']
@@ -117,6 +119,26 @@ print(data.loc[:,['pred', 'MEATDAILY']].groupby('pred').mean())
 
 # Limit to relevant analytic set
 data = data.loc[np.logical_or(data[f'{prefix}MOTIVATIONS_ANIMAL'] == 'No', data[f'{prefix}MOTIVATIONS_ANIMAL'] == 'Yes'),:]
+
+# Other descriptive aspects of classes, from analytic part of survey
+data = utils.convert_categorical_to_numeric(data, [f"SWFL{i + 1}" for i in range(5)], overwrite=False)
+swfl_means = data.loc[:,['pred'] + [f'SWFL{i + 1}_numeric' for i in range(5)]].groupby(['pred']).mean()
+data.loc[:,['pred', 'rPERCEPTIONS_1']].groupby(['pred']).mean()  # perception of meat reducers in US population
+_counts(data, ['pred', 'rREDUCEFURTHER'])  # willingness to reduce further
+_counts(data, ['pred', 'rVEGWILLING'])     # willingness to go veg
+_counts(data, ['pred', 'rNORMS1'])         # important people think I should eat this way
+_counts(data, ['pred', 'rNORMS2'])
+_counts(data, ['pred', 'rCONFLICTED'])     # conflicted over problems with meat
+_counts(data, ['pred', 'rCOMPARISON'])     # comparison with vegetarianism
+data = utils.convert_categorical_to_numeric(data, [f"{prefix}ATTITUDES{i + 1}" for i in range(4)], options=utils.GENERIC_OPTIONS)
+attitude_means = data.loc[:,['pred'] + [f'rATTITUDES{i + 1}' for i in range(4)]].groupby(['pred']).mean()
+_counts(data, ['pred', 'rPASTVEG'])        # 60% of 10% class has tried a veg diet in the past, much lower for the others
+data = utils.convert_categorical_to_numeric(data, [f"{prefix}{k}" for k in utils.BARRIER_KEYS])
+barrier_means = data.loc[:,['pred'] + [f'{prefix}{k}' for k in utils.BARRIER_KEYS]].groupby(['pred']).mean()    # 10% group struggles more with barriers, they also see diet more as part of their identity
+
+# Length of time eating this way, very rough histograms
+plot = ( ggplot(temp, aes(x = 'rLENGTH_1_TEXT')) + geom_histogram() + theme(axis_text_x=element_text(rotation = 90)) + labs(x = metric, y = "") + facet_wrap('pred'))
+#plot.show()
 
 # Calculate total motivations: class 0 selects more motivations
 data['MOTIVATION_COUNT'] = data.apply(lambda df: sum([df[k] for k in utils.MOTIVATION_KEYS]), axis=1)
