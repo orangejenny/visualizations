@@ -231,27 +231,54 @@ for key in utils.MOTIVATION_KEYS + [
     model_names.append('No controls')
 
     formula += " + C(SEX) + AGE_zscore + EDUCATION_cont + INCOME_zscore"
-    models.append(_add_regression(data, formula, f'{score_key}_wc'))
-    model_names.append('No race')
+    #models.append(_add_regression(data, formula, f'{score_key}_wc'))
+    #model_names.append('Most demographics')
 
     formula += " + C(region4)"
     models.append(_add_regression(data, formula, f'{score_key}_r4'))
-    model_names.append('Regions')
+    model_names.append('Demographics<br>+ region')
 
     formula = formula.replace("region4", "region9")
-    models.append(_add_regression(data, formula, f'{score_key}_r9'))
-    model_names.append('Subregions')
+    #models.append(_add_regression(data, formula, f'{score_key}_r9'))
+    #model_names.append('Subregions')
 
     formula += " + C(RACE_dummy)"   # separate and last because it drops 40 observations (14%)
-    models.append(_add_regression(data, formula, f'{score_key}_wc'))
-    model_names.append('All demographics')
+    #models.append(_add_regression(data, formula, f'{score_key}_wc9'))
+    #model_names.append('All demographics (9)')
+
+    formula = formula.replace("region9", "region4")
+    models.append(_add_regression(data, formula, f'{score_key}_wc4'))
+    model_names.append('+ Race')
 
     stargazer = Stargazer(models)
     stargazer.custom_columns(model_names)
     stargazer.show_model_numbers(False)
     stargazer.significant_digits(2)
-    #stargazer.covariate_order(['BMI', 'Age', 'S1', 'Sex'])  # TODO
-    #stargazer.rename_covariates({'Age': 'Oldness'})         # TODO
+    stargazer.significance_levels([0.05, 0.01, 0.001])
+    stargazer.covariate_order([
+        'C(pred)[T.1]',
+        'C(pred)[T.2]',
+        'AGE_zscore',
+        'C(SEX)[T.Male]',
+        'INCOME_zscore',
+        'EDUCATION_cont',
+        'C(region4)[T.Northeast]',
+        'C(region4)[T.South]',
+        'C(region4)[T.West]',
+        'C(RACE_dummy)[T.1.0]',
+    ])
+    stargazer.rename_covariates({
+        'AGE_zscore': 'Age',
+        'C(RACE_dummy)[T.1.0]': 'Race (non-white)',
+        'C(SEX)[T.Male]': 'Sex (male)',
+        'C(pred)[T.1]': 'Class: Beta3<br>(20% semi-vegetarians)',
+        'C(pred)[T.2]': 'Class: Gamma3<br>(10% heavy meat eaters)',
+        'C(region4)[T.Northeast]': 'Region (Northeast)',
+        'C(region4)[T.South]': 'Region (South)',
+        'C(region4)[T.West]': 'Region (West)',
+        'EDUCATION_cont': 'Education',
+        'INCOME_zscore': 'Income',
+    })
 
     weight_suffix = "_weighted" if do_weight else ""
     filename = f"stargazers{weight_suffix}/{key.lower()}.html"
