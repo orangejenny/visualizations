@@ -181,6 +181,7 @@ matrix = (
     + labs(x = "", y = "", title = "Figure 1: Correlations between motivations")
 )
 #matrix.show()
+#matrix.save(filename=f"motivation_correlations.png")
 
 def _add_regression(df, formula, score_label):
     glm_kwargs = {
