@@ -197,14 +197,26 @@ def _add_regression(df, formula, score_label):
 
 # Logistic regressions
 class_motivations = defaultdict(dict)
-for key in utils.MOTIVATION_KEYS:  # + ['ANIMAL+ENVIRO', 'ANIMAL+RELIGION', 'ANIMAL+JUSTICE', 'SOCIAL+TREND']:
-    formula = f"{key} ~ C(pred)"
+for key in utils.MOTIVATION_KEYS + [
+    # 'ANIMAL+ENVIRO', 'ANIMAL+RELIGION', 'ANIMAL+JUSTICE', 'SOCIAL+TREND',
+    'COST+DISGUST+HEALTH+SOCIAL+TASTE+TREND:INTERNAL1',
+    'ANIMAL+ENVIRO+JUSTICE+RELIGION:EXTERNAL1',
+    'COST+DISGUST+HEALTH+SOCIAL+TASTE+TREND+RELIGION:INTERNAL2',
+    'ANIMAL+ENVIRO+JUSTICE:EXTERNAL2',
+    'COST+DISGUST+HEALTH+SOCIAL+TASTE+TREND:INTERNAL3',
+    'ANIMAL+ENVIRO+JUSTICE:EXTERNAL3',
+]:
+    constructed_key = ':' in key
 
-    if '+' in key:
-        data[key] = data.apply(lambda df: min(1, sum([df[f'MOTIVATIONS_{k}'] for k in key.split('+')])), axis=1)
+    if constructed_key:
+        (inputs, key) = key.split(":")
+        formula = f"{key} ~ C(pred)"
+        data[key] = data.apply(lambda df: min(1, sum([df[f'MOTIVATIONS_{k}'] for k in inputs.split('+')])), axis=1)
+    else:
+        formula = f"{key} ~ C(pred)"
 
     motivations = data.loc[:, ['pred', key, 'ID']].groupby(['pred', key]).count().to_dict()['ID']
-    if '+' not in key:
+    if not constructed_key:
         key = key[12:]
 
     for class_index in set(data['pred']):
