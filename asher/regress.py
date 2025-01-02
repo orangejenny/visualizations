@@ -10,9 +10,10 @@ from stargazer.stargazer import Stargazer
 
 import utils
 
-data = pd.read_csv("reducers_3_classes_with_pred.csv")
+data = pd.read_csv("reducers_3_classes_with_pred_weighted.csv")
 prefix = 'r'
 num_classes = 3
+do_weight = True
 
 #data = pd.read_csv("non-reducing_3_classes_with_pred.csv")
 #prefix = 'ov'
@@ -125,8 +126,12 @@ demographic_plot = (
 )
 #demographic_plot.show()
 
-# Average servings of meat per day: 2.5, 1, 3 (unweighted)
-print(data.loc[:,['pred', 'MEATDAILY']].groupby('pred').mean())
+# Average servings of meat per day, recreating a numeric variable for MEATDAILY, which is categorical
+data['newMEATDAILY'] = data.apply(lambda df: df['BEEFDAILY'] + df['PORKDAILY'] + df['CHICKENDAILY'] + df['TURKEYDAILY'] + df['FISHDAILY'] + df['SHELLFISHDAILY'] + df['OTHERMEATSDAILY'], axis=1)
+# Unweighted: 1.2, 0.4, 6.4
+data.loc[:,['pred', 'newMEATDAILY']].groupby('pred').mean()
+# Weighted: 1.2, 0.4, 4.5
+data.loc[:,['pred', 'newMEATDAILY', 'Wts']].groupby('pred').sum()
 
 # Limit to relevant analytic set
 data = data.loc[np.logical_or(data[f'{prefix}MOTIVATIONS_ANIMAL'] == 'No', data[f'{prefix}MOTIVATIONS_ANIMAL'] == 'Yes'),:]
@@ -181,7 +186,7 @@ def _add_regression(df, formula, score_label):
     glm_kwargs = {
         'family': sm.families.Binomial(),
         'data': df,
-        #'freq_weights': (df['weight'] if do_weight else None),
+        'freq_weights': (df['Wts'] if do_weight else None),
     }
     model = smf.glm(formula=formula, **glm_kwargs).fit()
     #print(model.summary())
@@ -235,8 +240,10 @@ for key in utils.MOTIVATION_KEYS:  # + ['ANIMAL+ENVIRO', 'ANIMAL+RELIGION', 'ANI
     #stargazer.covariate_order(['BMI', 'Age', 'S1', 'Sex'])  # TODO
     #stargazer.rename_covariates({'Age': 'Oldness'})         # TODO
 
-    filename = f"stargazers/{key.lower()}.html"
+    weight_suffix = "_weighted" if do_weight else ""
+    filename = f"stargazers{weight_suffix}/{key.lower()}.html"
     with open(filename, "w") as fh:
+        print(f"Writing {filename}")
         fh.write(stargazer.render_html())
 
 
