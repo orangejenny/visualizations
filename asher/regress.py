@@ -79,6 +79,7 @@ sex_data = _counts(data, ['pred', 'SEX']).to_dict()['ID']
 demographic_means = data.loc[:,['pred', 'AGE', 'INCOME_cont', 'EDUCATION_cont']].groupby(['pred']).mean().to_dict()
 demographic_medians = data.loc[:,['pred', 'AGE', 'INCOME_cont', 'EDUCATION_cont']].groupby(['pred']).median().to_dict()
 race_data = data.loc[:,['pred', 'RACE_dummy', 'ID']].groupby(['pred', 'RACE_dummy']).count().to_dict()['ID']
+region_data = data.loc[:,['pred', 'region4', 'ID']].groupby(['pred', 'region4']).count().to_dict()['ID']
 demographic_records = []
 for class_num in range(num_classes):
     sex = {key[1]: value for key, value in sex_data.items() if key[0] == class_num}
@@ -93,6 +94,13 @@ for class_num in range(num_classes):
         "value": race[0] * 100 / sum(race.values()),
         "pred": class_num,
     })
+    region = {key[1]: value for key, value in region_data.items() if key[0] == class_num}
+    for region_name, region_count in region.items():
+        demographic_records.append({
+            "demographic": region_name,
+            "value": region_count * 100 / sum(region.values()),
+            "pred": class_num,
+        })
     for metric in ['AGE', 'INCOME_cont', 'EDUCATION_cont']:
         demographic_records.append({
             "demographic": metric.replace("_cont", "").lower() + "_mean",
@@ -104,6 +112,9 @@ for class_num in range(num_classes):
             "value": demographic_medians[metric][class_num],
             "pred": class_num,
         })
+for record in demographic_records:
+    if "education" not in record["demographic"]:
+        record["value"] = round(record["value"])
 demographic_data = pd.DataFrame.from_records(demographic_records)
 print(demographic_data)
 # This is hard to interpret because the variables are on different scales
