@@ -5,3 +5,10 @@
 *.swp
 *.sqlite3
 .DS_Store
+**/__pycache__/
+node_modules/
+
+asher/output/*
+asher/stacked_class_*
+asher/stargazers*
+asher/asa_extended_abstract/*
