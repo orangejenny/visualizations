@@ -53,7 +53,7 @@ omnis = data.loc[data['PREVALENCES'] == 'Non-Reducing Omnivores',:]
 semis = meaters.loc[data['PREVALENCES'] != 'Non-Reducing Omnivores',:]
 reducers = data.loc[data['PREVALENCES'] == 'Reducers',:]
 nochicks = data.loc[data['PREVALENCES'] == 'Chicken Avoiders',:]
-print(data.loc[:,['PREVALENCES', 'MEATDAILY']].groupby('PREVALENCES', observed=True).mean())    # unweighted, compare to Table 42 in Asher
+print(data.loc[:,['PREVALENCES', 'MEATDAILY']].groupby('PREVALENCES', observed=True).count())    # unweighted, compare to Table 42 in Asher
 
 # Primary modeling approach is categorical
 #   That avoids continuous data making the data look more granular than it is
@@ -125,7 +125,7 @@ datasets = {
 }
 greek_letters = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta', 'Iota']
 #for num_classes in [2, 3, 4, 5, 6]:
-for num_classes in [3]:
+for num_classes in []:
     for dataset_label in datasets.keys():
         if not levels:
             # For continuous visualizations,cap values at 3, because otherwise the lower values aren't distinguishable
@@ -169,12 +169,14 @@ for num_classes in [3]:
         )
         #plot.show()
         #plot.save(filename=f"stacked_class_viz_{levels}_levels/{filename}")
-exit(0)    
+exit(0)
 
 
+# Write output for regress.py to pick up
 label = 'non-reducing'
 num_classes = 3
 (model, predictions) = fit_model(datasets[label], num_classes, colors)
 output = datasets[label].join(predictions, how='inner', rsuffix='_model')
 output.drop([f'{c}_model' for c in colors], axis=1, inplace=True)
-output.to_csv(f"{label}_{num_classes}_classes_with_pred.csv")
+weight_suffix = "_weighted" if weighted else ""
+output.to_csv(f"{label}_{num_classes}_classes_with_pred{weight_suffix}.csv")
