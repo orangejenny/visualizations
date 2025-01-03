@@ -636,7 +636,7 @@ class ParentsPoliticsPanel():
                 summary = col_data
             elif group_by_labels:
                 summary = pd.merge(summary, col_data, left_index=True, right_index=True, suffixes=('', '_drop'))
-                summary.drop([f'{l}_drop' for l in group_by_labels], axis=0, inplace=True)
+                summary.drop([f'{l}_drop' for l in group_by_labels], axis=1, inplace=True)
             else:
                 summary = pd.concat([summary, col_data], axis=0)
 
