@@ -2,11 +2,14 @@ import numpy as np
 import pandas as pd
 import pdb
 
+from scipy.stats import zscore
+
 from parents_politics_panel import Demographic, DemographicType, ParentsPoliticsPanel
 
 class YouGovPanel(ParentsPoliticsPanel):
     waves = [11, 16, 17]    # These are the years that have a parenting question, household_children_x
     treatments = {'firstborn', 'is_parent'}     # No new_child treatment because number of children (household_child_num_x) isn't available in the same waves
+    dob_column = 'birthyr_2011'
 
     _demographics = [
         Demographic(name="gender", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=2, top_categories=[1,2]),  # 2011 only
@@ -43,10 +46,6 @@ class YouGovPanel(ParentsPoliticsPanel):
     def _trimmed_panel(self):
         # TODO: trim columns, as in CESPanel._trimmed_panel
         return self.panel.copy()
-
-    def add_age(self, df):
-        # TODO: implement
-        return df.copy()
 
     def _recode_issues(self, df):
         return df

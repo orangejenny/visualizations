@@ -1,13 +1,13 @@
 import numpy as np
 import pandas as pd
 
-from scipy.stats import zscore
-
 from parents_politics_panel import Demographic, DemographicType, ParentsPoliticsPanel
 
 class CESPanel(ParentsPoliticsPanel):
     waves = [10, 12, 14]
     treatments = {'firstborn', 'new_child', 'is_parent'}
+    dob_column = 'birthyr_10'
+
     # These do change. Not gender, but even race, and definitely employment, marital status, education, church, even division.
     _demographics = [
         Demographic(name="gender", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=2, top_categories=[1,2]),
@@ -111,13 +111,6 @@ class CESPanel(ParentsPoliticsPanel):
             self.panel.columns.str.startswith("ownhome_") + # Limit to 1-3, categorical
             self.panel.columns.str.startswith("countyfips_")
         ].copy()
-
-    def add_age(self, df):
-        df = df.assign(age=lambda x: 2000 + x.start_wave - x.birthyr_10)
-        df = self.nan_out_of_bounds(df, 'age', 1, 200)
-        df['age_zscore'] = zscore(df['age'], nan_policy='omit')
-        df = df.loc[np.less_equal(df['age'], 40),:]
-        return df.copy()
 
     def _recode_issues(self, df):
         # Recode a few columns to streamline later calculations

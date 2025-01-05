@@ -11,6 +11,7 @@ from enum import Enum
 from datetime import datetime
 from itertools import combinations
 from pandas import DataFrame
+from scipy.stats import zscore
 from statsmodels.stats.weightstats import ttest_ind
 
 
@@ -531,7 +532,7 @@ class ParentsPoliticsPanel():
                 end_wave=self.end_waves[i],
             ) for i, w in enumerate(self.start_waves)
         ], ignore_index=True)
-        df = self.add_age(df)   # age depends on start_wave
+        df = self._add_age(df)   # age depends on start_wave
         df = self.add_rural_urban(df)
         df = self._consolidate_demographics(df)
 
@@ -545,6 +546,13 @@ class ParentsPoliticsPanel():
         - 3 parent, no change in number of children
         '''
         raise NotImplementedError()
+
+    def _add_age(self, df):
+        df = df.assign(age=lambda x: 2000 + x.start_wave - x[self.dob_column])
+        df = self.nan_out_of_bounds(df, 'age', 1, 200)
+        df['age_zscore'] = zscore(df['age'], nan_policy='omit')
+        df = df.loc[np.less_equal(df['age'], 40),:]
+        return df.copy()
 
     def _add_all_single_issues(self, df):
         raise NotImplementedError()
