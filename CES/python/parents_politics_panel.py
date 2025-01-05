@@ -259,6 +259,58 @@ class ParentsPoliticsPanel():
 
         return df
 
+    # Add standardized columns for a particular issue
+    def add_issue(self, df, before_pattern, issue, lower_bound=None, upper_bound=None, calc_only=False):
+        df = self._add_before_after(df, before_pattern, issue, lower_bound, upper_bound)
+
+        df = df.assign(**{
+            f'{issue}_delta': lambda x: x[f'{issue}_after'] - x[f'{issue}_before'],
+            f'{issue}_delta_abs': lambda x: abs(x[f'{issue}_delta']),
+            f'{issue}_delta_sq': lambda x: x[f'{issue}_delta'] * x[f'{issue}_delta'],
+            f'{issue}_direction': lambda x: np.sign(x[f'{issue}_delta']),
+        })
+        df.loc[np.isnan(df[f'{issue}_delta']), f'{issue}_direction'] = np.nan # because some of the 0s should be NaN
+
+        df = df.assign(**{
+            f'{issue}_persists': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves[:-1]],
+                [np.where(np.logical_and(
+                    x[f'{issue}_delta'] != 0, # change in start vs end
+                    # change from start to final is either zero or the same direction as delta
+                    x[f'{issue}_delta'] * (x[before_pattern.replace('XX', str(self.end_waves[-1]))] - x[before_pattern.replace('XX', str(self.end_waves[i]))]) >= 0
+                ),
+                x[before_pattern.replace('XX', str(self.end_waves[-1]))] - x[before_pattern.replace('XX', str(w))],
+                0) for i, w in enumerate(self.start_waves[:-1])]
+            )
+        })
+        for wave in self.waves:
+            df.loc[df['start_wave'] == self.start_waves[-1], f'{issue}_persists'] = np.nan  # Can't calculate when there are only two waves
+            df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{issue}_persists'] = np.nan  # Can't calculate unless all waves are available
+        df[f'{issue}_persists_abs'] = np.abs(df[f'{issue}_persists'])
+
+        if not calc_only:
+            self.ISSUES.add(issue)
+            self.ISSUE_BOUNDS[issue] = (lower_bound, upper_bound)
+
+        return df
+
+    # Helper for add_issue
+    def _add_before_after(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
+        df = df.assign(**{
+            f'{issue}_before': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [x[before_pattern.replace('XX', str(w))] for w in self.start_waves],
+            ),
+            f'{issue}_after': lambda x:np.select(
+                [x.start_wave == w for w in self.waves[:-1]],
+                [x[before_pattern.replace('XX', str(w))] for w in self.end_waves],
+            ),
+        })
+        df = self.nan_out_of_bounds(df, f'{issue}_before', lower_bound, upper_bound)
+        df = self.nan_out_of_bounds(df, f'{issue}_after', lower_bound, upper_bound)
+        return df
+
+
     def get_approach_comparison(self, matrix=None):
         return self.comparator.get_comparison()
 

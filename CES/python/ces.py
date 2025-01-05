@@ -313,16 +313,16 @@ class CESPanel(ParentsPoliticsPanel):
         return df
 
     def _add_all_single_issues(self, df):
-        df = self._add_issue(df, 'ideo5_XX', 'ideo', 1, 5, calc_only=True)
-        df = self._add_issue(df, 'pid7_XX', 'pid', 1, 7, calc_only=True)
-        df = self._add_issue(df, 'CCXX_327', 'aff_action', 1, 4)
-        df = self._add_issue(df, 'CCXX_320', 'guns', 1, 3)
-        df = self._add_issue(df, 'CCXX_321', 'climate_severity', 1, 5, calc_only=True)
-        df = self._add_issue(df, 'CCXX_325', 'climate_jobs_env', 1, 5, calc_only=True)
-        df = self._add_issue(df, 'CCXX_325', 'climate_clean_energy', 1, 2, calc_only=True)
-        df = self._add_issue(df, 'CCXX_326', 'gay_marriage', 1, 2, calc_only=True)
-        df = self._add_issue(df, 'CCXX_330G', 'gay_dadt', 1, 2, calc_only=True)
-        df = self._add_issue(df, 'CCXX_324', 'abortion', 1, 4)
+        df = self.add_issue(df, 'ideo5_XX', 'ideo', 1, 5, calc_only=True)
+        df = self.add_issue(df, 'pid7_XX', 'pid', 1, 7, calc_only=True)
+        df = self.add_issue(df, 'CCXX_327', 'aff_action', 1, 4)
+        df = self.add_issue(df, 'CCXX_320', 'guns', 1, 3)
+        df = self.add_issue(df, 'CCXX_321', 'climate_severity', 1, 5, calc_only=True)
+        df = self.add_issue(df, 'CCXX_325', 'climate_jobs_env', 1, 5, calc_only=True)
+        df = self.add_issue(df, 'CCXX_325', 'climate_clean_energy', 1, 2, calc_only=True)
+        df = self.add_issue(df, 'CCXX_326', 'gay_marriage', 1, 2, calc_only=True)
+        df = self.add_issue(df, 'CCXX_330G', 'gay_dadt', 1, 2, calc_only=True)
+        df = self.add_issue(df, 'CCXX_324', 'abortion', 1, 4)
         return df
 
     def add_all_composite_issues(self, df):
@@ -335,12 +335,12 @@ class CESPanel(ParentsPoliticsPanel):
 
         df = self.add_immigration_composite(df)
 
-        df = self._add_issue(df, 'budget_composite_20XX', 'budget_composite', 1, 2)
-        df = self._add_issue(df, 'climate_composite_20XX', 'climate_composite', 1, 5)
-        df = self._add_issue(df, 'gay_composite_20XX', 'gay_composite', 1, 2)
-        df = self._add_issue(df, '_ideo_composite_20XX', '_ideo_composite', 6, 35)
-        df = self._add_issue(df, 'military_composite_20XX', 'military_composite', 1, 2)
-        df = self._add_issue(df, 'immigration_composite_20XX', 'immigration_composite', 1, 2)
+        df = self.add_issue(df, 'budget_composite_20XX', 'budget_composite', 1, 2)
+        df = self.add_issue(df, 'climate_composite_20XX', 'climate_composite', 1, 5)
+        df = self.add_issue(df, 'gay_composite_20XX', 'gay_composite', 1, 2)
+        df = self.add_issue(df, '_ideo_composite_20XX', '_ideo_composite', 6, 35)
+        df = self.add_issue(df, 'military_composite_20XX', 'military_composite', 1, 2)
+        df = self.add_issue(df, 'immigration_composite_20XX', 'immigration_composite', 1, 2)
 
         return df
 
@@ -398,53 +398,4 @@ class CESPanel(ParentsPoliticsPanel):
         df[f'immigration_composite_2010'] = np.sum(df.loc[:, df.columns.str.contains('CC10_322_[1-3]')], axis=1) / 3
         df[f'immigration_composite_2012'] = np.sum(df.loc[:, df.columns.str.contains('CC12_322_[1-6]')], axis=1) / 6
         df[f'immigration_composite_2014'] = np.sum(df.loc[:, df.columns.str.contains('CC14_322_[1-6]')], axis=1) / 6
-        return df
-
-    def add_before_after(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
-        df = df.assign(**{
-            f'{issue}_before': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves],
-                [x[before_pattern.replace('XX', str(w))] for w in self.start_waves],
-            ),
-            f'{issue}_after': lambda x:np.select(
-                [x.start_wave == w for w in self.waves[:-1]],
-                [x[before_pattern.replace('XX', str(w))] for w in self.end_waves],
-            ),
-        })
-        df = self.nan_out_of_bounds(df, f'{issue}_before', lower_bound, upper_bound)
-        df = self.nan_out_of_bounds(df, f'{issue}_after', lower_bound, upper_bound)
-        return df
-
-    def _add_issue(self, df, before_pattern, issue, lower_bound=None, upper_bound=None, calc_only=False):
-        df = self.add_before_after(df, before_pattern, issue, lower_bound, upper_bound)
-
-        df = df.assign(**{
-            f'{issue}_delta': lambda x: x[f'{issue}_after'] - x[f'{issue}_before'],
-            f'{issue}_delta_abs': lambda x: abs(x[f'{issue}_delta']),
-            f'{issue}_delta_sq': lambda x: x[f'{issue}_delta'] * x[f'{issue}_delta'],
-            f'{issue}_direction': lambda x: np.sign(x[f'{issue}_delta']),
-        })
-        df.loc[np.isnan(df[f'{issue}_delta']), f'{issue}_direction'] = np.nan # because some of the 0s should be NaN
-
-        df = df.assign(**{
-            f'{issue}_persists': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves[:-1]],
-                [np.where(np.logical_and(
-                    x[f'{issue}_delta'] != 0, # change in start vs end
-                    # change from start to final is either zero or the same direction as delta
-                    x[f'{issue}_delta'] * (x[before_pattern.replace('XX', str(self.end_waves[-1]))] - x[before_pattern.replace('XX', str(self.end_waves[i]))]) >= 0
-                ),
-                x[before_pattern.replace('XX', str(self.end_waves[-1]))] - x[before_pattern.replace('XX', str(w))],
-                0) for i, w in enumerate(self.start_waves[:-1])]
-            )
-        })
-        for wave in self.waves:
-            df.loc[df['start_wave'] == self.start_waves[-1], f'{issue}_persists'] = np.nan  # Can't calculate when there are only two waves
-            df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{issue}_persists'] = np.nan  # Can't calculate unless all waves are available
-        df[f'{issue}_persists_abs'] = np.abs(df[f'{issue}_persists'])
-
-        if not calc_only:
-            self.ISSUES.add(issue)
-            self.ISSUE_BOUNDS[issue] = (lower_bound, upper_bound)
-
         return df
