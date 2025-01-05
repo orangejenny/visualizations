@@ -201,7 +201,7 @@ class ParentsPoliticsPanel():
         self.panel = self._load_panel()
         self.paired_waves = self.build_paired_waves(self._trimmed_panel())
 
-        self.paired_waves = self._add_parenting(self.paired_waves)
+        self.paired_waves = self.add_parenting(self.paired_waves)
         self.paired_waves = self.paired_waves.astype({t: 'int32' for t in self.treatments})
 
         self.paired_waves = self._add_all_single_issues(self.paired_waves)
@@ -212,6 +212,52 @@ class ParentsPoliticsPanel():
 
         # Compare findings from different approaches
         self.comparator = ParentsPoliticsApproachComparator(self)
+
+    def add_parenting(self, df):
+        df = self.add_parenthood_indicator(df)
+
+        # TODO: this removes ~10k rows in YouGov, why?
+        df = df.loc[pd.notna(df['parenthood']),:].copy() # remove any rows where parenthood cannot be determined
+
+        '''
+        Additional boolean columns based on parenthood
+        - childless: 0     ...recall this is only about minor children, these people may have adult children (but also recall the age < 40 cutoff)
+        - firstborn: 1
+        - new_sibling: 2
+        - new_child: 1 or 2
+        - steady_parent: 3
+        - is_parent: 1, 2, or 3
+        '''
+        df = df.assign(**{
+            'childless': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(x.parenthood == 0, 1, 0) for w in self.start_waves],
+            ),
+            'firstborn': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(x.parenthood == 1, 1, 0) for w in self.start_waves],
+            ),
+            'new_sibling': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(x.parenthood == 2, 1, 0) for w in self.start_waves],
+            ),
+            'new_child': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(np.logical_or(x.parenthood == 1, x.parenthood == 2) , 1, 0) for w in self.start_waves],
+            ),
+            'steady_parent': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(x.parenthood == 3, 1, 0) for w in self.start_waves],
+            ),
+            'is_parent': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(x.parenthood != 0, 1, 0) for w in self.start_waves],
+            ),
+        })
+
+        df = self.add_parenting_dosage_indicators(df)
+
+        return df
 
     def get_approach_comparison(self, matrix=None):
         return self.comparator.get_comparison()
@@ -438,7 +484,13 @@ class ParentsPoliticsPanel():
 
         return df
 
-    def _add_parenting(self, df):
+    def add_parenthood_indicator(self, df):
+        '''
+        - 0 no children
+        - 1 new first child (same as firstborn)
+        - 2 new additional child
+        - 3 parent, no change in number of children
+        '''
         raise NotImplementedError()
 
     def _add_all_single_issues(self, df):

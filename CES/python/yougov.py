@@ -61,7 +61,35 @@ class YouGovPanel(ParentsPoliticsPanel):
         # TODO: implement (faminc_x questions)
         return df
 
-    def _add_parenting(self, df):
+    def add_parenthood_indicator(self, df):
+        # parenthood is based on household_children (parent of minor children? yes/no)
+        # This only assigns values 0, 1, and 3, because data about number of children is not available for all waves
+        df = df.assign(
+            parenthood=lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(
+                    # household_children_20start is NA or household_children_20next is NA,
+                    np.logical_or(
+                        np.logical_and(x[f'household_children_20{w}'] != 1, x[f'household_children_20{w}'] != 2),
+                        np.logical_and(x[f'household_children_20{self.waves[i + 1]}'] != 1, x[f'household_children_20{self.waves[i + 1]}'] != 2),
+                    ),
+                    np.nan,
+                    np.where(
+                        x[f'household_children_20{w}'] == 2,  # household_children_20start is no, so not a parent at the start
+                        np.where(
+                            x[f'household_children_20{self.waves[i + 1]}'] == 1,  # household_children_20next is yes, so had a child at the end
+                            1, # first child
+                            0  # no children
+                        ),
+                        3 # parent, unknown whether there was a change in the number of children
+                    )
+                ) for i, w in enumerate(self.start_waves)],
+            )
+        )
+        return df
+
+    def add_parenting_dosage_indicators(self, df):
+        # YouGov doesn't have these, due to household_children and household_child_num not being in all the same waves
         return df
 
     def _add_all_single_issues(self, df):

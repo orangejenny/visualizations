@@ -246,14 +246,8 @@ class CESPanel(ParentsPoliticsPanel):
         )
         return df
 
-    def _add_parenting(self, df):
-        '''
-        parenthood is based on child18 (parent of ninor children? yes/no) and child18num (number of minor children)
-        - 0 no children
-        - 1 new first child (same as firstborn)
-        - 2 new additional child
-        - 3 parent, no change in number of children
-        '''
+    def add_parenthood_indicator(self, df):
+        # parenthood is based on child18 (parent of minor children? yes/no) and child18num (number of minor children)
         df = df.assign(
             # Combination of parent yes/no question and number of children question, being cautious of invalid values
             parenthood=lambda x: np.select(
@@ -289,48 +283,11 @@ class CESPanel(ParentsPoliticsPanel):
                 ) for i, w in enumerate(self.start_waves)],
             )
         )
-        df = df.loc[pd.notna(df['parenthood']),:].copy() # remove any rows where parenthood cannot be determined
-        '''
-        Additional boolean columns based on parenthood
-        - childless: 0     ...recall this is only about minor children
-        - firstborn: 1
-        - new_sibling: 2
-        - new_child: 1 or 2
-        - steady_parent: 3
-        - is_parent: 1, 2, or 3
 
-        - 0 no children
-        - 1 new first child (same as firstborn)
-        - 2 new non-first child
-        - 3 parent, no change in number of children
-        '''
+        return df
+
+    def add_parenting_dosage_indicators(self, df):
         df = df.assign(**{
-            'childless': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves],
-                [np.where(x.parenthood == 0, 1, 0) for w in self.start_waves],
-            ),
-            'firstborn': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves],
-                [np.where(x.parenthood == 1, 1, 0) for w in self.start_waves],
-            ),
-            'new_sibling': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves],
-                [np.where(x.parenthood == 2, 1, 0) for w in self.start_waves],
-            ),
-            'new_child': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves],
-                [np.where(np.logical_or(x.parenthood == 1, x.parenthood == 2) , 1, 0) for w in self.start_waves],
-            ),
-            'steady_parent': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves],
-                [np.where(x.parenthood == 3, 1, 0) for w in self.start_waves],
-            ),
-            'is_parent': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves],
-                [np.where(x.parenthood != 0, 1, 0) for w in self.start_waves],
-            ),
-
-            # Dosage dummy variables
             'is_parent_1': lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
                 [np.where(np.logical_and(x.is_parent == 1, x[f'child18num_{w}'] == 1), 1, 0) for w in self.end_waves],
@@ -352,6 +309,7 @@ class CESPanel(ParentsPoliticsPanel):
                 [np.where(np.logical_and(x.is_parent == 1, x[f'child18num_{w}'] > 3), 1, 0) for w in self.end_waves],
             ),
         })
+
         return df
 
     def _add_all_single_issues(self, df):
