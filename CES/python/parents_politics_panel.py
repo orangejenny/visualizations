@@ -164,8 +164,11 @@ class ParentsPoliticsPanel():
             label += ': % ' + self._demographic_category_names.get(dname, {}).get(int(category), '?')
         return label
 
-    def issue_viz_label(self, issue):
-        return self._issue_viz_labels.get(issue, issue.replace('_composite', '').title())
+    def issue_viz_label(self, issue, pvalue=None):
+        label = self._issue_viz_labels.get(issue, issue.replace('_composite', '').title())
+        if pvalue is not None:
+            label = label + re.sub(r'[^*]', '', pvalue)
+        return label
 
     @property
     def start_waves(self):
@@ -346,8 +349,8 @@ class ParentsPoliticsPanel():
             headers = ['issue', 'value', 'is_matched']
             csv_rows = []
             for row in paper_outcomes.itertuples():
-                csv_rows.append([self.issue_viz_label(row.issue), self.normalize_issue(row.issue, row.treatment), "parents"])
-                csv_rows.append([self.issue_viz_label(row.issue), self.normalize_issue(row.issue, row.control), "matched non-parents"])
+                csv_rows.append([self.issue_viz_label(row.issue, row.pvalue), self.normalize_issue(row.issue, row.treatment), "parents"])
+                csv_rows.append([self.issue_viz_label(row.issue, row.pvalue), self.normalize_issue(row.issue, row.control), "matched non-parents"])
             self._log_viz_data(viz_filename, headers, csv_rows)
 
             # Viz for covariates
@@ -388,6 +391,7 @@ class ParentsPoliticsPanel():
         self.log_for_paper(paper_issues, description)
 
         if viz_filename:
+            paper_issues_labels = {label: i for i, label in enumerate(paper_issues.columns)}
             cols = ['issue', 'before_a', 'after_a', 'before_b', 'after_b']
             renames = {
                 'before_a': 'control_before',
@@ -396,9 +400,10 @@ class ParentsPoliticsPanel():
                 'after_b': 'treatment_after',
             }
             headers = [renames.get(c, c) for c in cols]
+            pvalue_label = f'_{paper_issues_labels["delta*"] + 1}'
             csv_rows = []
             for row in paper_issues.itertuples():
-                csv_rows.append([self.issue_viz_label(row.issue)] + [
+                csv_rows.append([self.issue_viz_label(row.issue, getattr(row, pvalue_label))] + [
                     self.normalize_issue(row.issue, getattr(row, c))
                     for c in cols[1:]
                 ])
@@ -631,7 +636,7 @@ class ParentsPoliticsPanel():
                 summary = col_data
             elif group_by_labels:
                 summary = pd.merge(summary, col_data, left_index=True, right_index=True, suffixes=('', '_drop'))
-                summary.drop([f'{l}_drop' for l in group_by_labels], axis=0, inplace=True)
+                summary.drop([f'{l}_drop' for l in group_by_labels], axis=1, inplace=True)
             else:
                 summary = pd.concat([summary, col_data], axis=0)
 
