@@ -522,6 +522,7 @@ class ParentsPoliticsPanel():
             raise Exception("Must contain at least one wave")
         df = df.assign(start_wave=self.waves[0], end_wave=self.waves[-1])
         df = self._recode_issues(df)
+        df = self._recode_demographics(df)
         df = self.add_income_brackets(df)
 
         df = pd.concat([

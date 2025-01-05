@@ -153,6 +153,10 @@ class CESPanel(ParentsPoliticsPanel):
                 df[f'CC{year}_322_7'] = np.where(df[f'CC{year}_322_7'] == 1, 2, np.where(df[f'CC{year}_322_7'] == 2, 1, np.nan))
         return df
 
+    def _recode_demographics(self, df):
+        # Nothing to do here
+        return df
+
     def _consolidate_demographics(self, df):
         for dname, demographic in self.demographics.items():
             if demographic.lower_bound is None and demographic.upper_bound is None:

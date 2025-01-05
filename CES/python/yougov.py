@@ -8,13 +8,15 @@ class YouGovPanel(ParentsPoliticsPanel):
     waves = [11, 16, 17]    # These are the years that have a parenting question, household_children_x
     treatments = {'firstborn', 'is_parent'}     # No new_child treatment because number of children (household_child_num_x) isn't available in the same waves
 
-    # TODO: What demographics are in this survey?
     _demographics = [
-        Demographic(name="gender", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=2, top_categories=[1,2]),
+        Demographic(name="gender", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=2, top_categories=[1,2]),  # 2011 only
         Demographic(name="race", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=8, top_categories=[1,2,3]),
-        Demographic(name="employ", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=8, top_categories=[1,2,4]),
+        Demographic(name="marstat", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=6, top_categories=[1, 5]),
         Demographic(name="educ", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=1, upper_bound=6, top_categories=None),
-        Demographic(name="marstat", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=6, top_categories=[1,5]),
+        Demographic(name="employment", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=8, top_categories=[1,2,4]),
+
+        # Chosen to be most similar to pew_churatd in CES
+        Demographic(name="religservice_2011", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=1, upper_bound=6, top_categories=None),
 
         # constructed
         # From USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
@@ -47,6 +49,43 @@ class YouGovPanel(ParentsPoliticsPanel):
         return df.copy()
 
     def _recode_issues(self, df):
+        return df
+
+    def _recode_demographics(self, df):
+        # TODO: implement
+        '''
+        Employment options vary by wave
+            2011
+                student2_2011
+                    1 Full-time student
+                    2 Part-time student
+                    3 Not a student
+                employmentnonstud_2011
+                    1 Full-time employed
+                    2 Part-time employed
+                    3 Self-employed
+                    4 Unemployed or temporarily on layoff
+                    5 Retired
+                    6 Permanently disabled
+                    7 Homemaker
+            2016 (employment_2016)
+                1 Full-time
+                2 Part-time
+                3 Temporarily laid off
+                4 Unemployed
+                5 Retired
+                6 Permanently disabled
+                7 Homemaker
+                8 Student
+            2017 (employment_2017)
+                1 Employed full-time for 35 hours or more per week
+                2 Employed part-time for less than 35 hours per week
+                3 Unemployed for less than 6 months
+                4 Unemployed for more than 6 months
+                5 Homemaker
+                6 Retired
+                7 Student
+        '''
         return df
 
     def _consolidate_demographics(self, df):
