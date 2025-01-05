@@ -44,8 +44,54 @@ class YouGovPanel(ParentsPoliticsPanel):
         return pd.read_csv("~/Documents/visualizations/midterm/VOTER Panel Data Files/voter_panel.csv", encoding="latin_1")
 
     def _trimmed_panel(self):
-        # TODO: trim columns, as in CESPanel._trimmed_panel
-        return self.panel.copy()
+        # Drop most columns
+        return self.panel.loc[
+            :,
+            self.panel.columns.str.startswith('weight_') +
+
+            # Ideology and partisanship
+            self.panel.columns.str.startswith('ideo5_') +
+            self.panel.columns.str.startswith('pid7_') +
+
+            # Policy issues
+            self.panel.columns.str.startswith('issue_') +
+            self.panel.columns.str.startswith('abortidentity_') +
+            self.panel.columns.str.startswith('view_abortlegal_') +
+            self.panel.columns.str.startswith('affirmativeaction_') +
+            self.panel.columns.str.startswith('egalitarian_') +
+            self.panel.columns.str.startswith('env') +
+            self.panel.columns.str.startswith('view_gaymar') +
+            self.panel.columns.str.startswith('view_transgender') +
+            self.panel.columns.str.startswith('govt_') +
+            self.panel.columns.str.startswith('govtreg_') +
+            self.panel.columns.str.startswith('immi_') +
+            self.panel.columns.str.startswith('healthreformbill_') +
+            self.panel.columns.str.startswith('univhealthcov_') +
+            self.panel.columns.str.startswith('immi_') +
+            self.panel.columns.str.startswith('sexism_') +
+            self.panel.columns.str.startswith('wealth_') +
+            self.panel.columns.str.startswith('economicbias_') +
+            self.panel.columns.str.startswith('income_redistribution_') +
+            self.panel.columns.str.startswith('taxdoug_') +
+            self.panel.columns.str.startswith('taxwealth_') +
+            self.panel.columns.str.startswith('view_deathpen') +
+
+            # Parenthood
+            self.panel.columns.str.startswith("household_children_") +
+
+            # Demographics for controls/filters
+            self.panel.columns.str.startswith("birthyr_") +
+            self.panel.columns.str.startswith("faminc_") +
+            self.panel.columns.str.startswith("gender_") +
+            self.panel.columns.str.startswith("race_") +
+            self.panel.columns.str.startswith("educ_") +
+            self.panel.columns.str.startswith("marstat_") +
+            self.panel.columns.str.startswith("religservice_") +
+            self.panel.columns.str.startswith("inputstate_") +
+            self.panel.columns.str.startswith("employment_") +
+            self.panel.columns.str.startswith("employmentnonstud_2011") +
+            self.panel.columns.str.startswith("student2_2011")
+        ].copy()
 
     def _recode_issues(self, df):
         return df
