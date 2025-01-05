@@ -199,7 +199,7 @@ class ParentsPoliticsPanel():
             self._truncate_output()
 
         self.panel = self._load_panel()
-        self.paired_waves = self._build_paired_waves(self._trimmed_panel())
+        self.paired_waves = self.build_paired_waves(self._trimmed_panel())
 
         self.paired_waves = self._add_parenting(self.paired_waves)
         self.paired_waves = self.paired_waves.astype({t: 'int32' for t in self.treatments})
@@ -415,8 +415,28 @@ class ParentsPoliticsPanel():
     def _trimmed_panel(self):
         raise NotImplementedError()
 
-    def _build_paired_waves(self, df):
-        raise NotImplementedError()
+    def build_paired_waves(self, df):
+        '''
+        This duplicates the dataset so there's a set of rows for each pair of waves.
+        With three waves, this means doubling the length of the data.
+        '''
+        if not len(self.waves):
+            raise Exception("Must contain at least one wave")
+        df = df.assign(start_wave=self.waves[0], end_wave=self.waves[-1])
+        df = self._recode_issues(df)
+        df = self.add_income_brackets(df)
+
+        df = pd.concat([
+            df.assign(
+                start_wave=w,
+                end_wave=self.end_waves[i],
+            ) for i, w in enumerate(self.start_waves)
+        ], ignore_index=True)
+        df = self.add_age(df)   # age depends on start_wave
+        df = self.add_rural_urban(df)
+        df = self._consolidate_demographics(df)
+
+        return df
 
     def _add_parenting(self, df):
         raise NotImplementedError()
