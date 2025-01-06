@@ -525,6 +525,7 @@ class ParentsPoliticsPanel():
         df = self._recode_issues(df)
         df = self._recode_demographics(df)
         df = self._add_income_brackets(df)
+        df = self.add_geography(df)
 
         df = pd.concat([
             df.assign(
@@ -533,7 +534,6 @@ class ParentsPoliticsPanel():
             ) for i, w in enumerate(self.start_waves)
         ], ignore_index=True)
         df = self._add_age(df)   # age depends on start_wave
-        df = self.add_rural_urban(df)
         df = self._consolidate_demographics(df)
 
         return df
@@ -547,8 +547,22 @@ class ParentsPoliticsPanel():
         '''
         raise NotImplementedError()
 
-    def add_income_quintile(self, df):
-        raise NotImplementedError()
+    def get_divisions(self):
+        # https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
+        states = [
+            ['CT', 'ME', 'MA', 'NH', 'RI', 'VT'],
+            ['NJ', 'NY', 'PA'],
+            ['IN', 'IL', 'MI', 'OH', 'WI'],
+            ['IA', 'KS', 'MN', 'MO', 'NE', 'ND', 'SD'],
+            ['DE', 'DC', 'FL', 'GA', 'MD', 'NC', 'SC', 'VA', 'WV'],
+            ['AL', 'KY', 'MS', 'TN'],
+            ['AR', 'LA', 'OK', 'TX'],
+            ['AZ', 'CO', 'ID', 'NM', 'MY', 'UT', 'NV', 'WY'],
+            ['AK', 'CA', 'HI', 'OR', 'WA'],
+        ]
+        divisions = pd.DataFrame(data=[(a, i + 1) for i, abbreviations in enumerate(states) for a in abbreviations])
+        divisions.rename(columns={0: 'state', 1: 'division'}, inplace=True)
+        return divisions
 
     def _add_income_brackets(self, df):
         # Income brackets are approximate, since incomes are given in ranges.
@@ -571,6 +585,9 @@ class ParentsPoliticsPanel():
             ),
         )
         return df
+
+    def add_income_quintile(self, df):
+        raise NotImplementedError()
 
     def _add_age(self, df):
         df = df.assign(age=lambda x: 2000 + x.start_wave - x[self.dob_column])

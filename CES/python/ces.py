@@ -150,7 +150,7 @@ class CESPanel(ParentsPoliticsPanel):
         # Nothing to do here
         return df
 
-    def add_rural_urban(self, df):
+    def add_geography(self, df):
         df = df.assign(countyfips_14=np.logical_or(df['countyfips_14'], 0))
         df = df.astype({
             'countyfips_10': 'int64',
@@ -165,21 +165,8 @@ class CESPanel(ParentsPoliticsPanel):
         )
         codes = pd.read_csv("~/Documents/visualizations/midterm/ruralurbancontinuumcodes2023/rural_urban.csv")
         codes = codes.loc[:,['FIPS', 'State', 'RUCC_2023']] #, 'Description']]
-        # https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
-        states = [
-            ['CT', 'ME', 'MA', 'NH', 'RI', 'VT'],
-            ['NJ', 'NY', 'PA'],
-            ['IN', 'IL', 'MI', 'OH', 'WI'],
-            ['IA', 'KS', 'MN', 'MO', 'NE', 'ND', 'SD'],
-            ['DE', 'DC', 'FL', 'GA', 'MD', 'NC', 'SC', 'VA', 'WV'],
-            ['AL', 'KY', 'MS', 'TN'],
-            ['AR', 'LA', 'OK', 'TX'],
-            ['AZ', 'CO', 'ID', 'NM', 'MY', 'UT', 'NV', 'WY'],
-            ['AK', 'CA', 'HI', 'OR', 'WA'],
-        ]
-        divisions = pd.DataFrame(data=[(a, i + 1) for i, abbreviations in enumerate(states) for a in abbreviations])
-        divisions.rename(columns={0: 'state', 1: 'division'}, inplace=True)
 
+        divisions = self.get_divisions()
         divisions = divisions.merge(codes, how='inner', left_on='state', right_on='State')
         df = df.merge(codes, how='left', left_on='countyfips_before', right_on='FIPS')
 

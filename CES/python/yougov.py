@@ -133,8 +133,14 @@ class YouGovPanel(ParentsPoliticsPanel):
         '''
         return df
 
-    def add_rural_urban(self, df):
-        # TODO: implement (cdid_x is respondent's congressional district)
+    def add_geography(self, df):
+        divisions = self.get_divisions()
+
+        # TODO: implement? inputstate is an integer, need to map those to states
+        #for wave in self.waves:
+        #    df = df.merge(divisions, how='left', left_on=f'inputstate_{wave}', right_on='state', suffixes=('', f'_{wave}'))
+        #    df.drop(['state'], axis=1, inplace=True)
+
         return df
 
     def add_income_quintile(self, df):
