@@ -590,7 +590,11 @@ class ParentsPoliticsPanel():
         raise NotImplementedError()
 
     def _add_age(self, df):
-        df = df.assign(age=lambda x: 2000 + x.start_wave - x[self.dob_column])
+        if sum(self.waves) < 1000:
+            df = df.assign(start_year=lambda x: x.start_wave + 2000)
+        else:
+            df = df.assign(start_year=lambda x: x.start_wave)
+        df = df.assign(age=lambda x: x.start_year - x[self.dob_column])
         df = self.nan_out_of_bounds(df, 'age', 1, 200)
         df['age_zscore'] = zscore(df['age'], nan_policy='omit')
         df = df.loc[np.less_equal(df['age'], 40),:]
