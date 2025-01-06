@@ -190,9 +190,8 @@ class CESPanel(ParentsPoliticsPanel):
 
         return df
 
-    def add_income_brackets(self, df):
+    def add_income_quintile(self, df):
         # Income: Start with faminc_14 because the buckets vary by year, and the 2014 buckets are more granular
-        # Income brackets are approximate, since incomes are given in ranges.
         df = df.rename(columns={'faminc_14': 'income'})
         df = self.nan_out_of_bounds(df, 'income', 1, 50)  # good enough to get rid of 98/99
         df = df.assign(
@@ -202,21 +201,6 @@ class CESPanel(ParentsPoliticsPanel):
                     x.income == n for n in [x for x in range(1, 17)] + [32]
                 ],
                 [1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5],
-                default=np.nan
-            ),
-            # "High income" is top 20% to match Reeves
-            high_income=lambda x: np.where(np.isnan(x.income_quintile), np.NAN, np.where(x.income_quintile == 5, 1, 0)),
-            # "Low income" is bottom 40%, to very roughly correspond with SCHIP eligibility
-            low_income=lambda x: np.select(
-                [
-                    np.isnan(x.income_quintile),
-                    x.income_quintile == 1,
-                    x.income_quintile == 2,
-                    x.income_quintile == 3,
-                    x.income_quintile == 4,
-                    x.income_quintile == 5,
-                ],
-                [np.NAN, 1, 1, 0, 0, 0],
                 default=np.nan
             ),
         )

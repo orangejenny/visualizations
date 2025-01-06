@@ -137,8 +137,19 @@ class YouGovPanel(ParentsPoliticsPanel):
         # TODO: implement (cdid_x is respondent's congressional district)
         return df
 
-    def add_income_brackets(self, df):
-        # TODO: implement (faminc_x questions)
+    def add_income_quintile(self, df):
+        df = df.rename(columns={'faminc_2011': 'income'})
+        df = self.nan_out_of_bounds(df, 'income', 1, 50)  # good enough to get rid of 98/99
+        df = df.assign(
+            income_quintile=lambda x:np.select(
+                [
+                    # note the 10 response could go into either 4th or 5th quintile
+                    x.income == n for n in [x for x in range(1, 12)] + [31]
+                ],
+                [1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5],
+                default=np.nan
+            ),
+        )
         return df
 
     def add_parenthood_indicator(self, df):

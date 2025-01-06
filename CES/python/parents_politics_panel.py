@@ -524,7 +524,7 @@ class ParentsPoliticsPanel():
         df = df.assign(start_wave=self.waves[0], end_wave=self.waves[-1])
         df = self._recode_issues(df)
         df = self._recode_demographics(df)
-        df = self.add_income_brackets(df)
+        df = self._add_income_brackets(df)
 
         df = pd.concat([
             df.assign(
@@ -546,6 +546,31 @@ class ParentsPoliticsPanel():
         - 3 parent, no change in number of children
         '''
         raise NotImplementedError()
+
+    def add_income_quintile(self, df):
+        raise NotImplementedError()
+
+    def _add_income_brackets(self, df):
+        # Income brackets are approximate, since incomes are given in ranges.
+        df = self.add_income_quintile(df)
+        df = df.assign(
+            # "High income" is top 20% to match Reeves
+            high_income=lambda x: np.where(np.isnan(x.income_quintile), np.NAN, np.where(x.income_quintile == 5, 1, 0)),
+            # "Low income" is bottom 40%, to very roughly correspond with SCHIP eligibility
+            low_income=lambda x: np.select(
+                [
+                    np.isnan(x.income_quintile),
+                    x.income_quintile == 1,
+                    x.income_quintile == 2,
+                    x.income_quintile == 3,
+                    x.income_quintile == 4,
+                    x.income_quintile == 5,
+                ],
+                [np.NAN, 1, 1, 0, 0, 0],
+                default=np.nan
+            ),
+        )
+        return df
 
     def _add_age(self, df):
         df = df.assign(age=lambda x: 2000 + x.start_wave - x[self.dob_column])
