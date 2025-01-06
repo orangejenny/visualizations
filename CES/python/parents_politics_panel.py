@@ -554,6 +554,32 @@ class ParentsPoliticsPanel():
         df = df.loc[np.less_equal(df['age'], 40),:]
         return df.copy()
 
+    def _consolidate_demographics(self, df):
+        for dname, demographic in self.demographics.items():
+            if demographic.lower_bound is None and demographic.upper_bound is None:
+                continue
+
+            old_labels = [f'{dname}_{wave}' for wave in self.waves if f'{dname}_{wave}' in df]
+            for old_label in old_labels:
+                df = self.nan_out_of_bounds(df, old_label, demographic.lower_bound, demographic.upper_bound)
+
+            # Use "after" data if available, else use most recent value
+            if len(old_labels) == 1:
+                # Needed when there isn't data for any of the end waves, as in YouGov
+                # TODO: Test YouGov
+                df = df.assign(**{dname: old_labels[0]})
+            else:
+                df = df.assign(**{dname: lambda x: np.select(
+                    [x.end_wave == w for w in self.end_waves if f'{dname}_{w}' in df],
+                    [np.where(
+                        pd.notna(x[f'{dname}_{w}']),
+                        x[f'{dname}_{w}'],
+                        x[old_labels].bfill(axis=1).iloc[:, 0]
+                    ) for w in self.end_waves if f'{dname}_{w}' in df],
+                )})
+            df.drop(old_labels, axis=1, inplace=True)
+        return df
+
     def _add_all_single_issues(self, df):
         raise NotImplementedError()
 

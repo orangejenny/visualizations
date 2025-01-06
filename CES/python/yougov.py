@@ -7,7 +7,7 @@ from scipy.stats import zscore
 from parents_politics_panel import Demographic, DemographicType, ParentsPoliticsPanel
 
 class YouGovPanel(ParentsPoliticsPanel):
-    waves = [11, 16, 17]    # These are the years that have a parenting question, household_children_x
+    waves = [2011, 2016, 2017]    # These are the years that have a parenting question, household_children_x
     treatments = {'firstborn', 'is_parent'}     # No new_child treatment because number of children (household_child_num_x) isn't available in the same waves
     dob_column = 'birthyr_2011'
 
@@ -19,7 +19,7 @@ class YouGovPanel(ParentsPoliticsPanel):
         Demographic(name="employment", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=8, top_categories=[1,2,4]),
 
         # Chosen to be most similar to pew_churatd in CES
-        Demographic(name="religservice_2011", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=1, upper_bound=6, top_categories=None),
+        Demographic(name="religservice", dtype=DemographicType.ORDERED_CATEGORICAL, lower_bound=1, upper_bound=6, top_categories=None),
 
         # constructed
         # From USDA codes: https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/
@@ -133,10 +133,6 @@ class YouGovPanel(ParentsPoliticsPanel):
         '''
         return df
 
-    def _consolidate_demographics(self, df):
-        # TODO: implement
-        return df
-
     def add_rural_urban(self, df):
         # TODO: implement (cdid_x is respondent's congressional district)
         return df
@@ -152,16 +148,16 @@ class YouGovPanel(ParentsPoliticsPanel):
             parenthood=lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
                 [np.where(
-                    # household_children_20start is NA or household_children_20next is NA,
+                    # household_children_start is NA or household_children_next is NA,
                     np.logical_or(
-                        np.logical_and(x[f'household_children_20{w}'] != 1, x[f'household_children_20{w}'] != 2),
-                        np.logical_and(x[f'household_children_20{self.waves[i + 1]}'] != 1, x[f'household_children_20{self.waves[i + 1]}'] != 2),
+                        np.logical_and(x[f'household_children_{w}'] != 1, x[f'household_children_{w}'] != 2),
+                        np.logical_and(x[f'household_children_{self.waves[i + 1]}'] != 1, x[f'household_children_{self.waves[i + 1]}'] != 2),
                     ),
                     np.nan,
                     np.where(
-                        x[f'household_children_20{w}'] == 2,  # household_children_20start is no, so not a parent at the start
+                        x[f'household_children_{w}'] == 2,  # household_children_start is no, so not a parent at the start
                         np.where(
-                            x[f'household_children_20{self.waves[i + 1]}'] == 1,  # household_children_20next is yes, so had a child at the end
+                            x[f'household_children_{self.waves[i + 1]}'] == 1,  # household_children_next is yes, so had a child at the end
                             1, # first child
                             0  # no children
                         ),

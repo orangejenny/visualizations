@@ -150,27 +150,6 @@ class CESPanel(ParentsPoliticsPanel):
         # Nothing to do here
         return df
 
-    def _consolidate_demographics(self, df):
-        for dname, demographic in self.demographics.items():
-            if demographic.lower_bound is None and demographic.upper_bound is None:
-                continue
-
-            old_labels = [f'{dname}_{wave}' for wave in self.waves]
-            for old_label in old_labels:
-                df = self.nan_out_of_bounds(df, old_label, demographic.lower_bound, demographic.upper_bound)
-
-            # Use "after" data if available, else use most recent value
-            df = df.assign(**{dname: lambda x: np.select(
-                [x.end_wave == w for w in self.end_waves],
-                [np.where(
-                    pd.notna(x[f'{dname}_{w}']),
-                    x[f'{dname}_{w}'],
-                    x[old_labels].bfill(axis=1).iloc[:, 0]
-                ) for i, w in enumerate(self.end_waves)],
-            )})
-            df.drop(old_labels, axis=1, inplace=True)
-        return df
-
     def add_rural_urban(self, df):
         df = df.assign(countyfips_14=np.logical_or(df['countyfips_14'], 0))
         df = df.astype({
