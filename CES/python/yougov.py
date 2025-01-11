@@ -94,6 +94,12 @@ class YouGovPanel(ParentsPoliticsPanel):
         ].copy()
 
     def _recode_issues(self, df):
+        for year in self.waves:
+            if year != 2017:
+                # Reverse view_deathpen, so that 1 is liberal and 2 conservative
+                label = f'view_deathpen_{year}'
+                df.loc[:, label] = np.where(df[label] == 2, 1, np.where(df[label] == 1, 2, np.nan))
+
         return df
 
     def _recode_demographics(self, df):
@@ -195,6 +201,9 @@ class YouGovPanel(ParentsPoliticsPanel):
 
         df = self.add_issue(df, 'view_abortlegal_XX', 'abortion', 1, 3, waves=[2011, 2016])
         df = self.add_issue(df, 'affirmativeaction_XX', 'aff_action', 1, 2, waves=[2011, 2016])
+        df = self.add_issue(df, 'view_gaymar_XX', 'gay_marriage', 1, 2, waves=[2011, 2016])
+        df = self.add_issue(df, 'govtreg_business_XX', 'govt_reg_business', 1, 3)
+        df = self.add_issue(df, 'univhealthcov_XX', 'universal_health', 1, 2)
 
         for issue in ['abort', 'budget', 'econ', 'educ', 'envi', 'gayrights', 'healthcare', 'immig', 'medicare', 'socsec', 'taxes', 'terror']:
             df = self.add_issue(df, f'issue_{issue}_XX', f'imp_{issue}', 1, 4)
@@ -204,5 +213,43 @@ class YouGovPanel(ParentsPoliticsPanel):
 
         return df
 
+    # TODO: double-check all of these
     def add_all_composite_issues(self, df):
+        for year in self.waves:
+            df = self.add_immigration_composite(df, year)
+            if year != 2017:
+                df = self.add_climate_composite(df, year)
+                df = self.add_deathpen_composite(df, year)
+
+        df = self.add_issue(df, 'climate_composite_XX', 'climate_composite', 1, 4, waves=[2011, 2016])
+        df = self.add_issue(df, 'deathpen_composite_XX', 'deathpen_composite', 1, 5, waves=[2011, 2016])
+        df = self.add_issue(df, 'immigration_composite_XX', 'immigration_composite', 1, 5)
+
+        return df
+
+    def add_climate_composite(self, df, year):
+        # envwarm is belief in global warming: 1-4 with 1 liberal - is it fair to call belief in climate change liberal?
+        # envcause is cause of global warming: 1 for human, 2 for natural causes - same question as other indicator
+        # Composite is 1-4, with lower values more liberal
+        df = self.nan_out_of_bounds(df, f'envwarm_{year}', 1, 4)
+        df = self.nan_out_of_bounds(df, f'envcause_{year}', 1, 2)
+        df[f'climate_composite_{year}'] = (df[f'envwarm_{year}'] + ((df[f'envcause_{year}'] - 1) * 4 + 1)) / 2
+        return df
+
+    def add_deathpen_composite(self, df, year):
+        # view_deathpen is favoring death penalty: 1 for favor, 2 for oppose
+        # view_deathpenfreq is cause of global warming: 1 for human, 2 for natural causes - same question as other indicator
+        # Composite is 1-5, with lower values more liberal
+        df = self.nan_out_of_bounds(df, f'view_deathpen_{year}', 1, 2)
+        df = self.nan_out_of_bounds(df, f'view_deathpenfreq_{year}', 1, 3)
+        df[f'deathpen_composite_{year}'] = ((df[f'view_deathpen_{year}'] - 1) * 2 + df[f'view_deathpenfreq_{year}']) / 2
+        return df
+
+    def add_immigration_composite(self, df, year):
+        # immi_naturalize is favoring a pathway to citizenship for uncodument immigrants: 1 favor, 2 oppose
+        # immi_makedifficult is whether it should be easier or harder to migrate: 1-5 with 1 liberal
+        # Composite is 1-5, with lower values more liberal
+        df = self.nan_out_of_bounds(df, f'immi_naturalize_{year}', 1, 2)
+        df = self.nan_out_of_bounds(df, f'immi_makedifficult_{year}', 1, 5)
+        df[f'immigration_composite_{year}'] = ((df[f'immi_naturalize_{year}'] - 1) * 4 + df[f'immi_makedifficult_{year}']) / 2
         return df
