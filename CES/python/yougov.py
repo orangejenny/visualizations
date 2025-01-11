@@ -190,6 +190,18 @@ class YouGovPanel(ParentsPoliticsPanel):
         return df
 
     def _add_all_single_issues(self, df):
+        df = self.add_issue(df, 'ideo5_XX', 'ideo', 1, 5, calc_only=True)
+        df = self.add_issue(df, 'pid7_XX', 'pid', 1, 7, calc_only=True)
+
+        df = self.add_issue(df, 'view_abortlegal_XX', 'abortion', 1, 3, waves=[2011, 2016])
+        df = self.add_issue(df, 'affirmativeaction_XX', 'aff_action', 1, 2, waves=[2011, 2016])
+
+        for issue in ['abort', 'budget', 'econ', 'educ', 'envi', 'gayrights', 'healthcare', 'immig', 'medicare', 'socsec', 'taxes', 'terror']:
+            df = self.add_issue(df, f'issue_{issue}_XX', f'imp_{issue}', 1, 4)
+
+        for issue in ['climatechange', 'crime', 'econ', 'fml', 'gendereq', 'govsize', 'infra', 'jobs', 'moneypol', 'poverty', 'raceeq', 'religlib']:
+            df = self.add_issue(df, f'issue_{issue}_XX', f'imp_{issue}', 1, 4, waves=[2016, 2017])
+
         return df
 
     def add_all_composite_issues(self, df):
