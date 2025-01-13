@@ -7,6 +7,8 @@ class CESPanel(ParentsPoliticsPanel):
     waves = [10, 12, 14]
     treatments = {'firstborn', 'new_child', 'is_parent'}
     dob_column = 'birthyr_10'
+    weight_panel = 'weight'
+    weight_matching = 'weight'
 
     # These do change. Not gender, but even race, and definitely employment, marital status, education, church, even division.
     _demographics = [

@@ -743,14 +743,14 @@ class ParentsPoliticsPanel():
             result = self.t_test(df, label, demographic_label, a_value, b_value, do_weight=do_weight)
 
             filtered = self.filter_na(df, label)
-            a_values = filtered.loc[filtered[demographic_label] == a_value, [label, 'weight']]
-            b_values = filtered.loc[filtered[demographic_label] == b_value, [label, 'weight']]
+            a_values = filtered.loc[filtered[demographic_label] == a_value, [label, self.weight_panel]]
+            b_values = filtered.loc[filtered[demographic_label] == b_value, [label, self.weight_panel]]
             if np.isnan(result.statistic):
                 results['a'].append(np.nan)
                 results['b'].append(np.nan)
                 results['diff'].append(np.nan)
             else:
-                weights = (a_values['weight'], b_values['weight']) if do_weight else (None, None)
+                weights = (a_values[self.weight_panel], b_values[self.weight_panel]) if do_weight else (None, None)
                 results['a'].append(round(np.average(a_values[label], weights=weights[0]), 3))
                 results['b'].append(round(np.average(b_values[label], weights=weights[1]), 3))
                 results['diff'].append(results['a'][-1] - results['b'][-1])
@@ -772,8 +772,8 @@ class ParentsPoliticsPanel():
 
     def t_test(self, df, issue_label, demographic_label, a_value=0, b_value=1, do_weight=True):
         filtered = self.filter_na(self.filter_na(df, demographic_label), issue_label)
-        group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), ['weight', issue_label]]
-        group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), ['weight', issue_label]]
+        group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), [self.weight_panel, issue_label]]
+        group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), [self.weight_panel, issue_label]]
         if group_a.empty or group_b.empty:
             (statistic, pvalue, df) = (np.nan, np.nan, np.nan)
         elif np.var(group_a[issue_label]) == 0 or np.var(group_b[issue_label]) == 0:  # can happen in very small groups
@@ -781,7 +781,7 @@ class ParentsPoliticsPanel():
         else:
             (statistic, pvalue, df) = ttest_ind(group_a[issue_label], group_b[issue_label],
                                                 usevar='unequal',
-                                                weights=(group_a.weight, group_b.weight) if do_weight else (None, None))
+                                                weights=(group_a[self.weight_panel], group_b[self.weight_panel]) if do_weight else (None, None))
         return Result(statistic=statistic, df=df, pvalue=pvalue)
 
     #####################
@@ -843,16 +843,16 @@ class ParentsPoliticsPanel():
         # Calculate each outcome separately, because they may have NAs and in that case we need to skip the corresponding weight
         summary = None
         for col in columns:
-            col_data = df.loc[:,['weight', col] + group_by_labels].copy()
+            col_data = df.loc[:,[self.weight_matching, col] + group_by_labels].copy()
             col_data = self.filter_na(col_data, col)
             if not do_weight:
-                col_data['weight'] = 1
-            col_data[col] = np.multiply(col_data[col], col_data['weight'])
+                col_data[self.weight_matching] = 1
+            col_data[col] = np.multiply(col_data[col], col_data[self.weight_matching])
             if group_by_labels:
                 col_data = col_data.groupby(group_by_labels, as_index=False)
             col_data = col_data.sum()
-            col_data[col] = round(np.divide(col_data[col], col_data['weight']), 2)
-            col_data = col_data.drop(['weight'], axis=(1 if type(col_data) == pd.DataFrame else 0))
+            col_data[col] = round(np.divide(col_data[col], col_data[self.weight_matching]), 2)
+            col_data = col_data.drop([self.weight_matching], axis=(1 if type(col_data) == pd.DataFrame else 0))
             if summary is None:
                 summary = col_data
             elif group_by_labels:
@@ -906,7 +906,7 @@ class ParentsPoliticsPanel():
         if len(df['caseid'].unique()) != len(df['caseid']):
             raise ParentsPoliticsPanelException("Data frame given to get_matched_outcomes does not have unique cases")
 
-        columns = ['caseid', treatment, score_label, f'{score_label}_copy', 'weight'] + outcomes
+        columns = ['caseid', treatment, score_label, f'{score_label}_copy', self.weight_matching] + outcomes
         columns = columns + covariates_for_viz
         treatment_cases = df.loc[df[treatment] == treatment_value, columns].copy()
         candidates = df.loc[df[treatment] == control_value, columns].copy()
@@ -1007,7 +1007,7 @@ class ParentsPoliticsPanel():
         logit = smf.glm(formula=formula,
                         family=sm.families.Binomial(),
                         data=df,
-                        freq_weights=(df['weight'] if do_weight else None)).fit()
+                        freq_weights=(df[self.weight_matching] if do_weight else None)).fit()
         df[label] = logit.predict(df)
         df[f'{label}_copy'] = df[label]
         return df
@@ -1025,7 +1025,7 @@ class ParentsPoliticsPanel():
                 logit = smf.glm(formula=formula,
                                 family=sm.families.Binomial(),
                                 data=df,
-                                freq_weights=(df['weight'] if do_weight else None)).fit()
+                                freq_weights=(df[self.weight_panel] if do_weight else None)).fit()
                 df['score'] = logit.predict(df)
                 unscored_count = len(df.loc[np.isnan(df['score'])])
                 unscored_percentage = f'{round(unscored_count * 100 / len(df))}%'

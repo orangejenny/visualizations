@@ -10,6 +10,8 @@ class YouGovPanel(ParentsPoliticsPanel):
     waves = [2011, 2016, 2017]    # These are the years that have a parenting question, household_children_x
     treatments = {'firstborn', 'is_parent'}     # No new_child treatment because number of children (household_child_num_x) isn't available in the same waves
     dob_column = 'birthyr_2011'
+    weight_panel = 'weight_panel_2016'  # TODO: is this one used in the right places?
+    weight_matching = 'weight_genpop_2011'  # TODO: is this one used in the right places?
 
     _demographics = [
         Demographic(name="gender", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=2, top_categories=[1,2]),  # 2011 only
