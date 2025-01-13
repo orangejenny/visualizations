@@ -49,38 +49,38 @@ ces = CESPanel(args.output, args.no_output)
 
 panel = ces
 two_years = panel.get_paired_waves()
-waves_1012 = two_years.loc[two_years['start_wave'] == 10,:].copy()
+first_two_waves = two_years.loc[two_years['start_wave'] == panel.waves[0],:].copy()
 
 
 ### Build samples for matching: treatment group plus the relevant control
-sample_1012 = {}
-sample_1012['firstborn'] = pd.concat([
-    panel.filter_dummy(waves_1012, 'firstborn'),
-    panel.filter_dummy(waves_1012, 'childless'),
+samples = {}
+samples['firstborn'] = pd.concat([
+    panel.filter_dummy(first_two_waves, 'firstborn'),
+    panel.filter_dummy(first_two_waves, 'childless'),
 ])
-sample_1012['new_child'] = pd.concat([
-    panel.filter_dummy(waves_1012, 'new_child'),
-    panel.filter_dummy(waves_1012, 'childless'),
+samples['new_child'] = pd.concat([
+    panel.filter_dummy(first_two_waves, 'new_child'),
+    panel.filter_dummy(first_two_waves, 'childless'),
 ])
-sample_1012['is_parent'] = waves_1012  # Treatment is is_parent, control is non-parents, which is the whole sample
+samples['is_parent'] = first_two_waves  # Treatment is is_parent, control is non-parents, which is the whole sample
 
 
 if _should_run("match"):
     formula = 'C(division) + RUCC_2023 + C(ownhome) + C(employ) + income + pew_churatd + C(marstat) + C(race) + C(gender) + age'
 
     for treatment in panel.treatments - {'new_child'}:
-        panel.add_score(waves_1012, f"{treatment} ~ {formula}", label=f'{treatment}_score')
-        panel.add_score(sample_1012[treatment], f"{treatment} ~ {formula}", label=f'{treatment}_score')
+        panel.add_score(first_two_waves, f"{treatment} ~ {formula}", label=f'{treatment}_score')
+        panel.add_score(samples[treatment], f"{treatment} ~ {formula}", label=f'{treatment}_score')
 
         # Caliper width
-        nonparent_var = np.var(waves_1012.loc[waves_1012[treatment] == 0, [f'{treatment}_score']], axis=0).iloc[0]
-        parent_var = np.var(waves_1012.loc[waves_1012[treatment] == 1, [f'{treatment}_score']], axis=0).iloc[0]
-        std = np.std(waves_1012[treatment])
+        nonparent_var = np.var(first_two_waves.loc[first_two_waves[treatment] == 0, [f'{treatment}_score']], axis=0).iloc[0]
+        parent_var = np.var(first_two_waves.loc[first_two_waves[treatment] == 1, [f'{treatment}_score']], axis=0).iloc[0]
+        std = np.std(first_two_waves[treatment])
         panel.log_for_paper(f"nonparent var={nonparent_var}, parent var={parent_var}, std={std}, width={std * 0.2}", f"Caliper width calculation for {treatment}")
 
     for treatment in panel.treatments - {'new_child'}:
         covariates = formula.replace('C(', '').replace(')', '').split(' + ')
-        outcomes = panel.get_matched_outcomes(sample_1012[treatment], treatment, covariates_for_viz=covariates)
+        outcomes = panel.get_matched_outcomes(samples[treatment], treatment, covariates_for_viz=covariates)
         panel.log_matching(outcomes, f"All respondents under 40, treatment={treatment}", viz_filename=f"matching_{treatment}")
 
     # diff is control - treatment, or a -b for t tests, so negatives mean treatment group (women, high_income, low_income) is more liberal
@@ -88,7 +88,7 @@ if _should_run("match"):
         # Within each treatment, compare demographic groups
         for treatment in panel.treatments - {'new_child'}:
             comparator_desc = f"{demo_label} ({demo_a} vs {demo_b})"
-            outcomes = panel.get_matched_outcomes(panel.filter_dummy(waves_1012, treatment), demo_label, score_label=f"{treatment}_score",
+            outcomes = panel.get_matched_outcomes(panel.filter_dummy(first_two_waves, treatment), demo_label, score_label=f"{treatment}_score",
                                                 control_value=demo_a, treatment_value=demo_b,
                                                 comparator_treatment=treatment, comparator_desc=comparator_desc)
             panel.log_matching(outcomes, f"{demo_label}, {treatment}=1, respondents under 40, by {comparator_desc}, matched on {formula}")
@@ -97,7 +97,7 @@ if _should_run("match"):
         for demo_value in (demo_a, demo_b):
             for treatment in panel.treatments - {'new_child'}:
                 comparator_desc = f"{demo_label}={demo_value}"
-                demo_subset = panel.filter_demographic(sample_1012[treatment], demo_label, demo_value)
+                demo_subset = panel.filter_demographic(samples[treatment], demo_label, demo_value)
                 outcomes = panel.get_matched_outcomes(demo_subset, treatment, comparator_desc=comparator_desc)
                 panel.log_matching(outcomes, f"{comparator_desc}, respondents under 40, treatment={treatment}, matched on {formula}")
 
@@ -118,11 +118,11 @@ if _should_run("model"):
     top_formulas = {}
     for treatment in panel.treatments - {'new_child'}:
         print("Looking at {treatment}")
-        models = panel.consider_models(waves_1012, treatment, do_weight=True)
+        models = panel.consider_models(first_two_waves, treatment, do_weight=True)
         panel.log_verbose(models, f"Comparison of models to predict {treatment}, weighted")
         if len(models):
             top_formula = models['formula'][1]  # 1 because these are indexed based on DataFrame.rank
-            #panel.log_verbose(panel.scores_histogram_table(waves_1012, top_formula, treatment), f"Score histogram for top model: {top_formula}")
+            #panel.log_verbose(panel.scores_histogram_table(first_two_waves, top_formula, treatment), f"Score histogram for top model: {top_formula}")
             top_formulas = [
                 models['formula'][1],
                 models['formula'][2],
@@ -186,8 +186,8 @@ if _should_run("explore"):
 
 if _should_run("panel"):
     for treatment in panel.treatments:
-        panel.log_panel(panel.all_t_test_pvalues(sample_1012[treatment], treatment), f"T test p values, respondents under 40 years old: {treatment}", viz_filename=f"panel_{treatment}")
-        panel.log_verbose(panel.summarize_all_issues(sample_1012[treatment], treatment), f"Summary of issues, respondents under 40 years old: {treatment}")
+        panel.log_panel(panel.all_t_test_pvalues(samples[treatment], treatment), f"T test p values, respondents under 40 years old: {treatment}", viz_filename=f"panel_{treatment}")
+        panel.log_verbose(panel.summarize_all_issues(samples[treatment], treatment), f"Summary of issues, respondents under 40 years old: {treatment}")
 
     # (not logged) Persistence: how common is persistent change?
     # Of those who changed, how many keep that change?
@@ -200,42 +200,42 @@ if _should_run("panel"):
     # Panel analysis: Gender #
     ##########################''')
     for treatment in panel.treatments - {'new_child'}:
-        panel.log_panel(panel.all_t_test_pvalues(panel.filter_demographic(sample_1012[treatment], "gender", 1), treatment, comparator_desc="gender=1"),
+        panel.log_panel(panel.all_t_test_pvalues(panel.filter_demographic(samples[treatment], "gender", 1), treatment, comparator_desc="gender=1"),
                          f"T test p values, fathers ({treatment}) versus other men")
-        panel.log_panel(panel.all_t_test_pvalues(panel.filter_demographic(sample_1012[treatment], "gender", 2), treatment, comparator_desc="gender=2"),
+        panel.log_panel(panel.all_t_test_pvalues(panel.filter_demographic(samples[treatment], "gender", 2), treatment, comparator_desc="gender=2"),
                          f"T test p values, mothers ({treatment}) versus other women")
-        panel.log_panel(panel.all_t_test_pvalues(panel.filter_dummy(sample_1012[treatment], treatment), 'gender', a_value=1, b_value=2,
+        panel.log_panel(panel.all_t_test_pvalues(panel.filter_dummy(samples[treatment], treatment), 'gender', a_value=1, b_value=2,
                                                 comparator_treatment=treatment, comparator_desc="gender (1 vs 2)"),
                          f"T test p values, fathers versus mothers: all {treatment}")
-        panel.log_verbose(panel.summarize_all_issues(sample_1012[treatment], [treatment, 'gender']), f"Summary of issues by new_child and gender: {treatment}")
+        panel.log_verbose(panel.summarize_all_issues(samples[treatment], [treatment, 'gender']), f"Summary of issues by new_child and gender: {treatment}")
 
     panel.log_header('''
     ##########################
     # Panel analysis: Income #
     ##########################''')
     panel.log_verbose(panel.get_panel().loc[:, ['caseid', 'faminc_14']].groupby("faminc_14").count(), "Income distribution across panel")
-    panel.log_verbose(waves_1012.loc[:,['income', 'new_child', 'caseid']].groupby(['new_child', 'income']).count(), "Income distribution, new_child and others")
-    panel.log_verbose(waves_1012.loc[:,['new_child', 'income_quintile', 'caseid']].groupby(['new_child', 'income_quintile']).count(), "Income distribution by quintile")
+    panel.log_verbose(first_two_waves.loc[:,['income', 'new_child', 'caseid']].groupby(['new_child', 'income']).count(), "Income distribution, new_child and others")
+    panel.log_verbose(first_two_waves.loc[:,['new_child', 'income_quintile', 'caseid']].groupby(['new_child', 'income_quintile']).count(), "Income distribution by quintile")
 
     for treatment in panel.treatments - {'new_child'}:
-        panel.log_panel(panel.all_t_test_pvalues(panel.filter_demographic(sample_1012[treatment], 'low_income', 1), treatment, comparator_desc="low_income=1"),
+        panel.log_panel(panel.all_t_test_pvalues(panel.filter_demographic(samples[treatment], 'low_income', 1), treatment, comparator_desc="low_income=1"),
                          f"T test p values, bottom 40% {treatment} versus other bottom 40% respondents")
-        panel.log_panel(panel.all_t_test_pvalues(panel.filter_demographic(sample_1012[treatment], 'low_income', 0), treatment, comparator_desc="low_income=0"),
+        panel.log_panel(panel.all_t_test_pvalues(panel.filter_demographic(samples[treatment], 'low_income', 0), treatment, comparator_desc="low_income=0"),
                          f"T test p values, top 60% {treatment} versus other top 60% respondents")
-        panel.log_panel(panel.all_t_test_pvalues(panel.filter_demographic(sample_1012[treatment], 'high_income', 1), treatment, comparator_desc="high_income=1"),
+        panel.log_panel(panel.all_t_test_pvalues(panel.filter_demographic(samples[treatment], 'high_income', 1), treatment, comparator_desc="high_income=1"),
                          f"T test p values, top 20% {treatment} versus other top 20% respondents")
-        panel.log_panel(panel.all_t_test_pvalues(panel.filter_demographic(sample_1012[treatment], 'high_income', 0), treatment, comparator_desc="high_income=0"),
+        panel.log_panel(panel.all_t_test_pvalues(panel.filter_demographic(samples[treatment], 'high_income', 0), treatment, comparator_desc="high_income=0"),
                          f"T test p values, bottom 80% {treatment} versus other bottom 80% respondents")
 
-        panel.log_panel(panel.all_t_test_pvalues(panel.filter_dummy(sample_1012[treatment], treatment), 'high_income',
+        panel.log_panel(panel.all_t_test_pvalues(panel.filter_dummy(samples[treatment], treatment), 'high_income',
                                                 comparator_treatment=treatment, comparator_desc="high_income (0 vs 1)"),
                          f"T test p values, top 20% {treatment} versus bottom 80% {treatment}")
-        panel.log_panel(panel.all_t_test_pvalues(panel.filter_dummy(sample_1012[treatment], treatment), 'low_income',
+        panel.log_panel(panel.all_t_test_pvalues(panel.filter_dummy(samples[treatment], treatment), 'low_income',
                                                 comparator_treatment=treatment, comparator_desc="low_income (0 vs 1)"),
                          f"T test p values, bottom 40% {treatment} versus top 60% {treatment}")
 
-        panel.log_verbose(panel.summarize_all_issues(sample_1012[treatment], [treatment, 'high_income']), f"Summary of issues by {treatment} and high_income")
-        panel.log_verbose(panel.summarize_all_issues(sample_1012[treatment], [treatment, 'low_income']), f"Summary of issues by {treatment} and low_income")
+        panel.log_verbose(panel.summarize_all_issues(samples[treatment], [treatment, 'high_income']), f"Summary of issues by {treatment} and high_income")
+        panel.log_verbose(panel.summarize_all_issues(samples[treatment], [treatment, 'low_income']), f"Summary of issues by {treatment} and low_income")
 
 if _should_run("match") and _should_run("panel"):
     panel.log_header('''
