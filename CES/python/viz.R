@@ -96,14 +96,14 @@ panel_arrows = function(treatment) {
       y=treatment_before,
       yend=treatment_after,
       color='parents',
-    ), arrow = arrow(length = unit(0.1, "inches")), size=1, lineend = 'round', linejoin = 'round', alpha = 0.6) +
+    ), arrow = arrow(length = unit(0.1, "inches")), size=1, lineend = 'butt', linejoin = 'round', alpha = 1) +
     geom_segment(aes(
       x=index - dodge,
       xend=index - dodge,
       y=control_before,
       yend=control_after,
       color='non-parents',
-    ), arrow = arrow(length = unit(0.1, "inches")), size=1, lineend = 'round', linejoin = 'round', alpha = 0.6) +
+    ), arrow = arrow(length = unit(0.1, "inches")), size=1, lineend = 'round', linejoin = 'round', alpha = 1) +
     scale_colour_manual(values=palette, guide = guide_legend(title = "")) +
     scale_x_continuous(limits=c(0, num_issues + 1), breaks=1:num_issues, minor_breaks=c(), labels=issue_labels) +
     scale_y_continuous(limits=c(0, 10), breaks=c(0,10), labels=c('liberal', 'conservative')) +
