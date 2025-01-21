@@ -78,27 +78,34 @@ covariate_dot_plot("is_parent")
 ### Panel visualization
 panel_arrows = function(treatment) {
   panel_data <- read.csv(sprintf("output/viz/panel_%s.csv", treatment))
+
+  # Add index to use for issue, so it can be adjusted slightly to separate the arrows visually
+  panel_data <- panel_data %>% mutate(index = nrow(panel_data):1)
+  dodge <- 0.2
+  issue_labels <- rev(panel_data$issue)
+
   titles = c(
     "firstborn" = "Panel: Attitude changes, 2010-2012, first-time parents",
     "new_child" = "Panel: Attitude changes, 2010-2012, parents with a recent birth"
   )
+  num_issues = nrow(panel_data)
   ggplot(panel_data) +
     geom_segment(aes(
-      x=issue,
-      xend=issue,
+      x=index + dodge,
+      xend=index + dodge,
       y=treatment_before,
       yend=treatment_after,
       color='parents',
     ), arrow = arrow(length = unit(0.1, "inches")), size=1, lineend = 'round', linejoin = 'round', alpha = 0.6) +
     geom_segment(aes(
-      x=issue,
-      xend=issue,
+      x=index - dodge,
+      xend=index - dodge,
       y=control_before,
       yend=control_after,
       color='non-parents',
     ), arrow = arrow(length = unit(0.1, "inches")), size=1, lineend = 'round', linejoin = 'round', alpha = 0.6) +
     scale_colour_manual(values=palette, guide = guide_legend(title = "")) +
-    scale_x_discrete(limits=rev(levels(as_factor(panel_data$issue)))) +
+    scale_x_continuous(limits=c(0, num_issues + 1), breaks=1:num_issues, minor_breaks=c(), labels=issue_labels) +
     scale_y_continuous(limits=c(0, 10), breaks=c(0,10), labels=c('liberal', 'conservative')) +
     labs(x = "", y = "", color="group", title=titles[treatment]) +
     coord_flip() +
