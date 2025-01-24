@@ -62,7 +62,7 @@ covariate_dot_plot <- function(treatment) {
   ggplot(covariate_data,
          aes(x = as_factor(demographic), y = value,
              color = as_factor(is_matched))) +
-    geom_point(alpha = 0.5, size=3) +
+    geom_point(alpha = 0.8, size=3) +
     scale_x_discrete(limits=levels(as_factor(covariate_data$demographic))) +
     scale_y_continuous(limits=c(0, 100)) +
     scale_colour_manual(values=palette, guide = guide_legend(title = "")) +
@@ -78,27 +78,34 @@ covariate_dot_plot("is_parent")
 ### Panel visualization
 panel_arrows = function(treatment) {
   panel_data <- read.csv(sprintf("output/viz/panel_%s.csv", treatment))
+
+  # Add index to use for issue, so it can be adjusted slightly to separate the arrows visually
+  panel_data <- panel_data %>% mutate(index = nrow(panel_data):1)
+  dodge <- 0.2
+  issue_labels <- rev(panel_data$issue)
+
   titles = c(
     "firstborn" = "Panel: Attitude changes, 2010-2012, first-time parents",
     "new_child" = "Panel: Attitude changes, 2010-2012, parents with a recent birth"
   )
+  num_issues = nrow(panel_data)
   ggplot(panel_data) +
     geom_segment(aes(
-      x=issue,
-      xend=issue,
+      x=index + dodge,
+      xend=index + dodge,
       y=treatment_before,
       yend=treatment_after,
-      color='parents',
-    ), arrow = arrow(length = unit(0.1, "inches")), size=1, lineend = 'round', linejoin = 'round', alpha = 0.6) +
+      color=' parents',  # space to force first alphabetically, to get blue color to match parents in matching viz
+    ), arrow = arrow(length = unit(0.1, "inches")), size=1, lineend = 'round', linejoin = 'round', alpha = 1) +
     geom_segment(aes(
-      x=issue,
-      xend=issue,
+      x=index - dodge,
+      xend=index - dodge,
       y=control_before,
       yend=control_after,
       color='non-parents',
-    ), arrow = arrow(length = unit(0.1, "inches")), size=1, lineend = 'round', linejoin = 'round', alpha = 0.6) +
+    ), arrow = arrow(length = unit(0.1, "inches")), size=1, lineend = 'round', linejoin = 'round', alpha = 1) +
     scale_colour_manual(values=palette, guide = guide_legend(title = "")) +
-    scale_x_discrete(limits=rev(levels(as_factor(panel_data$issue)))) +
+    scale_x_continuous(limits=c(0, num_issues + 1), breaks=1:num_issues, minor_breaks=c(), labels=issue_labels) +
     scale_y_continuous(limits=c(0, 10), breaks=c(0,10), labels=c('liberal', 'conservative')) +
     labs(x = "", y = "", color="group", title=titles[treatment]) +
     coord_flip() +
@@ -118,12 +125,12 @@ matching_dot_plot <- function(treatment) {
   )
   ggplot(matching_data,
          aes(x = as_factor(issue), y = value,
-             color = as_factor(is_matched))) +
-    geom_point(alpha = 0.6, size=5) +
+             color = as_factor(is_matched), shape = as_factor(is_matched))) +
+    geom_point(alpha = 0.8, size=5) +
     scale_x_discrete(limits=rev(levels(as_factor(matching_data$issue)))) +
     scale_y_continuous(limits=c(0, 10), breaks=c(0,10), labels=c('liberal', 'conservative')) +
     scale_colour_manual(values=palette, guide = guide_legend(title = "")) +
-    labs(x = "", y = "", color="group", title=titles[treatment]) +
+    labs(x = "", y = "", color="", shape = "", title=titles[treatment]) +
     coord_flip() +
     theme_minimal() +
     theme(axis.text.x = element_text(hjust=1)) +
