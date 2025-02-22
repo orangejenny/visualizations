@@ -11,6 +11,7 @@ from enum import Enum
 from datetime import datetime
 from itertools import combinations
 from pandas import DataFrame
+from scipy.stats import zscore
 from statsmodels.stats.weightstats import ttest_ind
 
 
@@ -199,9 +200,9 @@ class ParentsPoliticsPanel():
             self._truncate_output()
 
         self.panel = self._load_panel()
-        self.paired_waves = self._build_paired_waves(self._trimmed_panel())
+        self.paired_waves = self.build_paired_waves(self._trimmed_panel())
 
-        self.paired_waves = self._add_parenting(self.paired_waves)
+        self.paired_waves = self.add_parenting(self.paired_waves)
         self.paired_waves = self.paired_waves.astype({t: 'int32' for t in self.treatments})
 
         self.paired_waves = self._add_all_single_issues(self.paired_waves)
@@ -212,6 +213,120 @@ class ParentsPoliticsPanel():
 
         # Compare findings from different approaches
         self.comparator = ParentsPoliticsApproachComparator(self)
+
+    def add_parenting(self, df):
+        df = self.add_parenthood_indicator(df)
+
+        # TODO: this removes ~10k rows in YouGov, why?
+        df = df.loc[pd.notna(df['parenthood']),:].copy() # remove any rows where parenthood cannot be determined
+
+        '''
+        Additional boolean columns based on parenthood
+        - childless: 0     ...recall this is only about minor children, these people may have adult children (but also recall the age < 40 cutoff)
+        - firstborn: 1
+        - new_sibling: 2
+        - new_child: 1 or 2
+        - steady_parent: 3
+        - is_parent: 1, 2, or 3
+        '''
+        df = df.assign(**{
+            'childless': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(x.parenthood == 0, 1, 0) for w in self.start_waves],
+            ),
+            'firstborn': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(x.parenthood == 1, 1, 0) for w in self.start_waves],
+            ),
+            'new_sibling': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(x.parenthood == 2, 1, 0) for w in self.start_waves],
+            ),
+            'new_child': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(np.logical_or(x.parenthood == 1, x.parenthood == 2) , 1, 0) for w in self.start_waves],
+            ),
+            'steady_parent': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(x.parenthood == 3, 1, 0) for w in self.start_waves],
+            ),
+            'is_parent': lambda x: np.select(
+                [x.start_wave == w for w in self.start_waves],
+                [np.where(x.parenthood != 0, 1, 0) for w in self.start_waves],
+            ),
+        })
+
+        df = self.add_parenting_dosage_indicators(df)
+
+        return df
+
+    # Add standardized columns for a particular issue
+    def add_issue(self, df, before_pattern, issue, lower_bound=None, upper_bound=None, waves=Ellipsis, calc_only=False):
+        (waves, start_waves, end_waves) = self._limit_waves(waves)
+
+        df = self._add_before_after(df, before_pattern, issue, lower_bound, upper_bound, waves=waves)
+
+        df = df.assign(**{
+            f'{issue}_delta': lambda x: x[f'{issue}_after'] - x[f'{issue}_before'],
+            f'{issue}_delta_abs': lambda x: abs(x[f'{issue}_delta']),
+            f'{issue}_delta_sq': lambda x: x[f'{issue}_delta'] * x[f'{issue}_delta'],
+            f'{issue}_direction': lambda x: np.sign(x[f'{issue}_delta']),
+        })
+        df.loc[np.isnan(df[f'{issue}_delta']), f'{issue}_direction'] = np.nan # because some of the 0s should be NaN
+
+        if len(waves) > 2:
+            df = df.assign(**{
+                f'{issue}_persists': lambda x: np.select(
+                    [x.start_wave == w for w in self.start_waves[:-1]],
+                    [np.where(np.logical_and(
+                        x[f'{issue}_delta'] != 0, # change in start vs end
+                        # change from start to final is either zero or the same direction as delta
+                        x[f'{issue}_delta'] * (x[before_pattern.replace('XX', str(self.end_waves[-1]))] - x[before_pattern.replace('XX', str(self.end_waves[i]))]) >= 0
+                    ),
+                    x[before_pattern.replace('XX', str(self.end_waves[-1]))] - x[before_pattern.replace('XX', str(w))],
+                    0) for i, w in enumerate(self.start_waves[:-1])]
+                )
+            })
+            for wave in waves:
+                df.loc[df['start_wave'] == start_waves[-1], f'{issue}_persists'] = np.nan  # Can't calculate when there are only two waves
+                df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{issue}_persists'] = np.nan  # Can't calculate unless all waves are available
+            df[f'{issue}_persists_abs'] = np.abs(df[f'{issue}_persists'])
+        else:
+            # Can't calculate when there are only two waves
+            df.loc[:, f'{issue}_persists'] = np.nan
+            df.loc[:, f'{issue}_persists_abs'] = np.nan
+
+        if not calc_only:
+            self.ISSUES.add(issue)
+            self.ISSUE_BOUNDS[issue] = (lower_bound, upper_bound)
+
+        return df
+
+    # Helper for add_issue
+    def _add_before_after(self, df, before_pattern, issue, lower_bound=None, upper_bound=None, waves=Ellipsis):
+        (waves, start_waves, end_waves) = self._limit_waves(waves)
+        df = df.assign(**{
+            f'{issue}_before': lambda x: np.select(
+                [x.start_wave == w for w in start_waves],
+                [x[before_pattern.replace('XX', str(w))] for w in start_waves],
+            ),
+            f'{issue}_after': lambda x:np.select(
+                [x.start_wave == w for w in end_waves],
+                [x[before_pattern.replace('XX', str(w))] for w in end_waves],
+            ),
+        })
+        df = self.nan_out_of_bounds(df, f'{issue}_before', lower_bound, upper_bound)
+        df = self.nan_out_of_bounds(df, f'{issue}_after', lower_bound, upper_bound)
+        return df
+
+    def _limit_waves(self, waves=Ellipsis):
+        if waves is Ellipsis:
+            waves = self.waves
+        return (
+            waves,
+            waves[:-1],
+            waves[1:],
+        )
 
     def get_approach_comparison(self, matrix=None):
         return self.comparator.get_comparison()
@@ -415,11 +530,117 @@ class ParentsPoliticsPanel():
     def _trimmed_panel(self):
         raise NotImplementedError()
 
-    def _build_paired_waves(self, df):
+    def build_paired_waves(self, df):
+        '''
+        This duplicates the dataset so there's a set of rows for each pair of waves.
+        With three waves, this means doubling the length of the data.
+        '''
+        if not len(self.waves):
+            raise Exception("Must contain at least one wave")
+        df = df.assign(start_wave=self.waves[0], end_wave=self.waves[-1])
+        df = self._recode_issues(df)
+        df = self._recode_demographics(df)
+        df = self._add_income_brackets(df)
+        df = self.add_geography(df)
+
+        df = pd.concat([
+            df.assign(
+                start_wave=w,
+                end_wave=self.end_waves[i],
+            ) for i, w in enumerate(self.start_waves)
+        ], ignore_index=True)
+        df = self._add_age(df)   # age depends on start_wave
+        df = self._consolidate_demographics(df)
+
+        return df
+
+    def add_parenthood_indicator(self, df):
+        '''
+        - 0 no children
+        - 1 new first child (same as firstborn)
+        - 2 new additional child
+        - 3 parent, no change in number of children
+        '''
         raise NotImplementedError()
 
-    def _add_parenting(self, df):
+    def get_divisions(self):
+        # https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
+        states = [
+            ['CT', 'ME', 'MA', 'NH', 'RI', 'VT'],
+            ['NJ', 'NY', 'PA'],
+            ['IN', 'IL', 'MI', 'OH', 'WI'],
+            ['IA', 'KS', 'MN', 'MO', 'NE', 'ND', 'SD'],
+            ['DE', 'DC', 'FL', 'GA', 'MD', 'NC', 'SC', 'VA', 'WV'],
+            ['AL', 'KY', 'MS', 'TN'],
+            ['AR', 'LA', 'OK', 'TX'],
+            ['AZ', 'CO', 'ID', 'NM', 'MY', 'UT', 'NV', 'WY'],
+            ['AK', 'CA', 'HI', 'OR', 'WA'],
+        ]
+        divisions = pd.DataFrame(data=[(a, i + 1) for i, abbreviations in enumerate(states) for a in abbreviations])
+        divisions.rename(columns={0: 'state', 1: 'division'}, inplace=True)
+        return divisions
+
+    def _add_income_brackets(self, df):
+        # Income brackets are approximate, since incomes are given in ranges.
+        df = self.add_income_quintile(df)
+        df = df.assign(
+            # "High income" is top 20% to match Reeves
+            high_income=lambda x: np.where(np.isnan(x.income_quintile), np.NAN, np.where(x.income_quintile == 5, 1, 0)),
+            # "Low income" is bottom 40%, to very roughly correspond with SCHIP eligibility
+            low_income=lambda x: np.select(
+                [
+                    np.isnan(x.income_quintile),
+                    x.income_quintile == 1,
+                    x.income_quintile == 2,
+                    x.income_quintile == 3,
+                    x.income_quintile == 4,
+                    x.income_quintile == 5,
+                ],
+                [np.NAN, 1, 1, 0, 0, 0],
+                default=np.nan
+            ),
+        )
+        return df
+
+    def add_income_quintile(self, df):
         raise NotImplementedError()
+
+    def _add_age(self, df):
+        if sum(self.waves) < 1000:
+            df = df.assign(start_year=lambda x: x.start_wave + 2000)
+        else:
+            df = df.assign(start_year=lambda x: x.start_wave)
+        df = df.assign(age=lambda x: x.start_year - x[self.dob_column])
+        df = self.nan_out_of_bounds(df, 'age', 1, 200)
+        df['age_zscore'] = zscore(df['age'], nan_policy='omit')
+        df = df.loc[np.less_equal(df['age'], 40),:]
+        return df.copy()
+
+    def _consolidate_demographics(self, df):
+        for dname, demographic in self.demographics.items():
+            if demographic.lower_bound is None and demographic.upper_bound is None:
+                continue
+
+            old_labels = [f'{dname}_{wave}' for wave in self.waves if f'{dname}_{wave}' in df]
+            for old_label in old_labels:
+                df = self.nan_out_of_bounds(df, old_label, demographic.lower_bound, demographic.upper_bound)
+
+            # Use "after" data if available, else use most recent value
+            if len(old_labels) == 1:
+                # Needed when there isn't data for any of the end waves, as in YouGov
+                # TODO: Test YouGov
+                df = df.assign(**{dname: old_labels[0]})
+            else:
+                df = df.assign(**{dname: lambda x: np.select(
+                    [x.end_wave == w for w in self.end_waves if f'{dname}_{w}' in df],
+                    [np.where(
+                        pd.notna(x[f'{dname}_{w}']),
+                        x[f'{dname}_{w}'],
+                        x[old_labels].bfill(axis=1).iloc[:, 0]
+                    ) for w in self.end_waves if f'{dname}_{w}' in df],
+                )})
+            df.drop(old_labels, axis=1, inplace=True)
+        return df
 
     def _add_all_single_issues(self, df):
         raise NotImplementedError()
@@ -522,14 +743,14 @@ class ParentsPoliticsPanel():
             result = self.t_test(df, label, demographic_label, a_value, b_value, do_weight=do_weight)
 
             filtered = self.filter_na(df, label)
-            a_values = filtered.loc[filtered[demographic_label] == a_value, [label, 'weight']]
-            b_values = filtered.loc[filtered[demographic_label] == b_value, [label, 'weight']]
+            a_values = filtered.loc[filtered[demographic_label] == a_value, [label, self.weight_panel]]
+            b_values = filtered.loc[filtered[demographic_label] == b_value, [label, self.weight_panel]]
             if np.isnan(result.statistic):
                 results['a'].append(np.nan)
                 results['b'].append(np.nan)
                 results['diff'].append(np.nan)
             else:
-                weights = (a_values['weight'], b_values['weight']) if do_weight else (None, None)
+                weights = (a_values[self.weight_panel], b_values[self.weight_panel]) if do_weight else (None, None)
                 results['a'].append(round(np.average(a_values[label], weights=weights[0]), 3))
                 results['b'].append(round(np.average(b_values[label], weights=weights[1]), 3))
                 results['diff'].append(results['a'][-1] - results['b'][-1])
@@ -551,8 +772,8 @@ class ParentsPoliticsPanel():
 
     def t_test(self, df, issue_label, demographic_label, a_value=0, b_value=1, do_weight=True):
         filtered = self.filter_na(self.filter_na(df, demographic_label), issue_label)
-        group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), ['weight', issue_label]]
-        group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), ['weight', issue_label]]
+        group_a = filtered.loc[np.equal(filtered[demographic_label], a_value), [self.weight_panel, issue_label]]
+        group_b = filtered.loc[np.equal(filtered[demographic_label], b_value), [self.weight_panel, issue_label]]
         if group_a.empty or group_b.empty:
             (statistic, pvalue, df) = (np.nan, np.nan, np.nan)
         elif np.var(group_a[issue_label]) == 0 or np.var(group_b[issue_label]) == 0:  # can happen in very small groups
@@ -560,7 +781,7 @@ class ParentsPoliticsPanel():
         else:
             (statistic, pvalue, df) = ttest_ind(group_a[issue_label], group_b[issue_label],
                                                 usevar='unequal',
-                                                weights=(group_a.weight, group_b.weight) if do_weight else (None, None))
+                                                weights=(group_a[self.weight_panel], group_b[self.weight_panel]) if do_weight else (None, None))
         return Result(statistic=statistic, df=df, pvalue=pvalue)
 
     #####################
@@ -622,16 +843,16 @@ class ParentsPoliticsPanel():
         # Calculate each outcome separately, because they may have NAs and in that case we need to skip the corresponding weight
         summary = None
         for col in columns:
-            col_data = df.loc[:,['weight', col] + group_by_labels].copy()
+            col_data = df.loc[:,[self.weight_matching, col] + group_by_labels].copy()
             col_data = self.filter_na(col_data, col)
             if not do_weight:
-                col_data['weight'] = 1
-            col_data[col] = np.multiply(col_data[col], col_data['weight'])
+                col_data[self.weight_matching] = 1
+            col_data[col] = np.multiply(col_data[col], col_data[self.weight_matching])
             if group_by_labels:
                 col_data = col_data.groupby(group_by_labels, as_index=False)
             col_data = col_data.sum()
-            col_data[col] = round(np.divide(col_data[col], col_data['weight']), 2)
-            col_data = col_data.drop(['weight'], axis=(1 if type(col_data) == pd.DataFrame else 0))
+            col_data[col] = round(np.divide(col_data[col], col_data[self.weight_matching]), 2)
+            col_data = col_data.drop([self.weight_matching], axis=(1 if type(col_data) == pd.DataFrame else 0))
             if summary is None:
                 summary = col_data
             elif group_by_labels:
@@ -685,7 +906,7 @@ class ParentsPoliticsPanel():
         if len(df['caseid'].unique()) != len(df['caseid']):
             raise ParentsPoliticsPanelException("Data frame given to get_matched_outcomes does not have unique cases")
 
-        columns = ['caseid', treatment, score_label, f'{score_label}_copy', 'weight'] + outcomes
+        columns = ['caseid', treatment, score_label, f'{score_label}_copy', self.weight_matching] + outcomes
         columns = columns + covariates_for_viz
         treatment_cases = df.loc[df[treatment] == treatment_value, columns].copy()
         candidates = df.loc[df[treatment] == control_value, columns].copy()
@@ -786,7 +1007,7 @@ class ParentsPoliticsPanel():
         logit = smf.glm(formula=formula,
                         family=sm.families.Binomial(),
                         data=df,
-                        freq_weights=(df['weight'] if do_weight else None)).fit()
+                        freq_weights=(df[self.weight_matching] if do_weight else None)).fit()
         df[label] = logit.predict(df)
         df[f'{label}_copy'] = df[label]
         return df
@@ -804,7 +1025,7 @@ class ParentsPoliticsPanel():
                 logit = smf.glm(formula=formula,
                                 family=sm.families.Binomial(),
                                 data=df,
-                                freq_weights=(df['weight'] if do_weight else None)).fit()
+                                freq_weights=(df[self.weight_panel] if do_weight else None)).fit()
                 df['score'] = logit.predict(df)
                 unscored_count = len(df.loc[np.isnan(df['score'])])
                 unscored_percentage = f'{round(unscored_count * 100 / len(df))}%'

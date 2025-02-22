@@ -1,13 +1,15 @@
 import numpy as np
 import pandas as pd
 
-from scipy.stats import zscore
-
 from parents_politics_panel import Demographic, DemographicType, ParentsPoliticsPanel
 
 class CESPanel(ParentsPoliticsPanel):
     waves = [10, 12, 14]
     treatments = {'firstborn', 'new_child', 'is_parent'}
+    dob_column = 'birthyr_10'
+    weight_panel = 'weight'
+    weight_matching = 'weight'
+
     # These do change. Not gender, but even race, and definitely employment, marital status, education, church, even division.
     _demographics = [
         Demographic(name="gender", dtype=DemographicType.CATEGORICAL, lower_bound=1, upper_bound=2, top_categories=[1,2]),
@@ -64,25 +66,6 @@ class CESPanel(ParentsPoliticsPanel):
     def _load_panel(cls):
         return pd.read_stata("~/Documents/visualizations/midterm/CCES_Panel_Full3waves_VV_V4.dta", convert_categoricals=False)  # n=9500
 
-    def _build_paired_waves(self, df):
-        if not len(self.waves):
-            raise Exception("Must contain at least one wave")
-        df = df.assign(start_wave=self.waves[0], end_wave=self.waves[-1])
-        df = self._recode_issues(df)
-        df = self.add_income_brackets(df)
-
-        df = pd.concat([
-            df.assign(
-                start_wave=w,
-                end_wave=self.end_waves[i],
-            ) for i, w in enumerate(self.start_waves)
-        ], ignore_index=True)
-        df = self.add_age(df)   # age depends on start_wave
-        df = self.add_rural_urban(df)
-        df = self._consolidate_demographics(df)
-
-        return df
-
     def _trimmed_panel(self):
         # Drop most columns
         return self.panel.loc[
@@ -131,13 +114,6 @@ class CESPanel(ParentsPoliticsPanel):
             self.panel.columns.str.startswith("countyfips_")
         ].copy()
 
-    def add_age(self, df):
-        df = df.assign(age=lambda x: 2000 + x.start_wave - x.birthyr_10)
-        df = self.nan_out_of_bounds(df, 'age', 1, 200)
-        df['age_zscore'] = zscore(df['age'], nan_policy='omit')
-        df = df.loc[np.less_equal(df['age'], 40),:]
-        return df.copy()
-
     def _recode_issues(self, df):
         # Recode a few columns to streamline later calculations
         for year in self.waves:
@@ -172,28 +148,11 @@ class CESPanel(ParentsPoliticsPanel):
                 df[f'CC{year}_322_7'] = np.where(df[f'CC{year}_322_7'] == 1, 2, np.where(df[f'CC{year}_322_7'] == 2, 1, np.nan))
         return df
 
-    def _consolidate_demographics(self, df):
-        for dname, demographic in self.demographics.items():
-            if demographic.lower_bound is None and demographic.upper_bound is None:
-                continue
-
-            old_labels = [f'{dname}_{wave}' for wave in self.waves]
-            for old_label in old_labels:
-                df = self.nan_out_of_bounds(df, old_label, demographic.lower_bound, demographic.upper_bound)
-
-            # Use "after" data if available, else use most recent value
-            df = df.assign(**{dname: lambda x: np.select(
-                [x.end_wave == w for w in self.end_waves],
-                [np.where(
-                    pd.notna(x[f'{dname}_{w}']),
-                    x[f'{dname}_{w}'],
-                    x[old_labels].bfill(axis=1).iloc[:, 0]
-                ) for i, w in enumerate(self.end_waves)],
-            )})
-            df.drop(old_labels, axis=1, inplace=True)
+    def _recode_demographics(self, df):
+        # Nothing to do here
         return df
 
-    def add_rural_urban(self, df):
+    def add_geography(self, df):
         df = df.assign(countyfips_14=np.logical_or(df['countyfips_14'], 0))
         df = df.astype({
             'countyfips_10': 'int64',
@@ -208,21 +167,8 @@ class CESPanel(ParentsPoliticsPanel):
         )
         codes = pd.read_csv("~/Documents/visualizations/midterm/ruralurbancontinuumcodes2023/rural_urban.csv")
         codes = codes.loc[:,['FIPS', 'State', 'RUCC_2023']] #, 'Description']]
-        # https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
-        states = [
-            ['CT', 'ME', 'MA', 'NH', 'RI', 'VT'],
-            ['NJ', 'NY', 'PA'],
-            ['IN', 'IL', 'MI', 'OH', 'WI'],
-            ['IA', 'KS', 'MN', 'MO', 'NE', 'ND', 'SD'],
-            ['DE', 'DC', 'FL', 'GA', 'MD', 'NC', 'SC', 'VA', 'WV'],
-            ['AL', 'KY', 'MS', 'TN'],
-            ['AR', 'LA', 'OK', 'TX'],
-            ['AZ', 'CO', 'ID', 'NM', 'MY', 'UT', 'NV', 'WY'],
-            ['AK', 'CA', 'HI', 'OR', 'WA'],
-        ]
-        divisions = pd.DataFrame(data=[(a, i + 1) for i, abbreviations in enumerate(states) for a in abbreviations])
-        divisions.rename(columns={0: 'state', 1: 'division'}, inplace=True)
 
+        divisions = self.get_divisions()
         divisions = divisions.merge(codes, how='inner', left_on='state', right_on='State')
         df = df.merge(codes, how='left', left_on='countyfips_before', right_on='FIPS')
 
@@ -233,9 +179,8 @@ class CESPanel(ParentsPoliticsPanel):
 
         return df
 
-    def add_income_brackets(self, df):
+    def add_income_quintile(self, df):
         # Income: Start with faminc_14 because the buckets vary by year, and the 2014 buckets are more granular
-        # Income brackets are approximate, since incomes are given in ranges.
         df = df.rename(columns={'faminc_14': 'income'})
         df = self.nan_out_of_bounds(df, 'income', 1, 50)  # good enough to get rid of 98/99
         df = df.assign(
@@ -247,32 +192,11 @@ class CESPanel(ParentsPoliticsPanel):
                 [1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5],
                 default=np.nan
             ),
-            # "High income" is top 20% to match Reeves
-            high_income=lambda x: np.where(np.isnan(x.income_quintile), np.NAN, np.where(x.income_quintile == 5, 1, 0)),
-            # "Low income" is bottom 40%, to very roughly correspond with SCHIP eligibility
-            low_income=lambda x: np.select(
-                [
-                    np.isnan(x.income_quintile),
-                    x.income_quintile == 1,
-                    x.income_quintile == 2,
-                    x.income_quintile == 3,
-                    x.income_quintile == 4,
-                    x.income_quintile == 5,
-                ],
-                [np.NAN, 1, 1, 0, 0, 0],
-                default=np.nan
-            ),
         )
         return df
 
-    def _add_parenting(self, df):
-        '''
-        parenthood is based on child18 (parent of ninor children? yes/no) and child18num (number of minor children)
-        - 0 no children
-        - 1 new first child (same as firstborn)
-        - 2 new additional child
-        - 3 parent, no change in number of children
-        '''
+    def add_parenthood_indicator(self, df):
+        # parenthood is based on child18 (parent of minor children? yes/no) and child18num (number of minor children)
         df = df.assign(
             # Combination of parent yes/no question and number of children question, being cautious of invalid values
             parenthood=lambda x: np.select(
@@ -308,48 +232,11 @@ class CESPanel(ParentsPoliticsPanel):
                 ) for i, w in enumerate(self.start_waves)],
             )
         )
-        df = df.loc[pd.notna(df['parenthood']),:].copy() # remove any rows where parenthood cannot be determined
-        '''
-        Additional boolean columns based on parenthood
-        - childless: 0     ...recall this is only about minor children
-        - firstborn: 1
-        - new_sibling: 2
-        - new_child: 1 or 2
-        - steady_parent: 3
-        - is_parent: 1, 2, or 3
 
-        - 0 no children
-        - 1 new first child (same as firstborn)
-        - 2 new non-first child
-        - 3 parent, no change in number of children
-        '''
+        return df
+
+    def add_parenting_dosage_indicators(self, df):
         df = df.assign(**{
-            'childless': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves],
-                [np.where(x.parenthood == 0, 1, 0) for w in self.start_waves],
-            ),
-            'firstborn': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves],
-                [np.where(x.parenthood == 1, 1, 0) for w in self.start_waves],
-            ),
-            'new_sibling': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves],
-                [np.where(x.parenthood == 2, 1, 0) for w in self.start_waves],
-            ),
-            'new_child': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves],
-                [np.where(np.logical_or(x.parenthood == 1, x.parenthood == 2) , 1, 0) for w in self.start_waves],
-            ),
-            'steady_parent': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves],
-                [np.where(x.parenthood == 3, 1, 0) for w in self.start_waves],
-            ),
-            'is_parent': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves],
-                [np.where(x.parenthood != 0, 1, 0) for w in self.start_waves],
-            ),
-
-            # Dosage dummy variables
             'is_parent_1': lambda x: np.select(
                 [x.start_wave == w for w in self.start_waves],
                 [np.where(np.logical_and(x.is_parent == 1, x[f'child18num_{w}'] == 1), 1, 0) for w in self.end_waves],
@@ -371,19 +258,20 @@ class CESPanel(ParentsPoliticsPanel):
                 [np.where(np.logical_and(x.is_parent == 1, x[f'child18num_{w}'] > 3), 1, 0) for w in self.end_waves],
             ),
         })
+
         return df
 
     def _add_all_single_issues(self, df):
-        df = self._add_issue(df, 'ideo5_XX', 'ideo', 1, 5, calc_only=True)
-        df = self._add_issue(df, 'pid7_XX', 'pid', 1, 7, calc_only=True)
-        df = self._add_issue(df, 'CCXX_327', 'aff_action', 1, 4)
-        df = self._add_issue(df, 'CCXX_320', 'guns', 1, 3)
-        df = self._add_issue(df, 'CCXX_321', 'climate_severity', 1, 5, calc_only=True)
-        df = self._add_issue(df, 'CCXX_325', 'climate_jobs_env', 1, 5, calc_only=True)
-        df = self._add_issue(df, 'CCXX_325', 'climate_clean_energy', 1, 2, calc_only=True)
-        df = self._add_issue(df, 'CCXX_326', 'gay_marriage', 1, 2, calc_only=True)
-        df = self._add_issue(df, 'CCXX_330G', 'gay_dadt', 1, 2, calc_only=True)
-        df = self._add_issue(df, 'CCXX_324', 'abortion', 1, 4)
+        df = self.add_issue(df, 'ideo5_XX', 'ideo', 1, 5, calc_only=True)
+        df = self.add_issue(df, 'pid7_XX', 'pid', 1, 7, calc_only=True)
+        df = self.add_issue(df, 'CCXX_327', 'aff_action', 1, 4)
+        df = self.add_issue(df, 'CCXX_320', 'guns', 1, 3)
+        df = self.add_issue(df, 'CCXX_321', 'climate_severity', 1, 5, calc_only=True)
+        df = self.add_issue(df, 'CCXX_325', 'climate_jobs_env', 1, 5, calc_only=True)
+        df = self.add_issue(df, 'CCXX_325', 'climate_clean_energy', 1, 2, calc_only=True)
+        df = self.add_issue(df, 'CCXX_326', 'gay_marriage', 1, 2, calc_only=True)
+        df = self.add_issue(df, 'CCXX_330G', 'gay_dadt', 1, 2, calc_only=True)
+        df = self.add_issue(df, 'CCXX_324', 'abortion', 1, 4)
         return df
 
     def add_all_composite_issues(self, df):
@@ -396,12 +284,12 @@ class CESPanel(ParentsPoliticsPanel):
 
         df = self.add_immigration_composite(df)
 
-        df = self._add_issue(df, 'budget_composite_20XX', 'budget_composite', 1, 2)
-        df = self._add_issue(df, 'climate_composite_20XX', 'climate_composite', 1, 5)
-        df = self._add_issue(df, 'gay_composite_20XX', 'gay_composite', 1, 2)
-        df = self._add_issue(df, '_ideo_composite_20XX', '_ideo_composite', 6, 35)
-        df = self._add_issue(df, 'military_composite_20XX', 'military_composite', 1, 2)
-        df = self._add_issue(df, 'immigration_composite_20XX', 'immigration_composite', 1, 2)
+        df = self.add_issue(df, 'budget_composite_20XX', 'budget_composite', 1, 2)
+        df = self.add_issue(df, 'climate_composite_20XX', 'climate_composite', 1, 5)
+        df = self.add_issue(df, 'gay_composite_20XX', 'gay_composite', 1, 2)
+        df = self.add_issue(df, '_ideo_composite_20XX', '_ideo_composite', 6, 35)
+        df = self.add_issue(df, 'military_composite_20XX', 'military_composite', 1, 2)
+        df = self.add_issue(df, 'immigration_composite_20XX', 'immigration_composite', 1, 2)
 
         return df
 
@@ -459,53 +347,4 @@ class CESPanel(ParentsPoliticsPanel):
         df[f'immigration_composite_2010'] = np.sum(df.loc[:, df.columns.str.contains('CC10_322_[1-3]')], axis=1) / 3
         df[f'immigration_composite_2012'] = np.sum(df.loc[:, df.columns.str.contains('CC12_322_[1-6]')], axis=1) / 6
         df[f'immigration_composite_2014'] = np.sum(df.loc[:, df.columns.str.contains('CC14_322_[1-6]')], axis=1) / 6
-        return df
-
-    def add_before_after(self, df, before_pattern, issue, lower_bound=None, upper_bound=None):
-        df = df.assign(**{
-            f'{issue}_before': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves],
-                [x[before_pattern.replace('XX', str(w))] for w in self.start_waves],
-            ),
-            f'{issue}_after': lambda x:np.select(
-                [x.start_wave == w for w in self.waves[:-1]],
-                [x[before_pattern.replace('XX', str(w))] for w in self.end_waves],
-            ),
-        })
-        df = self.nan_out_of_bounds(df, f'{issue}_before', lower_bound, upper_bound)
-        df = self.nan_out_of_bounds(df, f'{issue}_after', lower_bound, upper_bound)
-        return df
-
-    def _add_issue(self, df, before_pattern, issue, lower_bound=None, upper_bound=None, calc_only=False):
-        df = self.add_before_after(df, before_pattern, issue, lower_bound, upper_bound)
-
-        df = df.assign(**{
-            f'{issue}_delta': lambda x: x[f'{issue}_after'] - x[f'{issue}_before'],
-            f'{issue}_delta_abs': lambda x: abs(x[f'{issue}_delta']),
-            f'{issue}_delta_sq': lambda x: x[f'{issue}_delta'] * x[f'{issue}_delta'],
-            f'{issue}_direction': lambda x: np.sign(x[f'{issue}_delta']),
-        })
-        df.loc[np.isnan(df[f'{issue}_delta']), f'{issue}_direction'] = np.nan # because some of the 0s should be NaN
-
-        df = df.assign(**{
-            f'{issue}_persists': lambda x: np.select(
-                [x.start_wave == w for w in self.start_waves[:-1]],
-                [np.where(np.logical_and(
-                    x[f'{issue}_delta'] != 0, # change in start vs end
-                    # change from start to final is either zero or the same direction as delta
-                    x[f'{issue}_delta'] * (x[before_pattern.replace('XX', str(self.end_waves[-1]))] - x[before_pattern.replace('XX', str(self.end_waves[i]))]) >= 0
-                ),
-                x[before_pattern.replace('XX', str(self.end_waves[-1]))] - x[before_pattern.replace('XX', str(w))],
-                0) for i, w in enumerate(self.start_waves[:-1])]
-            )
-        })
-        for wave in self.waves:
-            df.loc[df['start_wave'] == self.start_waves[-1], f'{issue}_persists'] = np.nan  # Can't calculate when there are only two waves
-            df.loc[np.isnan(df[before_pattern.replace('XX', str(wave))]), f'{issue}_persists'] = np.nan  # Can't calculate unless all waves are available
-        df[f'{issue}_persists_abs'] = np.abs(df[f'{issue}_persists'])
-
-        if not calc_only:
-            self.ISSUES.add(issue)
-            self.ISSUE_BOUNDS[issue] = (lower_bound, upper_bound)
-
         return df
