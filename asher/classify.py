@@ -118,14 +118,14 @@ plt.show()
 
 
 datasets = {
-    'non-reducing': omnis,
-    #'reducers': reducers,
+    #'non-reducing': omnis,
+    'reducers': reducers,
     #'all non-veg': meaters,
     #'semis': semis,
 }
-greek_letters = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta', 'Iota']
+greek_letters = [' "Faint" flexitarians', ' "Flourishing" flexitarians', '"Floundering" flexitarians', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta', 'Iota']
 #for num_classes in [2, 3, 4, 5, 6]:
-for num_classes in []:
+for num_classes in [3]:
     for dataset_label in datasets.keys():
         if not levels:
             # For continuous visualizations,cap values at 3, because otherwise the lower values aren't distinguishable
@@ -160,14 +160,15 @@ for num_classes in []:
         if levels:
             viz_data['value'] = viz_data.apply(lambda df: str(df['value']) + ': ' + value_lookup[df['value']], axis=1)
         #viz_data['pred'] = viz_data.apply(lambda df: f"{dataset_label} C{df['pred']}/{num_classes} ({n[df['pred']]}%)", axis=1)
-        viz_data['pred'] = viz_data.apply(lambda df: f"{greek_letters[df['pred']]}{num_classes} ({n[df['pred']]}%)", axis=1)
+        viz_data['pred'] = viz_data.apply(lambda df: f"{greek_letters[df['pred']]} ({n[df['pred']]}%)", axis=1)
         plot = (
             ggplot(viz_data, aes(x = 'color', y = 'count', fill = 'factor(value)' if levels else 'value'))
-            + geom_bar(position = "fill", stat = "identity") + facet_wrap('pred', nrow=2)
+            + geom_bar(position = "fill", stat = "identity") + facet_wrap('pred', nrow=1)
             + labs(x = "", y = "")
-            + theme(legend_position="left" if num_classes == 2 else "none")
+            + theme_classic(base_size=24)
+            + theme(legend_position="left" if num_classes == 2 else "right")
         )
-        #plot.show()
+        plot.show()
         #plot.save(filename=f"stacked_class_viz_{levels}_levels/{filename}")
 exit(0)
 
