@@ -16,17 +16,23 @@ from plotnine import (
 
 from utils import load_asher_data
 
+do_weight = True
+flexitarians_only = False
+
 # Load all data
 data = load_asher_data()
 
 # Create samples: overall, flexitarians, unrestricted, analytics samples of flexitarians and unrestricted
-samples = {
-    'Cleaned sample': data,
-    #'Flexitarians': data.loc[data['PREVALENCES'] == "Reducers",:].copy(),
-    #'Unrestricted meat eaters': data.loc[data['PREVALENCES'] == "Non-Reducing Omnivores",:].copy(),
-}
-samples.update({
-    'Analytic sample': data.loc[
+samples = {}
+#'Unrestricted meat eaters': data.loc[data['PREVALENCES'] == "Non-Reducing Omnivores",:].copy(),
+
+if flexitarians_only:
+    samples['Cleaned sample'] = data.loc[data['PREVALENCES'] == "Reducers",:].copy()
+    samples['Analytic sample'] = data.loc[np.logical_or(data[f'rMOTIVATIONS_ANIMAL'] == 'No', data[f'rMOTIVATIONS_ANIMAL'] == 'Yes'),:].copy()
+else:
+    samples['American adults'] = None
+    #samples['Cleaned sample'] = data
+    samples['Analytic sample'] = data.loc[
         np.logical_or(
             np.logical_or(
                 np.logical_or(
@@ -43,24 +49,22 @@ samples.update({
                 np.logical_or(data[f'vMOTIVATIONS_ANIMAL'] == 'No', data[f'vMOTIVATIONS_ANIMAL'] == 'Yes')
             )
         )
-    ,:].copy(),
-    #'Flexitarians (analytic sample)': data.loc[np.logical_or(data[f'rMOTIVATIONS_ANIMAL'] == 'No', data[f'rMOTIVATIONS_ANIMAL'] == 'Yes'),:].copy(),
-    #'Unrestricted meat eaters (analytic sample)': data.loc[
-    #    np.logical_or(
-    #        np.logical_or(
-    #            np.logical_or(data[f'orMOTIVATIONS_ANIMAL'] == 'No', data[f'orMOTIVATIONS_ANIMAL'] == 'Yes'),
-    #            np.logical_or(data[f'ocMOTIVATIONS_ANIMAL'] == 'No', data[f'ocMOTIVATIONS_ANIMAL'] == 'Yes')
-    #        ),
-    #        np.logical_or(data[f'ovMOTIVATIONS_ANIMAL'] == 'No', data[f'ovMOTIVATIONS_ANIMAL'] == 'Yes')
-    #    )
-    #,:].copy(),
-})
+    ,:].copy()
+
+#'Unrestricted meat eaters (analytic sample)': data.loc[
+#    np.logical_or(
+#        np.logical_or(
+#            np.logical_or(data[f'orMOTIVATIONS_ANIMAL'] == 'No', data[f'orMOTIVATIONS_ANIMAL'] == 'Yes'),
+#            np.logical_or(data[f'ocMOTIVATIONS_ANIMAL'] == 'No', data[f'ocMOTIVATIONS_ANIMAL'] == 'Yes')
+#        ),
+#        np.logical_or(data[f'ovMOTIVATIONS_ANIMAL'] == 'No', data[f'ovMOTIVATIONS_ANIMAL'] == 'Yes')
+#    )
+#,:].copy(),
 print("Totals per sample: ")
-print([(name, len(sample)) for name, sample in samples.items()])
+print([(name, len(sample)) for name, sample in samples.items() if sample is not None])
 
 by_attr = { }
 records = []
-do_weight = False
 
 # Note these are unweighted
 def demo_props(df, attr, _format, weight=False):
@@ -165,7 +169,7 @@ def add_demographics_for_sample(df, weight=False):
         demographics.update(demo_props(df, attr, _format, weight=do_weight))
     return demographics
 
-for name, sample in list(samples.items()) + [('US Population', None)]:
+for name, sample in samples.items():
     sample_demographics = add_demographics_for_sample(sample)
     by_attr[name] = sample_demographics
 
@@ -183,8 +187,8 @@ print(wide_demographics)
 
 # Visualize!
 demographic_plot = (
-    ggplot(long_demographics, aes(x="factor(demographic)", y="value", fill=" "))
-    + geom_point(alpha = 0.5, size=5, shape='^')
+    ggplot(long_demographics, aes(x="factor(demographic)", y="value", shape=" ", fill=" "))
+    + geom_point(alpha = 0.5, size=5)
     + coord_flip()
     + scale_y_continuous(limits=[0, 100])
     + theme_minimal()
