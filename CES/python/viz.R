@@ -75,9 +75,15 @@ covariate_dot_plot <- function(treatment) {
 covariate_dot_plot("firstborn")
 covariate_dot_plot("is_parent")
 
+filter_issues <- function(data) {
+  return(data %>% filter(str_detect(issue, 'Climate') | str_detect(issue, 'Gay rights')))
+}
+
 ### Panel visualization
-panel_arrows = function(treatment) {
+panel_arrows <- function(treatment) {
   panel_data <- read.csv(sprintf("output/viz/panel_%s.csv", treatment))
+
+  panel_data <- filter_issues(panel_data)
 
   # Add index to use for issue, so it can be adjusted slightly to separate the arrows visually
   panel_data <- panel_data %>% mutate(index = nrow(panel_data):1)
@@ -88,7 +94,7 @@ panel_arrows = function(treatment) {
     "firstborn" = "Panel: Attitude changes, 2010-2012, first-time parents",
     "new_child" = "Panel: Attitude changes, 2010-2012, parents with a recent birth"
   )
-  num_issues = nrow(panel_data)
+  num_issues <- nrow(panel_data)
   ggplot(panel_data) +
     geom_segment(aes(
       x=index + dodge,
@@ -119,6 +125,7 @@ panel_arrows("new_child")
 ### Matching visualization
 matching_dot_plot <- function(treatment) {
   matching_data <- read.csv(sprintf("output/viz/matching_%s.csv", treatment))
+  matching_data <- filter_issues(matching_data)
   titles = c(
     "firstborn" = "Matching: 2012 attitudes, first-time parents",
     "is_parent" = "Matching: 2012 attitudes, all parents"

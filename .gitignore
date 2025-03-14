@@ -5,6 +5,7 @@
 *.swp
 *.sqlite3
 .DS_Store
+.RHistory
 **/__pycache__/
 node_modules/
 
