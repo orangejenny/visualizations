@@ -43,6 +43,7 @@ for key in utils.MOTIVATION_KEYS:
     print(f"{prefix}{key} (n={yes + no}) {percent}%")
     data = _recode_by_dict(data, f'r{key}', key, {'Yes': 1, 'No': 0})
 
+# TODO: Replace with RACEETHNICITY, which incorporates Hispanic/non-Hispanic
 # Recode race and white and non-white, due to sample size
 race_values = {
     'Other race/ethnicity (including two or more)': 1,
