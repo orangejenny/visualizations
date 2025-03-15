@@ -1,3 +1,6 @@
+'''
+    This looks at the demographics of the entire sample and diet groups, not at specific classes within flexitarians.
+'''
 import numpy as np
 import pandas as pd
 import re
