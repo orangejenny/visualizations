@@ -257,7 +257,11 @@ def _add_linear_regression(df, outcome, controls=None, suffix=""):
 
 
 # Logistic regressions
-for outcome in utils.MOTIVATION_KEYS + combination_motivations + ['PASTVEG']:
+for regress, outcome in [
+    (_add_logistic_regression, k) for k in utils.MOTIVATION_KEYS + combination_motivations + ['PASTVEG']
+] + [
+    (_add_linear_regression, k) for k in ['rPERCEPTIONS_1']
+]:
     most_demographics = ["C(SEX)", "AGE_zscore", "EDUCATION_cont", "INCOME_zscore"]
     region = "C(region4)"
     subregion = "C(region9)"
@@ -274,7 +278,7 @@ for outcome in utils.MOTIVATION_KEYS + combination_motivations + ['PASTVEG']:
     model_names = []
 
     for spec in model_specs:
-        models.append(_add_logistic_regression(data, outcome, spec[2], spec[1]))
+        models.append(regress(data, outcome, spec[2], spec[1]))
         model_names.append(spec[0])
 
     stargazer = Stargazer(models)
