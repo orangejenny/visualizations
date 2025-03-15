@@ -180,14 +180,20 @@ matrix = (
 #matrix.show()
 #matrix.save(filename=f"motivation_correlations.png")
 
-def _add_regression(df, formula, score_label):
+
+### Logistic regressions
+def _get_model(df, formula):
     glm_kwargs = {
         'family': sm.families.Binomial(),
         'data': df,
         'freq_weights': (df['Wts'] if do_weight else None),
     }
-    model = smf.glm(formula=formula, **glm_kwargs).fit()
-    #print(model.summary())
+    return smf.glm(formula=formula, **glm_kwargs).fit()
+
+
+def _add_regression(df, formula, score_label):
+    model = _get_model(df, formula)
+    print(model.summary())
     df[score_label] = model.predict(df)
     return model
 
