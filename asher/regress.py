@@ -227,7 +227,11 @@ motivation_plot = (
 
 
 ### Logistic regressions
-def _get_model(df, formula, family):
+def _get_model(df, family, outcome, controls=None):
+    formula = f"{outcome} ~ C(pred)"
+    if controls:
+        formula += " + " + " + ".join(controls)
+
     glm_kwargs = {
         'family': family,
         'data': df,
@@ -236,50 +240,47 @@ def _get_model(df, formula, family):
     return smf.glm(formula=formula, **glm_kwargs).fit()
 
 
-def _add_regression(df, formula, family, suffix=""):
-    model = _get_model(df, formula, family)
+def _add_regression(df, family, outcome, controls, suffix=""):
+    model = _get_model(df, family, outcome, controls)
     print(model.summary())
     suffix = f"_{suffix}" if suffix else ""
     df[f'score_model{suffix}'] = model.predict(df)
     return model
 
 
-def _add_logistic_regression(df, formula, suffix=""):
-    return _add_regression(df, formula, sm.families.Binomial(), suffix=suffix)
+def _add_logistic_regression(df, outcome, controls=None, suffix=""):
+    return _add_regression(df, sm.families.Binomial(), outcome, controls, suffix)
 
 
-def _add_linear_regression(df, formula, suffix=""):
-    return _add_regression(df, formula, sm.families.Gaussian(), suffix=suffix)
+def _add_linear_regression(df, outcome, controls=None, suffix=""):
+    return _add_regression(df, sm.families.Gaussian(), outcome, controls, suffix)
 
 
 # Logistic regressions
-for key in utils.MOTIVATION_KEYS + combination_motivations + ['PASTVEG']:
-    formula = f"{key} ~ C(pred)"
-
+for outcome in utils.MOTIVATION_KEYS + combination_motivations + ['PASTVEG']:
     models = []
     model_names = []
 
-    models.append(_add_logistic_regression(data, formula))
+    models.append(_add_logistic_regression(data, outcome))
     model_names.append('No controls')
 
-    formula += " + C(SEX) + AGE_zscore + EDUCATION_cont + INCOME_zscore"
-    #models.append(_add_logistic_regression(data, formula, "no_region"))
+    most_demographics = ["C(SEX)", "AGE_zscore", "EDUCATION_cont", "INCOME_zscore"]
+    #models.append(_add_logistic_regression(data, outcome, most_demographics, "no_region"))
     #model_names.append('Most demographics')
 
-    formula += " + C(region4)"
-    models.append(_add_logistic_regression(data, formula, "region"))
+    region = "C(region4)"
+    models.append(_add_logistic_regression(data, outcome, most_demographics + [region], "region"))
     model_names.append('Demographics<br>+ region')
 
-    formula = formula.replace("region4", "region9")
-    #models.append(_add_logistic_regression(data, formula, "subregion"))
+    subregion = "C(region9)"
+    #models.append(_add_logistic_regression(data, most_demographics + [subregion], "subregion"))
     #model_names.append('Subregions')
 
-    formula += " + C(RACE_dummy)"   # separate and last because it drops 40 observations (14%)
-    #models.append(_add_logistic_regression(data, formula, "race"))
+    race = "C(RACE_dummy)"   # separate and last because it drops 40 observations (14%)
+    #models.append(_add_logistic_regression(data, outcome, most_demographics + [subregion, race], "race"))
     #model_names.append('All demographics (9)')
 
-    formula = formula.replace("region9", "region4")
-    models.append(_add_logistic_regression(data, formula, "race_subregion"))
+    models.append(_add_logistic_regression(data, outcome, most_demographics + [region, race], "race_subregion"))
     model_names.append('+ Race')
 
     stargazer = Stargazer(models)
@@ -313,7 +314,7 @@ for key in utils.MOTIVATION_KEYS + combination_motivations + ['PASTVEG']:
     })
 
     weight_suffix = "_weighted" if do_weight else ""
-    filename = f"stargazers{weight_suffix}/{key.lower()}.html"
+    filename = f"stargazers{weight_suffix}/{outcome.lower()}.html"
     with open(filename, "w") as fh:
         print(f"Writing {filename}")
         fh.write(stargazer.render_html())
