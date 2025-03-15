@@ -236,50 +236,50 @@ def _get_model(df, formula, family):
     return smf.glm(formula=formula, **glm_kwargs).fit()
 
 
-def _add_regression(df, formula, family, score_label):
+def _add_regression(df, formula, family, suffix=""):
     model = _get_model(df, formula, family)
     print(model.summary())
-    df[score_label] = model.predict(df)
+    suffix = f"_{suffix}" if suffix else ""
+    df[f'score_model{suffix}'] = model.predict(df)
     return model
 
 
-def _add_logistic_regression(df, formula, score_label):
-    return _add_regression(df, formula, sm.families.Binomial(), score_label)
+def _add_logistic_regression(df, formula, suffix=""):
+    return _add_regression(df, formula, sm.families.Binomial(), suffix=suffix)
 
 
-def _add_linear_regression(df, formula, score_label):
-    return _add_regression(df, formula, sm.families.Gaussian(), score_label)
+def _add_linear_regression(df, formula, suffix=""):
+    return _add_regression(df, formula, sm.families.Gaussian(), suffix=suffix)
 
 
 # Logistic regressions
 for key in utils.MOTIVATION_KEYS + combination_motivations + ['PASTVEG']:
     formula = f"{key} ~ C(pred)"
 
-    score_key = f'score_{key[12:]}'
     models = []
     model_names = []
 
-    models.append(_add_logistic_regression(data, formula, f'{score_key}_nc'))
+    models.append(_add_logistic_regression(data, formula))
     model_names.append('No controls')
 
     formula += " + C(SEX) + AGE_zscore + EDUCATION_cont + INCOME_zscore"
-    #models.append(_add_logistic_regression(data, formula, f'{score_key}_wc'))
+    #models.append(_add_logistic_regression(data, formula, "no_region"))
     #model_names.append('Most demographics')
 
     formula += " + C(region4)"
-    models.append(_add_logistic_regression(data, formula, f'{score_key}_r4'))
+    models.append(_add_logistic_regression(data, formula, "region"))
     model_names.append('Demographics<br>+ region')
 
     formula = formula.replace("region4", "region9")
-    #models.append(_add_logistic_regression(data, formula, f'{score_key}_r9'))
+    #models.append(_add_logistic_regression(data, formula, "subregion"))
     #model_names.append('Subregions')
 
     formula += " + C(RACE_dummy)"   # separate and last because it drops 40 observations (14%)
-    #models.append(_add_logistic_regression(data, formula, f'{score_key}_wc9'))
+    #models.append(_add_logistic_regression(data, formula, "race"))
     #model_names.append('All demographics (9)')
 
     formula = formula.replace("region9", "region4")
-    models.append(_add_logistic_regression(data, formula, f'{score_key}_wc4'))
+    models.append(_add_logistic_regression(data, formula, "race_subregion"))
     model_names.append('+ Race')
 
     stargazer = Stargazer(models)
