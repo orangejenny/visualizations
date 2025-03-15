@@ -153,10 +153,6 @@ _counts(data, ['pred', 'rPASTVEG'])        # 60% of 10% class has tried a veg di
 data = utils.convert_categorical_to_numeric(data, [f"{prefix}{k}" for k in utils.BARRIER_KEYS])
 barrier_means = data.loc[:,['pred'] + [f'{prefix}{k}' for k in utils.BARRIER_KEYS]].groupby(['pred']).mean()    # 10% group struggles more with barriers, they also see diet more as part of their identity
 
-# Length of time eating this way, very rough histograms
-plot = ( ggplot(temp, aes(x = 'rLENGTH_1_TEXT')) + geom_histogram() + theme(axis_text_x=element_text(rotation = 90)) + labs(x = metric, y = "") + facet_wrap('pred'))
-#plot.show()
-
 # Calculate total motivations: class 0 selects more motivations
 data['MOTIVATION_COUNT'] = data.apply(lambda df: sum([df[k] for k in utils.MOTIVATION_KEYS]), axis=1)
 print(data.loc[:,['pred', 'MOTIVATION_COUNT']].groupby('pred').mean())
