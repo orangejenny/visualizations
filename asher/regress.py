@@ -181,6 +181,47 @@ matrix = (
 #matrix.save(filename=f"motivation_correlations.png")
 
 
+### Visualization (column chart) of motivations
+# Add motivation combinations
+combination_motivations = []
+for key in [
+    'COST+DISGUST+HEALTH+SOCIAL+TASTE+TREND:MOTIVATIONS_INTERNAL1',
+    'ANIMAL+ENVIRO+JUSTICE+RELIGION:MOTIVATIONS_EXTERNAL1',
+    'COST+DISGUST+HEALTH+SOCIAL+TASTE+TREND+RELIGION:MOTIVATIONS_INTERNAL2',
+    'ANIMAL+ENVIRO+JUSTICE:MOTIVATIONS_EXTERNAL2',
+    'COST+DISGUST+HEALTH+SOCIAL+TASTE+TREND:MOTIVATIONS_INTERNAL3',
+    'ANIMAL+ENVIRO+JUSTICE:MOTIVATIONS_EXTERNAL3',
+]:
+    (inputs, key) = key.split(":")
+    data[key] = data.apply(lambda df: min(1, sum([df[f'MOTIVATIONS_{k}'] for k in inputs.split('+')])), axis=1)
+    combination_motivations.append(key)
+
+class_motivations = defaultdict(dict)
+for key in utils.MOTIVATION_KEYS + combination_motivations:
+    motivations = data.loc[:, ['pred', key, 'ID']].groupby(['pred', key]).count().to_dict()['ID']
+    for class_index in set(data['pred']):
+        (no, yes) = (motivations[(class_index, 0)], motivations[(class_index, 1)])
+        class_motivations[key][class_index] = round((yes * 100) / (yes + no))
+
+class_names = ["Faint", "Flourishing", "Floundering"]
+motivation_plot_data = pd.DataFrame.from_records([
+    #{'motivation': key, 'pred': 'all', 'prop': value} for key, value in overall_motivations.items()
+] + [
+    {'motivation': key, 'pred': class_names[class_num], 'prop': class_prop}
+    for key, values in class_motivations.items() for class_num, class_prop in values.items()
+])
+motivation_plot_data['Class'] = motivation_plot_data['pred']    # for legend label
+motivation_plot = (
+    ggplot(motivation_plot_data, aes(x = "factor(motivation)", y = "prop", fill = "Class"))
+        + geom_col(position = "dodge2")
+        + scale_y_continuous(limits = [0, 100])
+        + theme(axis_text_x=element_text(rotation = 90))
+        + labs(x = "", y = "% of class citing reason", title = "Figure 5: Motivations by class")
+)
+#motivation_plot.show()
+
+
+
 ### Logistic regressions
 def _get_model(df, formula):
     glm_kwargs = {
@@ -199,32 +240,8 @@ def _add_regression(df, formula, score_label):
 
 
 # Logistic regressions
-class_motivations = defaultdict(dict)
-for key in utils.MOTIVATION_KEYS + [
-    # 'ANIMAL+ENVIRO', 'ANIMAL+RELIGION', 'ANIMAL+JUSTICE', 'SOCIAL+TREND',
-    'COST+DISGUST+HEALTH+SOCIAL+TASTE+TREND:INTERNAL1',
-    'ANIMAL+ENVIRO+JUSTICE+RELIGION:EXTERNAL1',
-    'COST+DISGUST+HEALTH+SOCIAL+TASTE+TREND+RELIGION:INTERNAL2',
-    'ANIMAL+ENVIRO+JUSTICE:EXTERNAL2',
-    'COST+DISGUST+HEALTH+SOCIAL+TASTE+TREND:INTERNAL3',
-    'ANIMAL+ENVIRO+JUSTICE:EXTERNAL3',
-]:
-    constructed_key = ':' in key
-
-    if constructed_key:
-        (inputs, key) = key.split(":")
-        formula = f"{key} ~ C(pred)"
-        data[key] = data.apply(lambda df: min(1, sum([df[f'MOTIVATIONS_{k}'] for k in inputs.split('+')])), axis=1)
-    else:
-        formula = f"{key} ~ C(pred)"
-
-    motivations = data.loc[:, ['pred', key, 'ID']].groupby(['pred', key]).count().to_dict()['ID']
-    if not constructed_key:
-        key = key[12:]
-
-    for class_index in set(data['pred']):
-        (no, yes) = (motivations[(class_index, 0)], motivations[(class_index, 1)])
-        class_motivations[key][class_index] = round((yes * 100) / (yes + no))
+for key in utils.MOTIVATION_KEYS + combination_motivations:
+    formula = f"{key} ~ C(pred)"
 
     score_key = f'score_{key[12:]}'
     models = []
@@ -291,20 +308,3 @@ for key in utils.MOTIVATION_KEYS + [
 
 
 
-# Visualize column chart of motivations by class
-class_names = ["Alpha3", "Beta3", "Gamma3"]
-motivation_plot_data = pd.DataFrame.from_records([
-    #{'motivation': key, 'pred': 'all', 'prop': value} for key, value in overall_motivations.items()
-] + [
-    {'motivation': key, 'pred': class_names[class_num], 'prop': class_prop}
-    for key, values in class_motivations.items() for class_num, class_prop in values.items()
-])
-motivation_plot_data['Class'] = motivation_plot_data['pred']    # for legend label
-motivation_plot = (
-    ggplot(motivation_plot_data, aes(x = "factor(motivation)", y = "prop", fill = "Class"))
-        + geom_col(position = "dodge2")
-        + scale_y_continuous(limits = [0, 100])
-        + theme(axis_text_x=element_text(rotation = 90))
-        + labs(x = "", y = "% of class citing reason", title = "Figure 5: Motivations by class")
-)
-#motivation_plot.show()
