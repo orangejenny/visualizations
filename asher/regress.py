@@ -258,30 +258,24 @@ def _add_linear_regression(df, outcome, controls=None, suffix=""):
 
 # Logistic regressions
 for outcome in utils.MOTIVATION_KEYS + combination_motivations + ['PASTVEG']:
+    most_demographics = ["C(SEX)", "AGE_zscore", "EDUCATION_cont", "INCOME_zscore"]
+    region = "C(region4)"
+    subregion = "C(region9)"
+    race = "C(RACE_dummy)"   # separate and last because it drops 40 observations (14%)
+    model_specs = [
+        ("No controls", "", []),
+        #("Most demographics", "no_region", most_demographics),
+        ("Demographics<br>+ region", "region", most_demographics + [region]),
+        #("Subregions", "subregion", most_demographics + [subregion]),
+        #("All demographics (9)", "race_subregion", most_demographics + [subregion, race]),
+        ("+ Race", "race", most_demographics + [region, race]),
+    ]
     models = []
     model_names = []
 
-    models.append(_add_logistic_regression(data, outcome))
-    model_names.append('No controls')
-
-    most_demographics = ["C(SEX)", "AGE_zscore", "EDUCATION_cont", "INCOME_zscore"]
-    #models.append(_add_logistic_regression(data, outcome, most_demographics, "no_region"))
-    #model_names.append('Most demographics')
-
-    region = "C(region4)"
-    models.append(_add_logistic_regression(data, outcome, most_demographics + [region], "region"))
-    model_names.append('Demographics<br>+ region')
-
-    subregion = "C(region9)"
-    #models.append(_add_logistic_regression(data, most_demographics + [subregion], "subregion"))
-    #model_names.append('Subregions')
-
-    race = "C(RACE_dummy)"   # separate and last because it drops 40 observations (14%)
-    #models.append(_add_logistic_regression(data, outcome, most_demographics + [subregion, race], "race"))
-    #model_names.append('All demographics (9)')
-
-    models.append(_add_logistic_regression(data, outcome, most_demographics + [region, race], "race_subregion"))
-    model_names.append('+ Race')
+    for spec in model_specs:
+        models.append(_add_logistic_regression(data, outcome, spec[2], spec[1]))
+        model_names.append(spec[0])
 
     stargazer = Stargazer(models)
     stargazer.custom_columns(model_names)
