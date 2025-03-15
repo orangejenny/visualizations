@@ -43,6 +43,10 @@ for key in utils.MOTIVATION_KEYS:
     print(f"{prefix}{key} (n={yes + no}) {percent}%")
     data = _recode_by_dict(data, f'r{key}', key, {'Yes': 1, 'No': 0})
 
+# Recode PASTVEG as 0/1
+key = 'PASTVEG'
+data = _recode_by_dict(data, f'r{key}', key, {'Yes': 1, 'No': 0})
+
 # TODO: Replace with RACEETHNICITY, which incorporates Hispanic/non-Hispanic
 # Recode race and white and non-white, due to sample size
 race_values = {
@@ -240,7 +244,8 @@ def _add_regression(df, formula, score_label):
 
 
 # Logistic regressions
-for key in utils.MOTIVATION_KEYS + combination_motivations:
+#for key in utils.MOTIVATION_KEYS + combination_motivations:
+for key in ['PASTVEG']:
     formula = f"{key} ~ C(pred)"
 
     score_key = f'score_{key[12:]}'
@@ -305,6 +310,3 @@ for key in utils.MOTIVATION_KEYS + combination_motivations:
     with open(filename, "w") as fh:
         print(f"Writing {filename}")
         fh.write(stargazer.render_html())
-
-
-
