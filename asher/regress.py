@@ -156,6 +156,14 @@ data.loc[:,['pred', 'newMEATDAILY', 'Wts']].groupby('pred').sum()
 # Limit to relevant analytic set
 data = data.loc[np.logical_or(data[f'{prefix}MOTIVATIONS_ANIMAL'] == 'No', data[f'{prefix}MOTIVATIONS_ANIMAL'] == 'Yes'),:]
 
+# Recode regression outcomes that haven't been recoded yet
+data = utils.convert_categorical_to_numeric(data, [f"OPINIONLEADER{i + 1}" for i in range(6)])
+data = utils.convert_categorical_to_numeric(data, [f"r{key}" for key in utils.BARRIER_KEYS])
+data = utils.convert_categorical_to_numeric(data, [f"rPBC{i + 1}" for i in range(3)], options=utils.GENERIC_OPTIONS)
+data = utils.convert_categorical_to_numeric(data, ['rCOMPARISON'], options=utils.COMPARISON_OPTIONS)
+data = utils.convert_categorical_to_numeric(data, ['rREDUCEFURTHER', 'rVEGWILLING'], options=utils.WILLINGNESS_OPTIONS)
+data = utils.convert_categorical_to_numeric(data, ['rGUILT', 'rINTENTIONS'])
+
 # Verify length calculations worked out reasonably
 #data.loc[:,['rLENGTH_1_TEXT', 'rLENGTH_2_TEXT', 'rLENGTH_3_TEXT', 'rLENGTH_4_TEXT', 'length_days', 'length_months', 'length_years', 'length_total']]
 
@@ -172,7 +180,6 @@ _counts(data, ['pred', 'rCOMPARISON'])     # comparison with vegetarianism
 data = utils.convert_categorical_to_numeric(data, [f"{prefix}ATTITUDES{i + 1}" for i in range(4)], options=utils.GENERIC_OPTIONS)
 attitude_means = data.loc[:,['pred'] + [f'rATTITUDES{i + 1}' for i in range(4)]].groupby(['pred']).mean()
 _counts(data, ['pred', 'rPASTVEG'])        # 60% of 10% class has tried a veg diet in the past, much lower for the others
-data = utils.convert_categorical_to_numeric(data, [f"{prefix}{k}" for k in utils.BARRIER_KEYS])
 barrier_means = data.loc[:,['pred'] + [f'{prefix}{k}' for k in utils.BARRIER_KEYS]].groupby(['pred']).mean()    # 10% group struggles more with barriers, they also see diet more as part of their identity
 
 # Calculate total motivations: class 0 selects more motivations
@@ -286,6 +293,10 @@ for regress, outcome in [
     (_add_logistic_regression, k) for k in utils.MOTIVATION_KEYS + combination_motivations + ['PASTVEG']
 ] + [
     (_add_linear_regression, k) for k in ['rPERCEPTIONS_1', 'length_total', 'MOTIVATION_COUNT']
+                                         + ['rCOMPARISON', 'rGUILT', 'rINTENTIONS', 'rREDUCEFURTHER', 'rVEGWILLING']
+                                         + [f"rPBC{i + 1}" for i in range(3)]
+                                         + [f"OPINIONLEADER{i + 1}" for i in range(6)]
+                                         + [f"r{key}" for key in utils.BARRIER_KEYS]
 ]:
     demographics = ["C(SEX)", "AGE_zscore", "EDUCATION_cont", "INCOME_zscore", "C(RACEETHNICITY_dummy)"]
     region = "C(region4)"

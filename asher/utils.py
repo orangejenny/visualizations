@@ -40,6 +40,22 @@ GENERIC_OPTIONS = {
     "Answer 5": 5,
 }
 
+WILLINGNESS_OPTIONS = {
+    "Not willing": 1,
+    "Likely not willing": 2,
+    "Unsure": 3,
+    "Likely willing": 4,
+    "Willing": 5,
+}
+
+COMPARISON_OPTIONS = {
+    "Much worse": 1,
+    "Somewhat worse": 2,
+    "About the same": 3,
+    "Somewhat better": 4,
+    "Much better": 5,
+}
+
 
 def load_asher_data():
     print("Loading Asher data, takes about 3 seconds...")
