@@ -283,7 +283,7 @@ def _add_linear_regression(df, outcome, controls=None, suffix=""):
 for regress, outcome in [
     (_add_logistic_regression, k) for k in utils.MOTIVATION_KEYS + combination_motivations + ['PASTVEG']
 ] + [
-    (_add_linear_regression, k) for k in ['rPERCEPTIONS_1', 'length_total']
+    (_add_linear_regression, k) for k in ['rPERCEPTIONS_1', 'length_total', 'MOTIVATION_COUNT']
 ]:
     most_demographics = ["C(SEX)", "AGE_zscore", "EDUCATION_cont", "INCOME_zscore"]
     region = "C(region4)"
@@ -291,10 +291,10 @@ for regress, outcome in [
     race = "C(RACE_dummy)"   # separate and last because it drops 40 observations (14%)
     model_specs = [
         ("No controls", "", []),
-        #("Most demographics", "no_region", most_demographics),
+        ("Most demographics", "no_region", most_demographics),
         ("Demographics<br>+ region", "region", most_demographics + [region]),
-        #("Subregions", "subregion", most_demographics + [subregion]),
-        #("All demographics (9)", "race_subregion", most_demographics + [subregion, race]),
+        ("Subregions", "subregion", most_demographics + [subregion]),
+        ("All demographics (9)", "race_subregion", most_demographics + [subregion, race]),
         ("+ Race", "race", most_demographics + [region, race]),
     ]
     models = []
