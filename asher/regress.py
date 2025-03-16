@@ -60,15 +60,16 @@ data.loc[np.isnan(data['rLENGTH_3_TEXT']), 'length_days'] = 0
 data['length_total'] = data.apply(lambda df: df['length_years'] + df['length_months'] + df['length_days'], axis=1)
 data.loc[data['length_total'] == 0, 'length_total'] = np.nan
 
-# TODO: Replace with RACEETHNICITY, which incorporates Hispanic/non-Hispanic
-# Recode race and white and non-white, due to sample size
+# Recode race and non-Hispanic white and non-white, due to sample size
 race_values = {
     'Other race/ethnicity (including two or more)': 1,
     'Asian': 1,
     'African American or Black': 1,
+    'HIspanic': 1,
     'White': 0,
 }
 data = _recode_by_dict(data, 'RACE', 'RACE_dummy', race_values)
+data = _recode_by_dict(data, 'RACEETHNICITY', 'RACEETHNICITY_dummy', race_values)
 
 # Recode demographics
 education_values = {
@@ -98,6 +99,7 @@ sex_data = _counts(data, ['pred', 'SEX']).to_dict()['ID']
 demographic_means = data.loc[:,['pred', 'AGE', 'INCOME_cont', 'EDUCATION_cont']].groupby(['pred']).mean().to_dict()
 demographic_medians = data.loc[:,['pred', 'AGE', 'INCOME_cont', 'EDUCATION_cont']].groupby(['pred']).median().to_dict()
 race_data = data.loc[:,['pred', 'RACE_dummy', 'ID']].groupby(['pred', 'RACE_dummy']).count().to_dict()['ID']
+raceethnicity_data = data.loc[:,['pred', 'RACEETHNICITY_dummy', 'ID']].groupby(['pred', 'RACEETHNICITY_dummy']).count().to_dict()['ID']
 region_data = data.loc[:,['pred', 'region4', 'ID']].groupby(['pred', 'region4']).count().to_dict()['ID']
 demographic_records = []
 for class_num in range(num_classes):
@@ -285,17 +287,14 @@ for regress, outcome in [
 ] + [
     (_add_linear_regression, k) for k in ['rPERCEPTIONS_1', 'length_total', 'MOTIVATION_COUNT']
 ]:
-    most_demographics = ["C(SEX)", "AGE_zscore", "EDUCATION_cont", "INCOME_zscore"]
+    demographics = ["C(SEX)", "AGE_zscore", "EDUCATION_cont", "INCOME_zscore", "C(RACEETHNICITY_dummy)"]
     region = "C(region4)"
     subregion = "C(region9)"
-    race = "C(RACE_dummy)"   # separate and last because it drops 40 observations (14%)
     model_specs = [
         ("No controls", "", []),
-        ("Most demographics", "no_region", most_demographics),
-        ("Demographics<br>+ region", "region", most_demographics + [region]),
-        ("Subregions", "subregion", most_demographics + [subregion]),
-        ("All demographics (9)", "race_subregion", most_demographics + [subregion, race]),
-        ("+ Race", "race", most_demographics + [region, race]),
+        ("Demographics", "no_region", demographics),
+        ("Demographics<br>+ region", "region", demographics + [region]),
+        ("Demographics<br>+ subregion", "subregion", demographics + [subregion]),
     ]
     models = []
     model_names = []
@@ -319,11 +318,11 @@ for regress, outcome in [
         'C(region4)[T.Northeast]',
         'C(region4)[T.South]',
         'C(region4)[T.West]',
-        'C(RACE_dummy)[T.1.0]',
+        'C(RACEETHNICITY_dummy)[T.1]',
     ])
     stargazer.rename_covariates({
         'AGE_zscore': 'Age',
-        'C(RACE_dummy)[T.1.0]': 'Race (non-white)',
+        'C(RACEETHNICITY_dummy)[T.1.0]': 'Race (non-white)',
         'C(SEX)[T.Male]': 'Sex (male)',
         'C(pred)[T.1]': 'Class: Flourishing<br>(20% semi-vegetarians)',
         'C(pred)[T.2]': 'Class: Floundering<br>(10% heavy meat eaters)',
