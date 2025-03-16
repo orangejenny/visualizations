@@ -47,6 +47,19 @@ for key in utils.MOTIVATION_KEYS:
 key = 'PASTVEG'
 data = _recode_by_dict(data, f'r{key}', key, {'Yes': 1, 'No': 0})
 
+# Calculate length of time on diet
+data['length_days'] = data['rLENGTH_3_TEXT'] / 365.25
+data['length_months'] = data['rLENGTH_2_TEXT'] / 12
+data['length_years'] = data['rLENGTH_1_TEXT']
+data.loc[data['length_years'] > 100, 'length_months'] = 0   # fully exclude any rows where year vlue is nonsensical
+data.loc[data['length_years'] > 100, 'length_days'] = 0
+data.loc[data['length_years'] > 100, 'length_years'] = 0
+data.loc[np.isnan(data['rLENGTH_1_TEXT']), 'length_years'] = 0
+data.loc[np.isnan(data['rLENGTH_2_TEXT']), 'length_months'] = 0
+data.loc[np.isnan(data['rLENGTH_3_TEXT']), 'length_days'] = 0
+data['length_total'] = data.apply(lambda df: df['length_years'] + df['length_months'] + df['length_days'], axis=1)
+data.loc[data['length_total'] == 0, 'length_total'] = np.nan
+
 # TODO: Replace with RACEETHNICITY, which incorporates Hispanic/non-Hispanic
 # Recode race and white and non-white, due to sample size
 race_values = {
@@ -141,6 +154,9 @@ data.loc[:,['pred', 'newMEATDAILY', 'Wts']].groupby('pred').sum()
 # Limit to relevant analytic set
 data = data.loc[np.logical_or(data[f'{prefix}MOTIVATIONS_ANIMAL'] == 'No', data[f'{prefix}MOTIVATIONS_ANIMAL'] == 'Yes'),:]
 
+# Verify length calculations worked out reasonably
+#data.loc[:,['rLENGTH_1_TEXT', 'rLENGTH_2_TEXT', 'rLENGTH_3_TEXT', 'rLENGTH_4_TEXT', 'length_days', 'length_months', 'length_years', 'length_total']]
+
 # Other descriptive aspects of classes, from analytic part of survey
 data = utils.convert_categorical_to_numeric(data, [f"SWFL{i + 1}" for i in range(5)], overwrite=False)
 swfl_means = data.loc[:,['pred'] + [f'SWFL{i + 1}_numeric' for i in range(5)]].groupby(['pred']).mean()
@@ -225,6 +241,13 @@ motivation_plot = (
 #motivation_plot.show()
 
 
+# Diet length: flourishing have the highest median and mean, but this isn't significant
+# It *is* significant for flourishing, if outliers are 20+ years instead of 100+ years
+# Data quality is a quesiton, only 200 people reported
+lengths = data.loc[data['length_total'] > 0, ['pred', 'length_total']].copy()
+lengths.groupby('pred').mean()
+lengths.groupby('pred').median()
+
 
 ### Logistic regressions
 def _get_model(df, family, outcome, controls=None):
@@ -260,7 +283,7 @@ def _add_linear_regression(df, outcome, controls=None, suffix=""):
 for regress, outcome in [
     (_add_logistic_regression, k) for k in utils.MOTIVATION_KEYS + combination_motivations + ['PASTVEG']
 ] + [
-    (_add_linear_regression, k) for k in ['rPERCEPTIONS_1']
+    (_add_linear_regression, k) for k in ['rPERCEPTIONS_1', 'length_total']
 ]:
     most_demographics = ["C(SEX)", "AGE_zscore", "EDUCATION_cont", "INCOME_zscore"]
     region = "C(region4)"
