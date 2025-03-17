@@ -289,27 +289,19 @@ def _add_linear_regression(df, outcome, controls=None, suffix=""):
 
 
 # Logistic regressions
-for regress, outcome in [
-    (_add_logistic_regression, k) for k in utils.MOTIVATION_KEYS + combination_motivations + ['PASTVEG']
-] + [
-    (_add_linear_regression, k) for k in ['rPERCEPTIONS_1', 'length_total', 'MOTIVATION_COUNT']
-                                         + ['rCOMPARISON', 'rGUILT', 'rINTENTIONS', 'rREDUCEFURTHER', 'rVEGWILLING']
-                                         + [f"rPBC{i + 1}" for i in range(3)]
-                                         + [f"OPINIONLEADER{i + 1}" for i in range(6)]
-                                         + [f"r{key}" for key in utils.BARRIER_KEYS]
-]:
-    demographics = ["C(SEX)", "AGE_zscore", "EDUCATION_cont", "INCOME_zscore", "C(RACEETHNICITY_dummy)"]
-    region = "C(region4)"
-    subregion = "C(region9)"
-    model_specs = [
-        ("No controls", "", []),
-        ("Demographics", "no_region", demographics),
-        ("Demographics<br>+ region", "region", demographics + [region]),
-        ("Demographics<br>+ subregion", "subregion", demographics + [subregion]),
-    ]
+demographics = ["C(SEX)", "AGE_zscore", "EDUCATION_cont", "INCOME_zscore", "C(RACEETHNICITY_dummy)"]
+region = "C(region4)"
+subregion = "C(region9)"
+model_specs = [
+    ("No controls", "", []),
+    ("Demographics", "no_region", demographics),
+    ("Demographics<br>+ region", "region", demographics + [region]),
+    ("Demographics<br>+ subregion", "subregion", demographics + [subregion]),
+]
+
+def _write_stargazer(regress, outcome):
     models = []
     model_names = []
-
     for spec in model_specs:
         models.append(regress(data, outcome, spec[2], spec[1]))
         model_names.append(spec[0])
@@ -349,3 +341,39 @@ for regress, outcome in [
     with open(filename, "w") as fh:
         print(f"Writing {filename}")
         fh.write(stargazer.render_html())
+
+
+def write_logistic(outcome):
+    return _write_stargazer(_add_logistic_regression, outcome)
+
+
+def write_linear(outcome):
+    return _write_stargazer(_add_linear_regression, outcome)
+
+
+# Run regression
+for outcome in utils.MOTIVATION_KEYS:
+    write_logistic(outcome)
+
+for outcome in combination_motivations:
+    write_logistic(outcome)
+
+write_logistic('PASTVEG')
+
+for i in range(3):
+    write_linear(f'rPBC{i + 1}')
+
+for i in range(6):
+    write_linear(f'OPINIONLEADER{i + 1}')
+
+for outcome in utils.BARRIER_KEYS:
+    write_linear(f'r{outcome}')
+
+write_linear('rPERCEPTIONS_1')
+write_linear('length_total')
+write_linear('MOTIVATION_COUNT')
+write_linear('rCOMPARISON')
+write_linear('rGUILT')
+write_linear('rINTENTIONS')
+write_linear('rREDUCEFURTHER')
+write_linear('rVEGWILLING')
