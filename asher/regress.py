@@ -18,6 +18,8 @@ do_weight = True
 #data = pd.read_csv("non-reducing_3_classes_with_pred.csv")
 #prefix = 'ov'
 
+data['MEATSUM'] = data['BEEFDAILY'] + data['PORKDAILY'] + data['CHICKENDAILY'] + data['TURKEYDAILY'] + data['FISHDAILY'] + data['SHELLFISHDAILY'] + data['OTHERMEATSDAILY']
+
 # Re-iterate class prevalences
 def _counts(df, label):
     if type(label) != list:
