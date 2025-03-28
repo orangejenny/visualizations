@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import re
 
 
 WORKING_DIRECTORY = "~/Dropbox/2024 Fall/thesis"
@@ -157,3 +158,47 @@ income_values = {
 }
 def add_income_continuous(df):
     return recode_by_dict(df, 'INCOME', 'INCOME_cont', income_values)
+
+
+### Display utilities
+def display_motivation(label):
+    label = re.sub(r'^[rov]*', '', label)
+    label = label.replace("MOTIVATIONS_", "")
+    return {
+        'ANIMAL': 'Animal protection',
+        'COST': 'Cost',
+        'DISGUST': 'Feelings of disgust about meat',
+        'ENVIRO': 'Concern for the environment',
+        'HEALTH': 'Health',
+        'JUSTICE': 'Social justice or world hunger',
+        'RELIGION': 'Religious/spiritual beliefs',
+        'SOCIAL': 'Social influence',
+        'TASTE': 'Taste preferences',
+        'TREND': 'Wanting to follow a food trend',
+        'INTERNAL': 'Any internal motivation',
+        'EXTERNAL': 'Any external motivation',
+    }.get(label, "unknown")
+
+
+def display_barrier(label):
+    label = re.sub(r'^[rov]*', '', label)
+    label = label.replace("BARRIERS_", "")
+    return {
+        'COST': 'Costs too much',
+        'FOODSATISFACTION': 'Satisfied with food options',
+        'HEALTH': 'Good for my health',
+        'IDENTITY': 'A reduced-meat diet is part of my identity',
+        'INCONVENIENCE': 'Inconvenient',
+        'MOTIVATION': 'Difficult to stay motivated',
+        'SOCIALISSUES': 'Creates issues in my social life',
+    }.get(label, "unknown")
+
+
+def display_other(label):
+    return {
+        "PASTVEG": "Has been vegetarian in the past (yes/no)",
+        "length_total": "Length of time following a reduced-meat diet",
+        "rINTENTIONS": "Intent to continue with reduced-meat diet",
+        "rREDUCEFURTHER": "Willingness to further reduce meat in diet",
+        "rVEGWILLING": "Willingness to go vegetarian",
+    }.get(label, "unknown")

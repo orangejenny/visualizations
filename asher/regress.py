@@ -16,6 +16,9 @@ from utils import (
     CONSUMPTION_OPTIONS,
     convert_categorical_to_numeric,
     counts_table,
+    display_barrier,
+    display_motivation,
+    display_other,
     GENERIC_OPTIONS,
     WILLINGNESS_OPTIONS,
     MOTIVATION_KEYS,
@@ -412,11 +415,22 @@ write_logistic_coefficient_table([   # reorder to group internal and external to
     'MOTIVATIONS_JUSTICE',
     'MOTIVATIONS_RELIGION',
     'MOTIVATIONS_EXTERNAL',
-], 'motivations', lambda x: x.replace("MOTIVATIONS_", "").title())
+], 'motivations', display_motivation)
 
-write_logistic_coefficient_table(combination_motivations, 'combined_motivations', lambda x: x.replace("MOTIVATIONS_", ""))
+write_logistic_coefficient_table(combination_motivations, 'combined_motivations', display_motivation)
 
-write_linear_coefficient_table([f'r{k}' for k in BARRIER_KEYS], 'barriers', lambda x: x.replace("rBARRIERS_", ""))
+write_linear_coefficient_table([    # reorder to group positive and negative
+    # barriers
+    'rBARRIERS_COST',
+    'rBARRIERS_INCONVENIENCE',
+    'rBARRIERS_MOTIVATION',
+    'rBARRIERS_SOCIALISSUES',
+
+    # enablers
+    'rBARRIERS_FOODSATISFACTION',
+    'rBARRIERS_HEALTH',
+    'rBARRIERS_IDENTITY',
+], 'barriers', display_barrier)
 
 write_coefficient_table([
     ("PASTVEG", _add_logistic_regression),
@@ -424,7 +438,7 @@ write_coefficient_table([
     ("rINTENTIONS", _add_linear_regression),
     ("rREDUCEFURTHER", _add_linear_regression),
     ("rVEGWILLING", _add_linear_regression),
-], 'past_and_future')
+], 'past_and_future', display_other)
 
 write_logistic('PASTVEG')
 
