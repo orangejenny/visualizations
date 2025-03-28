@@ -8,7 +8,16 @@ from plotnine import *
 from scipy.stats import zscore
 from stargazer.stargazer import Stargazer
 
-import utils
+from utils import (
+    BARRIER_KEYS,
+    COMPARISON_OPTIONS,
+    CONSUMPTION_OPTIONS,
+    convert_categorical_to_numeric,
+    counts_table,
+    GENERIC_OPTIONS,
+    WILLINGNESS_OPTIONS,
+    MOTIVATION_KEYS,
+)
 
 data = pd.read_csv("reducers_3_classes_with_pred_weighted.csv")
 prefix = 'r'
@@ -21,16 +30,11 @@ do_weight = True
 data['MEATSUM'] = data['BEEFDAILY'] + data['PORKDAILY'] + data['CHICKENDAILY'] + data['TURKEYDAILY'] + data['FISHDAILY'] + data['SHELLFISHDAILY'] + data['OTHERMEATSDAILY']
 
 # Re-iterate class prevalences
-def _counts(df, label):
-    if type(label) != list:
-        label = [label]
-    return df.loc[:, ['ID'] + label].groupby(label).count()
-
-print(_counts(data, 'pred'))
+print(counts_table(data, 'pred'))
 
 # Print out regional counts
-print(_counts(data, 'region9'))
-print(_counts(data, 'region4'))
+print(counts_table(data, 'region9'))
+print(counts_table(data, 'region4'))
 
 def _recode_by_dict(df, old_label, new_label, values):
     df[new_label] = data.apply(lambda df: values.get(df[old_label], np.nan), axis=1)
@@ -38,8 +42,8 @@ def _recode_by_dict(df, old_label, new_label, values):
 
 # Recode motivations as 0/1
 overall_motivations = {}
-for key in utils.MOTIVATION_KEYS:
-    (no, yes) = _counts(data, f'{prefix}{key}')['ID']
+for key in MOTIVATION_KEYS:
+    (no, yes) = counts_table(data, f'{prefix}{key}')['ID']
     percent = round((yes * 100) / (yes + no))
     overall_motivations[key[12:]] = percent
     print(f"{prefix}{key} (n={yes + no}) {percent}%")
@@ -97,7 +101,7 @@ data['AGE_zscore'] = zscore(data['AGE'], nan_policy='omit')
 data['INCOME_zscore'] = zscore(data['INCOME_cont'], nan_policy='omit')
 
 # Look at demographics by class
-sex_data = _counts(data, ['pred', 'SEX']).to_dict()['ID']
+sex_data = counts_table(data, ['pred', 'SEX']).to_dict()['ID']
 demographic_means = data.loc[:,['pred', 'AGE', 'INCOME_cont', 'EDUCATION_cont']].groupby(['pred']).mean().to_dict()
 demographic_medians = data.loc[:,['pred', 'AGE', 'INCOME_cont', 'EDUCATION_cont']].groupby(['pred']).median().to_dict()
 race_data = data.loc[:,['pred', 'RACE_dummy', 'ID']].groupby(['pred', 'RACE_dummy']).count().to_dict()['ID']
@@ -159,39 +163,39 @@ data.loc[:,['pred', 'newMEATDAILY', 'Wts']].groupby('pred').sum()
 data = data.loc[np.logical_or(data[f'{prefix}MOTIVATIONS_ANIMAL'] == 'No', data[f'{prefix}MOTIVATIONS_ANIMAL'] == 'Yes'),:]
 
 # Recode regression outcomes that haven't been recoded yet
-data = utils.convert_categorical_to_numeric(data, [f"OPINIONLEADER{i + 1}" for i in range(6)])
-data = utils.convert_categorical_to_numeric(data, [f"r{key}" for key in utils.BARRIER_KEYS])
-data = utils.convert_categorical_to_numeric(data, [f"rPBC{i + 1}" for i in range(3)], options=utils.GENERIC_OPTIONS)
-data = utils.convert_categorical_to_numeric(data, ['rCOMPARISON'], options=utils.COMPARISON_OPTIONS)
-data = utils.convert_categorical_to_numeric(data, ['rREDUCEFURTHER', 'rVEGWILLING'], options=utils.WILLINGNESS_OPTIONS)
-data = utils.convert_categorical_to_numeric(data, ['rGUILT', 'rINTENTIONS'])
+data = convert_categorical_to_numeric(data, [f"OPINIONLEADER{i + 1}" for i in range(6)])
+data = convert_categorical_to_numeric(data, [f"r{key}" for key in BARRIER_KEYS])
+data = convert_categorical_to_numeric(data, [f"rPBC{i + 1}" for i in range(3)], options=GENERIC_OPTIONS)
+data = convert_categorical_to_numeric(data, ['rCOMPARISON'], options=COMPARISON_OPTIONS)
+data = convert_categorical_to_numeric(data, ['rREDUCEFURTHER', 'rVEGWILLING'], options=WILLINGNESS_OPTIONS)
+data = convert_categorical_to_numeric(data, ['rGUILT', 'rINTENTIONS'])
 
 # Verify length calculations worked out reasonably
 #data.loc[:,['rLENGTH_1_TEXT', 'rLENGTH_2_TEXT', 'rLENGTH_3_TEXT', 'rLENGTH_4_TEXT', 'length_days', 'length_months', 'length_years', 'length_total']]
 
 # Other descriptive aspects of classes, from analytic part of survey
-data = utils.convert_categorical_to_numeric(data, [f"SWFL{i + 1}" for i in range(5)], overwrite=False)
+data = convert_categorical_to_numeric(data, [f"SWFL{i + 1}" for i in range(5)], overwrite=False)
 swfl_means = data.loc[:,['pred'] + [f'SWFL{i + 1}_numeric' for i in range(5)]].groupby(['pred']).mean()
 data.loc[:,['pred', 'rPERCEPTIONS_1']].groupby(['pred']).mean()  # perception of meat reducers in US population
-_counts(data, ['pred', 'rREDUCEFURTHER'])  # willingness to reduce further
-_counts(data, ['pred', 'rVEGWILLING'])     # willingness to go veg
-_counts(data, ['pred', 'rNORMS1'])         # important people think I should eat this way
-_counts(data, ['pred', 'rNORMS2'])
-_counts(data, ['pred', 'rCONFLICTED'])     # conflicted over problems with meat
-_counts(data, ['pred', 'rCOMPARISON'])     # comparison with vegetarianism
-data = utils.convert_categorical_to_numeric(data, [f"{prefix}ATTITUDES{i + 1}" for i in range(4)], options=utils.GENERIC_OPTIONS)
+counts_table(data, ['pred', 'rREDUCEFURTHER'])  # willingness to reduce further
+counts_table(data, ['pred', 'rVEGWILLING'])     # willingness to go veg
+counts_table(data, ['pred', 'rNORMS1'])         # important people think I should eat this way
+counts_table(data, ['pred', 'rNORMS2'])
+counts_table(data, ['pred', 'rCONFLICTED'])     # conflicted over problems with meat
+counts_table(data, ['pred', 'rCOMPARISON'])     # comparison with vegetarianism
+data = convert_categorical_to_numeric(data, [f"{prefix}ATTITUDES{i + 1}" for i in range(4)], options=GENERIC_OPTIONS)
 attitude_means = data.loc[:,['pred'] + [f'rATTITUDES{i + 1}' for i in range(4)]].groupby(['pred']).mean()
-_counts(data, ['pred', 'rPASTVEG'])        # 60% of 10% class has tried a veg diet in the past, much lower for the others
-barrier_means = data.loc[:,['pred'] + [f'{prefix}{k}' for k in utils.BARRIER_KEYS]].groupby(['pred']).mean()    # 10% group struggles more with barriers, they also see diet more as part of their identity
+counts_table(data, ['pred', 'rPASTVEG'])        # 60% of 10% class has tried a veg diet in the past, much lower for the others
+barrier_means = data.loc[:,['pred'] + [f'{prefix}{k}' for k in BARRIER_KEYS]].groupby(['pred']).mean()    # 10% group struggles more with barriers, they also see diet more as part of their identity
 
 # Calculate total motivations: class 0 selects more motivations
-data['MOTIVATION_COUNT'] = data.apply(lambda df: sum([df[k] for k in utils.MOTIVATION_KEYS]), axis=1)
+data['MOTIVATION_COUNT'] = data.apply(lambda df: sum([df[k] for k in MOTIVATION_KEYS]), axis=1)
 print(data.loc[:,['pred', 'MOTIVATION_COUNT']].groupby('pred').mean())
 print(data.loc[:,['pred', 'MOTIVATION_COUNT']].groupby('pred').median())
 
 # Correlations among motivations. Strongest corrlations are between ANIMAL, ENVIRO, and JUSTICE
 # Visualize as a correlation matrix / heat map
-correlation_list = sorted([(round(data[c1].corr(data[c2]), 3), c1, c2) for c1 in utils.MOTIVATION_KEYS for c2 in utils.MOTIVATION_KEYS])
+correlation_list = sorted([(round(data[c1].corr(data[c2]), 3), c1, c2) for c1 in MOTIVATION_KEYS for c2 in MOTIVATION_KEYS])
 correlations = pd.DataFrame.from_records([
     {
         'motivation1': m1[12:],
@@ -205,7 +209,7 @@ matrix = (
     + geom_tile(aes(width=0.95, height=0.95))
     + geom_text(aes(label="correlation", colour='motivation1'), size=9)
     + theme(axis_text_x=element_text(rotation = 90))
-    + scale_colour_manual(values=['#ffffff'] * len(utils.MOTIVATION_KEYS))
+    + scale_colour_manual(values=['#ffffff'] * len(MOTIVATION_KEYS))
     + labs(x = "", y = "", title = "Figure 1: Correlations between motivations")
 )
 #matrix.show()
@@ -228,7 +232,7 @@ for key in [
     combination_motivations.append(key)
 
 class_motivations = defaultdict(dict)
-for key in utils.MOTIVATION_KEYS + combination_motivations:
+for key in MOTIVATION_KEYS + combination_motivations:
     motivations = data.loc[:, ['pred', key, 'ID']].groupby(['pred', key]).count().to_dict()['ID']
     for class_index in set(data['pred']):
         (no, yes) = (motivations[(class_index, 0)], motivations[(class_index, 1)])
@@ -354,8 +358,8 @@ def write_linear(outcome):
 
 
 # Run regression
-for outcome in utils.MOTIVATION_KEYS:
-    write_logistic(outcome)
+for outcome in MOTIVATION_KEYS:
+   write_logistic(outcome)
 
 for outcome in combination_motivations:
     write_logistic(outcome)
@@ -368,7 +372,7 @@ for i in range(3):
 for i in range(6):
     write_linear(f'OPINIONLEADER{i + 1}')
 
-for outcome in utils.BARRIER_KEYS:
+for outcome in BARRIER_KEYS:
     write_linear(f'r{outcome}')
 
 write_linear('rPERCEPTIONS_1')

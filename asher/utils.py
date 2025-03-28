@@ -68,6 +68,13 @@ def load_asher_data():
     return geo_sample
 
 
+def counts_table(df, label):
+    if type(label) != list:
+        label = [label]
+    return df.loc[:, ['ID'] + label].groupby(label).count()
+
+
+
 def convert_categorical_to_numeric(data, labels, options=LIKERT, overwrite=True, negative=False):
     if negative:
         keys = list(options.keys())
