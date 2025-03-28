@@ -73,6 +73,8 @@ def counts_table(df, label):
         label = [label]
     return df.loc[:, ['ID'] + label].groupby(label).count()
 
+def counts_dict(df, label):
+    return counts_table(df, label).to_dict()['ID']
 
 
 def convert_categorical_to_numeric(data, labels, options=LIKERT, overwrite=True, negative=False):

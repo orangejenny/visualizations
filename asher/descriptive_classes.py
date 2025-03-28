@@ -1,16 +1,30 @@
 '''
 This creates an HTML table of descriptive statistics of the flexitarian sample and the classes within it.
 '''
+import pandas as pd
 
-html = '''
+from utils import (
+    counts_dict,
+)
+
+FAINT = 0
+FLOURISHING = 1
+FLOUNDERING = 2
+
+
+data = pd.read_csv("reducers_3_classes_with_pred_weighted.csv")
+class_counts = counts_dict(data, 'pred')
+n_all = sum(class_counts.values())
+
+html = f'''
     <table style="text-align:center">
         <!-- Class labels -->
         <tr>
             <td></td>
-            <td colspan="2">All Flexitarians<br>(n=?)</td>
-            <td colspan="2">Faint<br>(n=?)</td>
-            <td colspan="2">Flourishing<br>(n=?)</td>
-            <td colspan="2">Floundering<br>(n=?)</td>
+            <td colspan="2">All Flexitarians<br>(n={n_all})</td>
+            <td colspan="2">Faint<br>(n={class_counts[FAINT]})</td>
+            <td colspan="2">Flourishing<br>(n={class_counts[FLOURISHING]})</td>
+            <td colspan="2">Floundering<br>(n={class_counts[FLOUNDERING]})</td>
         </tr>
         <!-- Count + Percentage labels -->
         <tr>
