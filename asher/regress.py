@@ -285,7 +285,7 @@ model_specs = [
     ("Demographics<br>+ subregion", "subregion", demographics + [subregion]),
 ]
 
-def _write_stargazer(regress, outcome):
+def write_stargazer(regress, outcome):
     models = []
     model_names = []
     for spec in model_specs:
@@ -328,16 +328,60 @@ def _write_stargazer(regress, outcome):
         print(f"Writing {filename}")
         fh.write(stargazer.render_html())
 
+    return models[1]    # return details for demographics model
+
 
 def write_logistic(outcome):
-    return _write_stargazer(_add_logistic_regression, outcome)
+    return write_stargazer(_add_logistic_regression, outcome)
 
 
 def write_linear(outcome):
-    return _write_stargazer(_add_linear_regression, outcome)
+    return write_stargazer(_add_linear_regression, outcome)
 
 
-# Run regression
+def write_coefficient_table(outcomes, filename, _format_outcome=None):
+    if _format_outcome is None:
+        _format_outcome = lambda x: x
+
+    filename = f"output/cofficients_{filename}.html"
+    html = '''
+        <table style="text-align:center;">
+            <tr>
+                <td></td>
+                <td>Flourishing</td>
+                <td>Floundering</td>
+            </tr>
+    '''
+    for outcome in outcomes:
+        model = write_stargazer(_add_logistic_regression, outcome)
+        html += "<tr>"
+        html += f'''<td style="text-align: left;">{_format_outcome(outcome)}</td>'''
+        for class_id in [1, 2]:
+            key = f'C(pred)[T.{class_id}]'
+            coeff = round(model.params.to_dict()[key], 2)
+            error = round(model.bse.to_dict()[key], 2)
+            pvalue = model.pvalues.to_dict()[key]
+
+            stars = ''
+            if pvalue < 0.001:
+                stars = '***'
+            elif pvalue < 0.01:
+                stars = '**'
+            elif pvalue < 0.05:
+                stars = '*'
+
+            html += f"<td>{coeff}{stars}<br>({error})</td>"
+        html += "</tr>"
+    html += "<table>"
+
+    with open(filename, "w") as fh:
+        print(f"Writing {filename}")
+        fh.write(html)
+
+
+# Run regressions
+write_coefficient_table(MOTIVATION_KEYS, 'motivations', lambda x: x.replace("MOTIVATIONS_", "").title())
+
 for outcome in MOTIVATION_KEYS:
    write_logistic(outcome)
 
