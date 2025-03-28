@@ -21,9 +21,11 @@ from utils import load_asher_data, proportions
 
 do_weight = True
 flexitarians_only = False
+classes_only = True
 
 # Load all data
 data = load_asher_data()
+class_data = pd.read_csv("reducers_3_classes_with_pred_weighted.csv")
 
 # Create samples: overall, flexitarians, unrestricted, analytics samples of flexitarians and unrestricted
 samples = {}
@@ -32,6 +34,11 @@ samples = {}
 if flexitarians_only:
     samples['Cleaned sample'] = data.loc[data['PREVALENCES'] == "Reducers",:].copy()
     samples['Analytic sample'] = data.loc[np.logical_or(data[f'rMOTIVATIONS_ANIMAL'] == 'No', data[f'rMOTIVATIONS_ANIMAL'] == 'Yes'),:].copy()
+elif classes_only:
+    samples['All flexitarians'] = class_data
+    samples['Faint'] = class_data.loc[class_data['pred'] == 0,:]
+    samples['Flourishing'] = class_data.loc[class_data['pred'] == 1,:]
+    samples['Floundering'] = class_data.loc[class_data['pred'] == 2,:]
 else:
     samples['American adults'] = None
     #samples['Cleaned sample'] = data
