@@ -43,7 +43,8 @@ categoricals = {}
 for attr in ['SEX', 'EDUCATION', 'region4', 'RACEETHNICITY_dummy']:
     categoricals[attr] = proportions_per_class(data, attr, weight=do_weight)
 
-for attr in ['INCOME']:
+data['Age by sex'] = data['SEX'] + ' ' + data['Age_Group']
+for attr in ['Age by sex', 'INCOME']:
     categoricals[attr] = proportions_per_class(data, attr, weight=do_weight)
 
 # Continuous demographics
@@ -77,6 +78,18 @@ html = f'''
 
 for (display_label, attr, key) in [
     ("Gender: Men", "SEX", "Male"),
+    ("Female 18 to 24", "Age by sex", "Female 18 to 24"),
+    ("Female 25 to 34", "Age by sex", "Female 25 to 34"),
+    ("Female 35 to 44", "Age by sex", "Female 35 to 44"),
+    ("Female 45 to 54", "Age by sex", "Female 45 to 54"),
+    ("Female 55 to 64", "Age by sex", "Female 55 to 64"),
+    ("Female 65+", "Age by sex", "Female 65+"),
+    ("Male 18 to 24", "Age by sex", "Male 18 to 24"),
+    ("Male 25 to 34", "Age by sex", "Male 25 to 34"),
+    ("Male 35 to 44", "Age by sex", "Male 35 to 44"),
+    ("Male 45 to 54", "Age by sex", "Male 45 to 54"),
+    ("Male 55 to 64", "Age by sex", "Male 55 to 64"),
+    ("Male 65+", "Age by sex", "Male 65+"),
     ("Race: Non-Hispanic White", "RACEETHNICITY_dummy", 0),
     ("Education: Less than high school diploma", "EDUCATION", "Less than 12th grade, no diploma"),
     ("Education: High school diploma", "EDUCATION", "High school diploma (or equivalent)"),
