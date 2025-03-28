@@ -200,6 +200,11 @@ matrix = (
 # Add motivation combinations
 combination_motivations = []
 for key in [
+    # Use these as the golden definitions, the variants below don't vary meaningfully
+    'COST+DISGUST+HEALTH+SOCIAL+TASTE+TREND:MOTIVATIONS_INTERNAL',
+    'ANIMAL+ENVIRO+JUSTICE+RELIGION:MOTIVATIONS_EXTERNAL',
+
+    # Try out different placements of religion
     'COST+DISGUST+HEALTH+SOCIAL+TASTE+TREND:MOTIVATIONS_INTERNAL1',
     'ANIMAL+ENVIRO+JUSTICE+RELIGION:MOTIVATIONS_EXTERNAL1',
     'COST+DISGUST+HEALTH+SOCIAL+TASTE+TREND+RELIGION:MOTIVATIONS_INTERNAL2',
@@ -380,10 +385,22 @@ def write_coefficient_table(outcomes, filename, _format_outcome=None):
 
 
 # Run regressions
-write_coefficient_table(MOTIVATION_KEYS, 'motivations', lambda x: x.replace("MOTIVATIONS_", "").title())
+write_coefficient_table([   # reorder to group internal and external together
+    'MOTIVATIONS_COST',
+    'MOTIVATIONS_DISGUST',
+    'MOTIVATIONS_HEALTH',
+    'MOTIVATIONS_SOCIAL',
+    'MOTIVATIONS_TASTE',
+    'MOTIVATIONS_TREND',
+    'MOTIVATIONS_INTERNAL',
+    'MOTIVATIONS_ANIMAL',
+    'MOTIVATIONS_ENVIRO',
+    'MOTIVATIONS_JUSTICE',
+    'MOTIVATIONS_RELIGION',
+    'MOTIVATIONS_EXTERNAL',
+], 'motivations', lambda x: x.replace("MOTIVATIONS_", "").title())
 
-for outcome in MOTIVATION_KEYS:
-   write_logistic(outcome)
+write_coefficient_table(combination_motivations, 'combined_motivations', lambda x: x.replace("MOTIVATIONS_", "").title())
 
 for outcome in combination_motivations:
     write_logistic(outcome)
