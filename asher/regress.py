@@ -344,7 +344,21 @@ def write_linear(outcome):
     return write_stargazer(_add_linear_regression, outcome)
 
 
-def write_coefficient_table(outcomes, filename, _format_outcome=None):
+def write_logistic_coefficient_table(outcomes, filename, _format_outcome=None):
+    return write_coefficient_table(
+        [(outcome, _add_logistic_regression) for outcome in outcomes],
+        filename, _format_outcome=_format_outcome
+    )
+
+
+def write_linear_coefficient_table(outcomes, filename, _format_outcome=None):
+    return write_coefficient_table(
+        [(outcome, _add_linear_regression) for outcome in outcomes],
+        filename, _format_outcome=_format_outcome
+    )
+
+
+def write_coefficient_table(outcomes_and_adders, filename, _format_outcome=None):
     if _format_outcome is None:
         _format_outcome = lambda x: x
 
@@ -357,8 +371,8 @@ def write_coefficient_table(outcomes, filename, _format_outcome=None):
                 <td>Floundering</td>
             </tr>
     '''
-    for outcome in outcomes:
-        model = write_stargazer(_add_logistic_regression, outcome)
+    for (outcome, adder) in outcomes_and_adders:
+        model = write_stargazer(adder, outcome)
         html += "<tr>"
         html += f'''<td style="text-align: left;">{_format_outcome(outcome)}</td>'''
         for class_id in [1, 2]:
@@ -385,7 +399,7 @@ def write_coefficient_table(outcomes, filename, _format_outcome=None):
 
 
 # Run regressions
-write_coefficient_table([   # reorder to group internal and external together
+write_logistic_coefficient_table([   # reorder to group internal and external together
     'MOTIVATIONS_COST',
     'MOTIVATIONS_DISGUST',
     'MOTIVATIONS_HEALTH',
@@ -400,10 +414,9 @@ write_coefficient_table([   # reorder to group internal and external together
     'MOTIVATIONS_EXTERNAL',
 ], 'motivations', lambda x: x.replace("MOTIVATIONS_", "").title())
 
-write_coefficient_table(combination_motivations, 'combined_motivations', lambda x: x.replace("MOTIVATIONS_", "").title())
+write_logistic_coefficient_table(combination_motivations, 'combined_motivations', lambda x: x.replace("MOTIVATIONS_", ""))
 
-for outcome in combination_motivations:
-    write_logistic(outcome)
+write_linear_coefficient_table([f'r{k}' for k in BARRIER_KEYS], 'barriers', lambda x: x.replace("rBARRIERS_", ""))
 
 write_logistic('PASTVEG')
 
@@ -412,9 +425,6 @@ for i in range(3):
 
 for i in range(6):
     write_linear(f'OPINIONLEADER{i + 1}')
-
-for outcome in BARRIER_KEYS:
-    write_linear(f'r{outcome}')
 
 write_linear('rPERCEPTIONS_1')
 write_linear('length_total')
