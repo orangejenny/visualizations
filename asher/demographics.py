@@ -17,7 +17,7 @@ from plotnine import (
     theme_minimal,
 )
 
-from utils import load_asher_data
+from utils import load_asher_data, proportions
 
 do_weight = True
 flexitarians_only = False
@@ -68,19 +68,6 @@ print([(name, len(sample)) for name, sample in samples.items() if sample is not 
 
 by_attr = { }
 records = []
-
-# Note these are unweighted
-def demo_props(df, attr, _format, weight=False):
-    if weight:
-        counts = df.loc[:,[attr, 'Wts']].groupby(attr, observed=True).sum()['Wts'].to_dict()
-    else:
-        counts = df.groupby(attr, observed=True).count()['ID'].to_dict()
-    total = sum(counts.values())
-
-    def _value(value):
-        return round(value * 100 / total, 1)
-
-    return {_format(key): _value(value) for key, value in counts.items()}
 
 def _race_label(label):
     if 'other' in label.lower():
@@ -169,7 +156,7 @@ def add_demographics_for_sample(df, weight=False):
 
     # Other attributes
     for attr, _format in attrs.items():
-        demographics.update(demo_props(df, attr, _format, weight=do_weight))
+        demographics.update(proportions(df, attr, _format, weight=do_weight))
     return demographics
 
 for name, sample in samples.items():

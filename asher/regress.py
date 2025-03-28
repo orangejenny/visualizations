@@ -9,6 +9,7 @@ from scipy.stats import zscore
 from stargazer.stargazer import Stargazer
 
 from utils import (
+    add_race_dummy,
     BARRIER_KEYS,
     COMPARISON_OPTIONS,
     CONSUMPTION_OPTIONS,
@@ -17,6 +18,7 @@ from utils import (
     GENERIC_OPTIONS,
     WILLINGNESS_OPTIONS,
     MOTIVATION_KEYS,
+    recode_by_dict,
 )
 
 data = pd.read_csv("reducers_3_classes_with_pred_weighted.csv")
@@ -29,16 +31,9 @@ do_weight = True
 
 data['MEATSUM'] = data['BEEFDAILY'] + data['PORKDAILY'] + data['CHICKENDAILY'] + data['TURKEYDAILY'] + data['FISHDAILY'] + data['SHELLFISHDAILY'] + data['OTHERMEATSDAILY']
 
-# Re-iterate class prevalences
-print(counts_table(data, 'pred'))
-
 # Print out regional counts
 print(counts_table(data, 'region9'))
 print(counts_table(data, 'region4'))
-
-def _recode_by_dict(df, old_label, new_label, values):
-    df[new_label] = data.apply(lambda df: values.get(df[old_label], np.nan), axis=1)
-    return df
 
 # Recode motivations as 0/1
 overall_motivations = {}
@@ -47,11 +42,11 @@ for key in MOTIVATION_KEYS:
     percent = round((yes * 100) / (yes + no))
     overall_motivations[key[12:]] = percent
     print(f"{prefix}{key} (n={yes + no}) {percent}%")
-    data = _recode_by_dict(data, f'r{key}', key, {'Yes': 1, 'No': 0})
+    data = recode_by_dict(data, f'r{key}', key, {'Yes': 1, 'No': 0})
 
 # Recode PASTVEG as 0/1
 key = 'PASTVEG'
-data = _recode_by_dict(data, f'r{key}', key, {'Yes': 1, 'No': 0})
+data = recode_by_dict(data, f'r{key}', key, {'Yes': 1, 'No': 0})
 
 # Calculate length of time on diet
 data['length_days'] = data['rLENGTH_3_TEXT'] / 365.25
@@ -67,15 +62,8 @@ data['length_total'] = data.apply(lambda df: df['length_years'] + df['length_mon
 data.loc[data['length_total'] == 0, 'length_total'] = np.nan
 
 # Recode race and non-Hispanic white and non-white, due to sample size
-race_values = {
-    'Other race/ethnicity (including two or more)': 1,
-    'Asian': 1,
-    'African American or Black': 1,
-    'HIspanic': 1,
-    'White': 0,
-}
-data = _recode_by_dict(data, 'RACE', 'RACE_dummy', race_values)
-data = _recode_by_dict(data, 'RACEETHNICITY', 'RACEETHNICITY_dummy', race_values)
+data = add_race_dummy(data, 'RACE', 'RACE_dummy')
+data = add_race_dummy(data, 'RACEETHNICITY', 'RACEETHNICITY_dummy')
 
 # Recode demographics
 education_values = {
@@ -84,7 +72,7 @@ education_values = {
     'Some education after high school, no degree': 2,
     'College degree (associate, bachelor’s, master’s, or doctorate)': 3,
 }
-data = _recode_by_dict(data, 'EDUCATION', 'EDUCATION_cont', education_values)
+data = recode_by_dict(data, 'EDUCATION', 'EDUCATION_cont', education_values)
 income_values = {
     '$14,999 or less': 7500,
     '$15,000 to $24,999': 20_000,
@@ -94,7 +82,7 @@ income_values = {
     '$75,000 to $99,999': 87_500,
     '$100,000 or over': 150_000,
 }
-data = _recode_by_dict(data, 'INCOME', 'INCOME_cont', income_values)
+data = recode_by_dict(data, 'INCOME', 'INCOME_cont', income_values)
 
 # Add zscores for age and income
 data['AGE_zscore'] = zscore(data['AGE'], nan_policy='omit')

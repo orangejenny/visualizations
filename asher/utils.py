@@ -107,5 +107,41 @@ def categorize_daily(df, key="", levels=4):
         return 1
     return 0                # seldom (once a month or less)
 
+
+# Params: df, column label, formatter for key values
+# Returns a dict of formatted keys => percentage of df with that value
+def proportions(df, attr, _format=None, weight=False):
+    if _format is None:
+        _format = lambda x: x
+
+    if weight:
+        counts = df.loc[:,[attr, 'Wts']].groupby(attr, observed=True).sum()['Wts'].to_dict()
+    else:
+        counts = df.groupby(attr, observed=True).count()['ID'].to_dict()
+    total = sum(counts.values())
+
+    def _value(value):
+        return round(value * 100 / total, 1)
+
+    return {_format(key): _value(value) for key, value in counts.items()}
+
+
 def response_count_for_question(data, key):
     return data.groupby(key, observed=True).count()['ID']
+
+
+### Recoding utilities
+def recode_by_dict(df, old_label, new_label, values):
+    df[new_label] = df.apply(lambda df: values.get(df[old_label], np.nan), axis=1)
+    return df
+
+
+race_values = {
+    'Other race/ethnicity (including two or more)': 1,
+    'Asian': 1,
+    'African American or Black': 1,
+    'HIspanic': 1,
+    'White': 0,
+}
+def add_race_dummy(df, label, new_label):
+    return recode_by_dict(df, label, new_label, race_values)
