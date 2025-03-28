@@ -25,6 +25,13 @@ from utils import (
     recode_by_dict,
 )
 
+
+def _write_file(filename, content):
+    with open(filename, "w") as fh:
+        print(f"Writing {filename}")
+        fh.write(content)
+
+
 data = pd.read_csv("reducers_3_classes_with_pred_weighted.csv")
 prefix = 'r'
 num_classes = 3
@@ -332,9 +339,7 @@ def write_stargazer(regress, outcome):
 
     weight_suffix = "_weighted" if do_weight else ""
     filename = f"stargazers{weight_suffix}/{outcome.lower()}.html"
-    with open(filename, "w") as fh:
-        print(f"Writing {filename}")
-        fh.write(stargazer.render_html())
+    _write_file(filename, stargazer.render_html())
 
     return models[1]    # return details for demographics model
 
@@ -366,14 +371,7 @@ def write_coefficient_table(outcomes_and_adders, filename, _format_outcome=None)
         _format_outcome = lambda x: x
 
     filename = f"output/cofficients_{filename}.html"
-    html = '''
-        <table style="text-align:center;">
-            <tr>
-                <td></td>
-                <td>Flourishing</td>
-                <td>Floundering</td>
-            </tr>
-    '''
+    html = ""
     for (outcome, adder) in outcomes_and_adders:
         model = write_stargazer(adder, outcome)
         html += "<tr>"
@@ -394,15 +392,23 @@ def write_coefficient_table(outcomes_and_adders, filename, _format_outcome=None)
 
             html += f"<td>{coeff}{stars}<br>({error})</td>"
         html += "</tr>"
-    html += "<table>"
 
-    with open(filename, "w") as fh:
-        print(f"Writing {filename}")
-        fh.write(html)
+    _write_file(filename, f'''
+    <table style="text-align:center;">
+        <tr>
+            <td></td>
+            <td>Flourishing</td>
+            <td>Floundering</td>
+        </tr>
+        {html}
+    </table>
+    ''')
+
+    return html
 
 
 # Run regressions
-write_logistic_coefficient_table([   # reorder to group internal and external together
+internal_motivation_html = write_logistic_coefficient_table([
     'MOTIVATIONS_COST',
     'MOTIVATIONS_DISGUST',
     'MOTIVATIONS_HEALTH',
@@ -410,36 +416,83 @@ write_logistic_coefficient_table([   # reorder to group internal and external to
     'MOTIVATIONS_TASTE',
     'MOTIVATIONS_TREND',
     'MOTIVATIONS_INTERNAL',
+], 'motivations_internal', display_motivation)
+
+external_motivation_html = write_logistic_coefficient_table([
     'MOTIVATIONS_ANIMAL',
     'MOTIVATIONS_ENVIRO',
     'MOTIVATIONS_JUSTICE',
     'MOTIVATIONS_RELIGION',
     'MOTIVATIONS_EXTERNAL',
-], 'motivations', display_motivation)
+], 'motivations_external', display_motivation)
 
 write_logistic_coefficient_table(combination_motivations, 'combined_motivations', display_motivation)
 
-write_linear_coefficient_table([    # reorder to group positive and negative
-    # barriers
+barrier_html = write_linear_coefficient_table([
     'rBARRIERS_COST',
     'rBARRIERS_INCONVENIENCE',
     'rBARRIERS_MOTIVATION',
     'rBARRIERS_SOCIALISSUES',
+], 'barriers', display_barrier)
 
-    # enablers
+facilitator_html = write_linear_coefficient_table([
     'rBARRIERS_FOODSATISFACTION',
     'rBARRIERS_HEALTH',
     'rBARRIERS_IDENTITY',
-], 'barriers', display_barrier)
+], 'facilitators', display_barrier)
 
-write_coefficient_table([
-    ("PASTVEG", _add_logistic_regression),
+past_html = write_coefficient_table([
     ("length_total", _add_linear_regression),
+    ("PASTVEG", _add_logistic_regression),
+], 'past', display_other)
+
+future_html = write_coefficient_table([
     ("rINTENTIONS", _add_linear_regression),
     ("rREDUCEFURTHER", _add_linear_regression),
     ("rVEGWILLING", _add_linear_regression),
-], 'past_and_future', display_other)
+], 'future', display_other)
 
+
+# Write one giant table for paper
+filename = "output/coefficients_all.html"
+_write_file(filename, f"""
+    <table style="text-align:center;">
+        <tr>
+        <td style="vertical-align: top;">
+        <table>
+        <tr>
+            <td></td>
+            <td style="font-weight: bold;">Flourishing</td>
+            <td style="font-weight: bold;">Floundering</td>
+        </tr>
+        <tr><td style="font-weight: bold; text-align: left;">Motivations (internal)</td></tr>
+        {internal_motivation_html}
+        <tr><td style="font-weight: bold; text-align: left;">Motivations (external)</td></tr>
+        {external_motivation_html}
+        </table>
+        </td>
+        <td style="vertical-align: top;">
+        <table>
+        <tr>
+            <td></td>
+            <td style="font-weight: bold;">Flourishing</td>
+            <td style="font-weight: bold;">Floundering</td>
+        </tr>
+        <tr><td style="font-weight: bold; text-align: left;">Barriers</td></tr>
+        {barrier_html}
+        <tr><td style="font-weight: bold; text-align: left;">Facilitators</td></tr>
+        {facilitator_html}
+        <tr><td style="font-weight: bold; text-align: left;">Past behavior</td></tr>
+        {past_html}
+        <tr><td style="font-weight: bold; text-align: left;">Future intentions</td></tr>
+        {future_html}
+        </table>
+        </td>
+        </tr>
+    </table>
+""")
+
+# A few more regressions
 write_logistic('PASTVEG')
 
 for i in range(3):
