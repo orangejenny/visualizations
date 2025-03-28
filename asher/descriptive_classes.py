@@ -43,6 +43,9 @@ categoricals = {}
 for attr in ['SEX', 'EDUCATION', 'region4', 'RACEETHNICITY_dummy']:
     categoricals[attr] = proportions_per_class(data, attr, weight=do_weight)
 
+for attr in ['INCOME']:
+    categoricals[attr] = proportions_per_class(data, attr, weight=do_weight)
+
 # Continuous demographics
 data = add_income_continuous(data)
 continuous = {}
@@ -153,6 +156,55 @@ html = f'''
             <td>${continuous['INCOME_cont'][FAINT]['mean']:,} (${continuous['INCOME_cont'][FAINT]['std']:,})</td>
             <td>${continuous['INCOME_cont'][FLOURISHING]['mean']:,} (${continuous['INCOME_cont'][FLOURISHING]['std']:,})</td>
             <td>${continuous['INCOME_cont'][FLOUNDERING]['mean']:,} (${continuous['INCOME_cont'][FLOUNDERING]['std']:,})</td>
+        </tr>
+        <tr>
+            <td style="text-align: left;">Income: $14,999 or less</td>
+            <td>{categoricals['INCOME'][ALL]['$14,999 or less']}%</td>
+            <td>{categoricals['INCOME'][FAINT]['$14,999 or less']}%</td>
+            <td>{categoricals['INCOME'][FLOURISHING]['$14,999 or less']}%</td>
+            <td>{categoricals['INCOME'][FLOUNDERING]['$14,999 or less']}%</td>
+        </tr>
+        <tr>
+            <td style="text-align: left;">Income: $15,000 to $24,999</td>
+            <td>{categoricals['INCOME'][ALL]['$15,000 to $24,999']}%</td>
+            <td>{categoricals['INCOME'][FAINT]['$15,000 to $24,999']}%</td>
+            <td>{categoricals['INCOME'][FLOURISHING]['$15,000 to $24,999']}%</td>
+            <td>{categoricals['INCOME'][FLOUNDERING]['$15,000 to $24,999']}%</td>
+        </tr>
+        <tr>
+            <td style="text-align: left;">Income: $25,000 to $34,999</td>
+            <td>{categoricals['INCOME'][ALL]['$25,000 to $34,999']}%</td>
+            <td>{categoricals['INCOME'][FAINT]['$25,000 to $34,999']}%</td>
+            <td>{categoricals['INCOME'][FLOURISHING]['$25,000 to $34,999']}%</td>
+            <td>{categoricals['INCOME'][FLOUNDERING]['$25,000 to $34,999']}%</td>
+        </tr>
+        <tr>
+            <td style="text-align: left;">Income: $35,000 to $49,999</td>
+            <td>{categoricals['INCOME'][ALL]['$35,000 to $49,999']}%</td>
+            <td>{categoricals['INCOME'][FAINT]['$35,000 to $49,999']}%</td>
+            <td>{categoricals['INCOME'][FLOURISHING]['$35,000 to $49,999']}%</td>
+            <td>{categoricals['INCOME'][FLOUNDERING]['$35,000 to $49,999']}%</td>
+        </tr>
+        <tr>
+            <td style="text-align: left;">Income: $50,000 to $74,999</td>
+            <td>{categoricals['INCOME'][ALL]['$50,000 to $74,999']}%</td>
+            <td>{categoricals['INCOME'][FAINT]['$50,000 to $74,999']}%</td>
+            <td>{categoricals['INCOME'][FLOURISHING]['$50,000 to $74,999']}%</td>
+            <td>{categoricals['INCOME'][FLOUNDERING]['$50,000 to $74,999']}%</td>
+        </tr>
+        <tr>
+            <td style="text-align: left;">Income: $75,000 to $99,999</td>
+            <td>{categoricals['INCOME'][ALL]['$75,000 to $99,999']}%</td>
+            <td>{categoricals['INCOME'][FAINT]['$75,000 to $99,999']}%</td>
+            <td>{categoricals['INCOME'][FLOURISHING]['$75,000 to $99,999']}%</td>
+            <td>{categoricals['INCOME'][FLOUNDERING]['$75,000 to $99,999']}%</td>
+        </tr>
+        <tr>
+            <td style="text-align: left;">Income: $100,000 or over</td>
+            <td>{categoricals['INCOME'][ALL]['$100,000 or over']}%</td>
+            <td>{categoricals['INCOME'][FAINT]['$100,000 or over']}%</td>
+            <td>{categoricals['INCOME'][FLOURISHING]['$100,000 or over']}%</td>
+            <td>{categoricals['INCOME'][FLOUNDERING]['$100,000 or over']}%</td>
         </tr>
     </table>
 '''
