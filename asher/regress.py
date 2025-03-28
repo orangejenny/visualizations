@@ -418,6 +418,14 @@ write_logistic_coefficient_table(combination_motivations, 'combined_motivations'
 
 write_linear_coefficient_table([f'r{k}' for k in BARRIER_KEYS], 'barriers', lambda x: x.replace("rBARRIERS_", ""))
 
+write_coefficient_table([
+    ("PASTVEG", _add_logistic_regression),
+    ("length_total", _add_linear_regression),
+    ("rINTENTIONS", _add_linear_regression),
+    ("rREDUCEFURTHER", _add_linear_regression),
+    ("rVEGWILLING", _add_linear_regression),
+], 'past_and_future')
+
 write_logistic('PASTVEG')
 
 for i in range(3):
