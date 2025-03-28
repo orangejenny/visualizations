@@ -2,8 +2,10 @@
 This creates an HTML table of descriptive statistics of the flexitarian sample and the classes within it.
 '''
 import pandas as pd
+from statsmodels.stats.weightstats import DescrStatsW
 
 from utils import (
+    add_income_continuous,
     add_race_dummy,
     counts_dict,
     proportions,
@@ -41,6 +43,22 @@ categoricals = {}
 for attr in ['SEX', 'EDUCATION', 'region4', 'RACEETHNICITY_dummy']:
     categoricals[attr] = proportions_per_class(data, attr, weight=do_weight)
 
+# Continuous demographics
+data = add_income_continuous(data)
+continuous = {}
+for attr in ['AGE', 'INCOME_cont',]:
+    continuous[attr] = {}
+    for key, df in (
+        [(ALL, data)] +
+        [(class_id, data.loc[data['pred'] == class_id,:]) for class_id in [FAINT, FLOURISHING, FLOUNDERING]]
+    ):
+        weights = df['Wts'] if do_weight else None
+        stats = DescrStatsW(df[attr], weights=weights)
+        continuous[attr][key] = {
+            'mean': round(stats.mean) if attr == 'INCOME_cont' else round(stats.mean, 1),
+            'std': round(stats.std) if attr == 'INCOME_cont' else round(stats.std, 1),
+        }
+
 html = f'''
     <table style="text-align:center;">
         <!-- Class labels -->
@@ -65,12 +83,6 @@ html = f'''
             <td>{categoricals['RACEETHNICITY_dummy'][FAINT][0]}%</td>
             <td>{categoricals['RACEETHNICITY_dummy'][FLOURISHING][0]}%</td>
             <td>{categoricals['RACEETHNICITY_dummy'][FLOUNDERING][0]}%</td>
-        </tr>
-        <tr>
-            <td style="text-align: left;">Age</td>
-        </tr>
-        <tr>
-            <td style="text-align: left;">Income</td>
         </tr>
         <tr>
             <td style="text-align: left;">Education: Less than high school diploma</td>
@@ -127,6 +139,20 @@ html = f'''
             <td>{categoricals['region4'][FAINT]['West']}%</td>
             <td>{categoricals['region4'][FLOURISHING]['West']}%</td>
             <td>{categoricals['region4'][FLOUNDERING]['West']}%</td>
+        </tr>
+        <tr>
+            <td style="text-align: left;">Age</td>
+            <td>{continuous['AGE'][ALL]['mean']} ({continuous['AGE'][ALL]['std']})</td>
+            <td>{continuous['AGE'][FAINT]['mean']} ({continuous['AGE'][FAINT]['std']})</td>
+            <td>{continuous['AGE'][FLOURISHING]['mean']} ({continuous['AGE'][FLOURISHING]['std']})</td>
+            <td>{continuous['AGE'][FLOUNDERING]['mean']} ({continuous['AGE'][FLOUNDERING]['std']})</td>
+        </tr>
+        <tr>
+            <td style="text-align: left;">Income</td>
+            <td>${continuous['INCOME_cont'][ALL]['mean']:,} (${continuous['INCOME_cont'][ALL]['std']:,})</td>
+            <td>${continuous['INCOME_cont'][FAINT]['mean']:,} (${continuous['INCOME_cont'][FAINT]['std']:,})</td>
+            <td>${continuous['INCOME_cont'][FLOURISHING]['mean']:,} (${continuous['INCOME_cont'][FLOURISHING]['std']:,})</td>
+            <td>${continuous['INCOME_cont'][FLOUNDERING]['mean']:,} (${continuous['INCOME_cont'][FLOUNDERING]['std']:,})</td>
         </tr>
     </table>
 '''

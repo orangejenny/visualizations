@@ -145,3 +145,15 @@ race_values = {
 }
 def add_race_dummy(df, label, new_label):
     return recode_by_dict(df, label, new_label, race_values)
+
+income_values = {
+    '$14,999 or less': 7500,
+    '$15,000 to $24,999': 20_000,
+    '$25,000 to $34,999': 30_000,
+    '$35,000 to $49,999': 42_500,
+    '$50,000 to $74,999': 62_500,
+    '$75,000 to $99,999': 87_500,
+    '$100,000 or over': 150_000,
+}
+def add_income_continuous(df):
+    return recode_by_dict(df, 'INCOME', 'INCOME_cont', income_values)

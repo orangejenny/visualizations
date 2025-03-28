@@ -9,6 +9,7 @@ from scipy.stats import zscore
 from stargazer.stargazer import Stargazer
 
 from utils import (
+    add_income_continuous,
     add_race_dummy,
     BARRIER_KEYS,
     COMPARISON_OPTIONS,
@@ -73,16 +74,7 @@ education_values = {
     'College degree (associate, bachelor’s, master’s, or doctorate)': 3,
 }
 data = recode_by_dict(data, 'EDUCATION', 'EDUCATION_cont', education_values)
-income_values = {
-    '$14,999 or less': 7500,
-    '$15,000 to $24,999': 20_000,
-    '$25,000 to $34,999': 30_000,
-    '$35,000 to $49,999': 42_500,
-    '$50,000 to $74,999': 62_500,
-    '$75,000 to $99,999': 87_500,
-    '$100,000 or over': 150_000,
-}
-data = recode_by_dict(data, 'INCOME', 'INCOME_cont', income_values)
+data = add_income_continuous(data)
 
 # Add zscores for age and income
 data['AGE_zscore'] = zscore(data['AGE'], nan_policy='omit')
