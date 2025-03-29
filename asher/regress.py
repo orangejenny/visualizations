@@ -19,10 +19,11 @@ from utils import (
     display_barrier,
     display_motivation,
     display_other,
+    EXTENT_OPTIONS,
     GENERIC_OPTIONS,
-    WILLINGNESS_OPTIONS,
     MOTIVATION_KEYS,
     recode_by_dict,
+    WILLINGNESS_OPTIONS,
 )
 
 
@@ -159,6 +160,7 @@ data = convert_categorical_to_numeric(data, [f"rPBC{i + 1}" for i in range(3)], 
 data = convert_categorical_to_numeric(data, ['rCOMPARISON'], options=COMPARISON_OPTIONS)
 data = convert_categorical_to_numeric(data, ['rREDUCEFURTHER', 'rVEGWILLING'], options=WILLINGNESS_OPTIONS)
 data = convert_categorical_to_numeric(data, ['rGUILT', 'rINTENTIONS'])
+data = convert_categorical_to_numeric(data, ['rTIES'], options=EXTENT_OPTIONS)
 
 # Verify length calculations worked out reasonably
 #data.loc[:,['rLENGTH_1_TEXT', 'rLENGTH_2_TEXT', 'rLENGTH_3_TEXT', 'rLENGTH_4_TEXT', 'length_days', 'length_months', 'length_years', 'length_total']]
@@ -439,6 +441,7 @@ facilitator_html = write_linear_coefficient_table([
     'rBARRIERS_FOODSATISFACTION',
     'rBARRIERS_HEALTH',
     'rBARRIERS_IDENTITY',
+    'rTIES',
 ], 'facilitators', display_barrier)
 
 past_html = write_coefficient_table([
@@ -501,6 +504,9 @@ for i in range(3):
 for i in range(6):
     write_linear(f'OPINIONLEADER{i + 1}')
 
+for i in range(4):
+    write_linear(f'rATTITUDES{i + 1}')
+
 write_linear('rPERCEPTIONS_1')
 write_linear('length_total')
 write_linear('MOTIVATION_COUNT')
@@ -509,3 +515,4 @@ write_linear('rGUILT')
 write_linear('rINTENTIONS')
 write_linear('rREDUCEFURTHER')
 write_linear('rVEGWILLING')
+write_linear('rTIES')

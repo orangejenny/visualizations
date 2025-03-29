@@ -33,6 +33,14 @@ CONSUMPTION_OPTIONS = {
     "2 or more times per DAY (2.500)": 2.5,
 }
 
+EXTENT_OPTIONS = {
+    'Moderate extent': 3,
+    'Not at all': 1,
+    'Great extent': 4,
+    'Very great extent': 5,
+    'Small extent': 2,
+}
+
 GENERIC_OPTIONS = {
     "Answer 1": 1,
     "Answer 2": 2,
@@ -201,4 +209,5 @@ def display_other(label):
         "rINTENTIONS": "Intent to continue with reduced-meat diet",
         "rREDUCEFURTHER": "Willingness to further reduce meat in diet",
         "rVEGWILLING": "Willingness to go vegetarian",
+        "rTIES": "Strong ties to other flexitarians",
     }.get(label, "unknown")

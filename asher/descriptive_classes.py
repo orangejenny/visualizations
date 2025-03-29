@@ -77,7 +77,7 @@ html = f'''
 '''
 
 for (display_label, attr, key) in [
-    #("Gender: Men", "SEX", "Male"),
+    ("Gender: Men", "SEX", "Male"),
     ("Women 18 to 24", "Age by sex", "Female 18 to 24"),
     ("Women 25 to 34", "Age by sex", "Female 25 to 34"),
     ("Women 35 to 44", "Age by sex", "Female 35 to 44"),
