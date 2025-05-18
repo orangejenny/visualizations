@@ -47,7 +47,6 @@ for key in ['MEATDAILY', 'MAMMALDAILY', 'BIRDDAILY', 'REDDAILY', 'WHITEDAILY', '
 
 # Create diet-specific samples
 #   Primarily interested in omnis and semis
-#   Group chicken-free people with reducers
 meaters = data.loc[data['PREVALENCES'] != 'Vegetarians',:]
 omnis = data.loc[data['PREVALENCES'] == 'Non-Reducing Omnivores',:]
 semis = meaters.loc[data['PREVALENCES'] != 'Non-Reducing Omnivores',:]
@@ -93,9 +92,9 @@ def fit_model(data, num_classes, categories):
 #   4 classes has 2 big and 2 small ones
 #   5 classes has 3 big and 2 small ones
 '''
-for i in range(2, 12):
+for i in range(1, 12):
     print(f"Fitting model with {i} classes...")
-    fit_model(semis, i, colors)
+    fit_model(reducers, i, colors)
 '''
 indicators = ['REDDAILY', 'WHITEDAILY', 'BLUEDAILY']
 
