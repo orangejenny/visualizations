@@ -41,7 +41,16 @@ do_weight = True
 #data = pd.read_csv("non-reducing_3_classes_with_pred.csv")
 #prefix = 'ov'
 
+# Histogram of daily meat consumption
 data['MEATSUM'] = data['BEEFDAILY'] + data['PORKDAILY'] + data['CHICKENDAILY'] + data['TURKEYDAILY'] + data['FISHDAILY'] + data['SHELLFISHDAILY'] + data['OTHERMEATSDAILY']
+weight_label = "Weighted" if do_weight else "Unweighted"
+weight_kwargs = {"weight": data['Wts']} if do_weight else {}
+hist = (
+    ggplot(data, aes(x = 'MEATSUM', **weight_kwargs))
+        + geom_histogram()
+        + labs(x = "", y = "", title = f"{weight_label} MEATSUM")
+)
+#hist.show()
 
 # Print out regional counts
 print(counts_table(data, 'region9'))
