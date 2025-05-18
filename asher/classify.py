@@ -123,12 +123,44 @@ datasets = {
     #'all non-veg': meaters,
     #'semis': semis,
 }
-greek_letters = [' "Faint" flexitarians', ' "Flourishing" flexitarians', '"Floundering" flexitarians', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta', 'Iota']
-#for num_classes in [2, 3, 4, 5, 6]:
-for num_classes in [3]:
+greek_letters = [' "Superficial"', '  "Successful"', '"Struggling"', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta', 'Iota']
+greek_letters = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta', 'Iota']
+purples = {
+    '3: most meals': '#4B0072',
+    '2: most days': '#7A4CC6',
+    '1: some days': '#9B6DCC',
+    '0: seldom': '#D1A7E0',
+}
+blues = {
+    '3: most meals': '#1E3A5F',
+    '2: most days': '#2196F3',
+    '1: some days': '#6BB9FF',
+    '0: seldom': '#A7C7E7',
+}
+greens = {
+    '3: most meals': '#2C6B2F',
+    '2: most days': '#4CAF50',
+    '1: some days': '#78D58B',
+    '0: seldom': '#A8E6A3',
+}
+yellows = {
+    '3: most meals': '#F57F17',
+    '2: most days': '#FFB300',
+    '1: some days': '#FFEB3B',
+    '0: seldom': '#FFF9C4',
+}
+all_colors =    {
+    'purples': purples,
+    'blues': blues,
+    'greens': greens,
+    'yellows': yellows,
+}
+level_colors = purples
+level_values = level_colors.keys()
+for num_classes in [3, 4]:
     for dataset_label in datasets.keys():
         if not levels:
-            # For continuous visualizations,cap values at 3, because otherwise the lower values aren't distinguishable
+            # For continuous visualizations, cap values at 3, because otherwise the lower values aren't distinguishable
             datasets[dataset_label]['WHITEDAILY'] = datasets[dataset_label].apply(lambda df: min(df['WHITEDAILY'], 3), axis=1)
             datasets[dataset_label]['BLUEDAILY'] = datasets[dataset_label].apply(lambda df: min(df['BLUEDAILY'], 3), axis=1)
 
@@ -138,9 +170,9 @@ for num_classes in [3]:
         (model, predictions) = fit_model(datasets[dataset_label], num_classes, colors)
         cells = predictions.reset_index(names='count').groupby(indicators + ['pred'], as_index=False).count()
 
-        n = predictions.groupby('pred').count()['REDDAILY'].to_list()
-        total = sum(n)
-        n = [round(x * 100 / total) for x in n]
+        class_counts = predictions.groupby('pred').count()['REDDAILY'].to_list()
+        total = sum(class_counts)
+        class_counts = [round(x * 100 / total) for x in class_counts]
         
         # Painfully format data because I am too tired to grasp pandas.melt
         viz_data = None
