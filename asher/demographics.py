@@ -17,7 +17,7 @@ from plotnine import (
     theme_minimal,
 )
 
-from utils import load_asher_data, proportions
+from utils import add_race_dummy, load_asher_data, proportions
 
 do_weight = True
 flexitarians_only = False
@@ -27,18 +27,23 @@ classes_only = True
 data = load_asher_data()
 class_data = pd.read_csv("reducers_3_classes_with_pred_weighted.csv")
 
+# Recode race and non-Hispanic white and non-white, due to sample size
+data = add_race_dummy(data, 'RACEETHNICITY', 'RACEETHNICITY_dummy')
+class_data = add_race_dummy(class_data, 'RACEETHNICITY', 'RACEETHNICITY_dummy')
+
 # Create samples: overall, flexitarians, unrestricted, analytics samples of flexitarians and unrestricted
 samples = {}
 #'Unrestricted meat eaters': data.loc[data['PREVALENCES'] == "Non-Reducing Omnivores",:].copy(),
 
 if flexitarians_only:
-    samples['Cleaned sample'] = data.loc[data['PREVALENCES'] == "Reducers",:].copy()
-    samples['Analytic sample'] = data.loc[np.logical_or(data[f'rMOTIVATIONS_ANIMAL'] == 'No', data[f'rMOTIVATIONS_ANIMAL'] == 'Yes'),:].copy()
+    samples['Latent class analysis sample (n=8081)'] = data.loc[data['PREVALENCES'] == "Reducers",:].copy()
+    samples['Regression sample (n=286)'] = data.loc[np.logical_or(data[f'rMOTIVATIONS_ANIMAL'] == 'No', data[f'rMOTIVATIONS_ANIMAL'] == 'Yes'),:].copy()
 elif classes_only:
-    samples['All flexitarians'] = class_data
-    samples['Faint'] = class_data.loc[class_data['pred'] == 0,:]
-    samples['Flourishing'] = class_data.loc[class_data['pred'] == 1,:]
-    samples['Floundering'] = class_data.loc[class_data['pred'] == 2,:]
+    #samples['American adults'] = None
+    samples['   All flexitarians (n=8081)'] = class_data
+    samples[' Superficial (n=5691)'] = class_data.loc[class_data['pred'] == 0,:]
+    samples['  Successful (n=1606)'] = class_data.loc[class_data['pred'] == 1,:]
+    samples['Struggling (n=784)'] = class_data.loc[class_data['pred'] == 2,:]
 else:
     samples['American adults'] = None
     #samples['Cleaned sample'] = data
@@ -84,27 +89,40 @@ def _race_label(label):
         label = label.title()
     return f'Race: {label}'
 
+
+def _race_dummy_label(label):
+    label = "Non-Hispanic white" if label == 0 else "Other"
+    return (' ' * 20) + f'Race: {label}'
+
 def _education_label(label):
     label = label.lower()
     if 'no diploma' in label:
-        label = 'Less than high school diploma'
+        label = ' No high school diploma'
     elif 'diploma' in label:
-        label = 'High school diploma'
+        label = '  High school diploma'
     elif 'associate' in label:
-        label = 'College degree'
+        label = '    College degree'
     else:
-        label = 'Some college'
-    return f'Education: {label}'
+        label = '   Some college'
+    return (' ' * 30) + re.sub(r'^( *)(.*)$', r'\1Education: \2', label)
+
+def _income_label(label):
+    label = label.replace('$', '\\$')
+    first_num = re.search(r'(\d+),', label).group(1)
+    index = [14, 15, 25, 35, 50, 75, 100].index(int(first_num))
+    return (' ' * 40) + (' ' * index) + f'Income: {label}'
 
 def add_demographics_for_sample(df, weight=False):
     attrs = {
-        'RACEETHNICITY': _race_label,
-        'region4': lambda x: f'Region: {x}',
-        'INCOME': lambda x: f'Income: {x}',
+        #'RACEETHNICITY': _race_label,
+        'RACEETHNICITY_dummy': _race_dummy_label,
+        'region4': lambda x: (' ' * 50) + f'Region: {x}',
+        'INCOME': _income_label,
         'EDUCATION': _education_label,
     }
     demographics = {}
 
+    '''
     if df is None:
         # US population, hard code
         current_attr = None
@@ -149,6 +167,7 @@ def add_demographics_for_sample(df, weight=False):
             'Education: College degree': 45,
         })
         return demographics
+    '''
 
     # Age by sex
     if do_weight:
@@ -157,7 +176,11 @@ def add_demographics_for_sample(df, weight=False):
         counts = df.groupby(['SEX', 'Age_Group'], observed=True).count()['ID'].to_dict()
     total = sum(counts.values())
     demographics.update({
-        " ".join(label): round(value * 100 / total, 1)
+        (' ' * 10 if 'Male' in label else '')
+        + (' ' * [18, 25, 35, 45, 55, 65].index(int(re.search(r'(\d+\b)', label[1]).group(1))))
+        + ('Men ' if 'Male' in label else 'Women ')
+        + label[1]
+        : round(value * 100 / total, 1)
         for label, value in counts.items()
     })
 
@@ -183,6 +206,8 @@ long_demographics = pd.DataFrame.from_records(records)
 print(wide_demographics)
 
 # Visualize!
+weight_label = "Weighted demographic" if do_weight else "Demographic"
+group_label = "classes" if classes_only else "samples"
 demographic_plot = (
     ggplot(long_demographics, aes(x="factor(demographic)", y="value", shape=" ", fill=" "))
     + geom_point(alpha = 0.5, size=5)
@@ -192,7 +217,7 @@ demographic_plot = (
     + theme(legend_position="bottom", legend_title_position=None,
             panel_background=element_rect(fill="white"),
             plot_background=element_rect(fill="white"))
-    + labs(x="", y="% of sample", title=f"Demographic comparison of samples (weighted={do_weight})")
+    + labs(x="", y="% of sample", title=f"{weight_label} comparison of {group_label}")
 )
 demographic_plot.show()
 #demographic_plot.save(filename="demographic_plot.png", width=12, height=5)
