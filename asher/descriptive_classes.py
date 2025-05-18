@@ -69,9 +69,9 @@ html = f'''
         <tr>
             <td></td>
             <td>Full Sample<br>(n={n_all})</td>
-            <td>Faint<br>(n={class_counts[FAINT]})</td>
-            <td>Flourishing<br>(n={class_counts[FLOURISHING]})</td>
-            <td>Floundering<br>(n={class_counts[FLOUNDERING]})</td>
+            <td>Successful<br>(n={class_counts[FLOURISHING]})</td>
+            <td>Superficial<br>(n={class_counts[FAINT]})</td>
+            <td>Struggling<br>(n={class_counts[FLOUNDERING]})</td>
         </tr>
         <!-- Demographic rows -->
 '''
@@ -109,7 +109,7 @@ for (display_label, attr, key) in [
 ]:
     html += "<tr>"
     html += f"""<td style="text-align: left;">{display_label}</td>"""
-    for class_id in [ALL, FAINT, FLOURISHING, FLOUNDERING]:
+    for class_id in [ALL, FLOURISHING, FAINT, FLOUNDERING]:
         html += f"""<td>{categoricals[attr][class_id][key]}%</td>"""
     html += "</tr>"
 
@@ -117,15 +117,15 @@ html += f'''
         <tr>
             <td style="text-align: left;">Age</td>
             <td>{continuous['AGE'][ALL]['mean']} ({continuous['AGE'][ALL]['std']})</td>
-            <td>{continuous['AGE'][FAINT]['mean']} ({continuous['AGE'][FAINT]['std']})</td>
             <td>{continuous['AGE'][FLOURISHING]['mean']} ({continuous['AGE'][FLOURISHING]['std']})</td>
+            <td>{continuous['AGE'][FAINT]['mean']} ({continuous['AGE'][FAINT]['std']})</td>
             <td>{continuous['AGE'][FLOUNDERING]['mean']} ({continuous['AGE'][FLOUNDERING]['std']})</td>
         </tr>
         <tr>
             <td style="text-align: left;">Income</td>
             <td>${continuous['INCOME_cont'][ALL]['mean']:,} (${continuous['INCOME_cont'][ALL]['std']:,})</td>
-            <td>${continuous['INCOME_cont'][FAINT]['mean']:,} (${continuous['INCOME_cont'][FAINT]['std']:,})</td>
             <td>${continuous['INCOME_cont'][FLOURISHING]['mean']:,} (${continuous['INCOME_cont'][FLOURISHING]['std']:,})</td>
+            <td>${continuous['INCOME_cont'][FAINT]['mean']:,} (${continuous['INCOME_cont'][FAINT]['std']:,})</td>
             <td>${continuous['INCOME_cont'][FLOUNDERING]['mean']:,} (${continuous['INCOME_cont'][FLOUNDERING]['std']:,})</td>
         </tr>
     </table>
