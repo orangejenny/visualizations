@@ -14,6 +14,7 @@ from utils import (
     BARRIER_KEYS,
     COMPARISON_OPTIONS,
     CONSUMPTION_OPTIONS,
+    COVARIATE_DISPLAY_NAMES,
     convert_categorical_to_numeric,
     counts_table,
     display_barrier,
@@ -193,6 +194,7 @@ barrier_means = data.loc[:,['pred'] + [f'{prefix}{k}' for k in BARRIER_KEYS]].gr
 data['MOTIVATION_COUNT'] = data.apply(lambda df: sum([df[k] for k in MOTIVATION_KEYS]), axis=1)
 print(data.loc[:,['pred', 'MOTIVATION_COUNT']].groupby('pred').mean())
 print(data.loc[:,['pred', 'MOTIVATION_COUNT']].groupby('pred').median())
+data.loc[:,['pred', 'MOTIVATION_COUNT', 'Wts']].groupby('pred').sum()
 
 # Correlations among motivations. Strongest corrlations are between ANIMAL, ENVIRO, and JUSTICE
 # Visualize as a correlation matrix / heat map
@@ -220,6 +222,7 @@ matrix = (
 ### Visualization (column chart) of motivations
 # Add motivation combinations
 combination_motivations = []
+'''
 for key in [
     # Use these as the golden definitions, the variants below don't vary meaningfully
     'COST+DISGUST+HEALTH+SOCIAL+TASTE+TREND:MOTIVATIONS_INTERNAL',
@@ -236,21 +239,31 @@ for key in [
     (inputs, key) = key.split(":")
     data[key] = data.apply(lambda df: min(1, sum([df[f'MOTIVATIONS_{k}'] for k in inputs.split('+')])), axis=1)
     combination_motivations.append(key)
+'''
 
 class_motivations = defaultdict(dict)
 for key in MOTIVATION_KEYS + combination_motivations:
-    motivations = data.loc[:, ['pred', key, 'ID']].groupby(['pred', key]).count().to_dict()['ID']
+    if do_weight:
+        motivations = data.loc[:, ['pred', key, 'Wts']].groupby(['pred', key]).sum().to_dict()['Wts']
+    else:
+        motivations = data.loc[:, ['pred', key, 'ID']].groupby(['pred', key]).count().to_dict()['ID']
     for class_index in set(data['pred']):
         (no, yes) = (motivations[(class_index, 0)], motivations[(class_index, 1)])
         class_motivations[key][class_index] = round((yes * 100) / (yes + no))
 
-class_names = ["Faint", "Flourishing", "Floundering"]
+class_names = ["Superficial", "Successful", "Struggling"]
 motivation_plot_data = pd.DataFrame.from_records([
     #{'motivation': key, 'pred': 'all', 'prop': value} for key, value in overall_motivations.items()
 ] + [
     {'motivation': key, 'pred': class_names[class_num], 'prop': class_prop}
     for key, values in class_motivations.items() for class_num, class_prop in values.items()
 ])
+
+# Print tables of ranked motivations
+#motivation_plot_data.loc[motivation_plot_data['pred'] == 'Successful',:].sort_values('prop', ascending=False)
+#motivation_plot_data.loc[motivation_plot_data['pred'] == 'Superficial',:].sort_values('prop', ascending=False)
+#motivation_plot_data.loc[motivation_plot_data['pred'] == 'Struggling',:].sort_values('prop', ascending=False)
+
 motivation_plot_data['Class'] = motivation_plot_data['pred']    # for legend label
 motivation_plot = (
     ggplot(motivation_plot_data, aes(x = "factor(motivation)", y = "prop", fill = "Class"))
@@ -262,7 +275,30 @@ motivation_plot = (
 #motivation_plot.show()
 
 
-# Diet length: flourishing have the highest median and mean, but this isn't significant
+records = [
+    #{ 'category': '  ', 'value': 1.4, '': 'Non-flexitarians', 'color': '#AAAAAA' },
+    { 'category': '  ', 'value': 1.2, ' ': 'Superficial', 'color': '#2196F3' },
+    { 'category': '  ', 'value': 0.5, ' ': 'Successful', 'color': '#4CAF50' },
+    { 'category': '  ', 'value': 4.5, ' ': 'Struggling', 'color': '#7A4CC6' },
+]
+class_colors = {rec[' ']: rec['color'] for rec in records}
+serving_data = pd.DataFrame.from_records(records)
+plot = (
+    ggplot(serving_data, aes(x = "factor(category)", y = "value", fill = " "))
+        + geom_col(position = "dodge2")
+        + scale_y_continuous(limits = [0, 5])
+        + theme(axis_text_x=element_text(rotation = 90))
+        + scale_fill_manual(values=class_colors, limits=list(class_colors.keys()))
+        + labs(x = "", y = "")  #, title = "Daily servings of meat")
+        + theme_classic(base_size=24)
+        + geom_hline(yintercept=1.4, color="grey", size=1, linetype="dashed")
+        + annotate("text", x=1.2, y=1.6, label="Non-flexitarians", size=15)
+        #+ coord_flip()
+)
+plot.show()
+
+
+# Diet length: successful have the highest median and mean, but this isn't significant
 # It *is* significant for flourishing, if outliers are 20+ years instead of 100+ years
 # Data quality is a quesiton, only 200 people reported
 lengths = data.loc[data['length_total'] > 0, ['pred', 'length_total']].copy()
@@ -330,23 +366,12 @@ def write_stargazer(regress, outcome):
         'C(SEX)[T.Male]',
         'INCOME_zscore',
         'EDUCATION_cont',
-        'C(region4)[T.Northeast]',
-        'C(region4)[T.South]',
-        'C(region4)[T.West]',
+        #'C(region4)[T.Northeast]',
+        #'C(region4)[T.South]',
+        #'C(region4)[T.West]',
         'C(RACEETHNICITY_dummy)[T.1]',
     ])
-    stargazer.rename_covariates({
-        'AGE_zscore': 'Age',
-        'C(RACEETHNICITY_dummy)[T.1.0]': 'Race (non-white)',
-        'C(SEX)[T.Male]': 'Sex (male)',
-        'C(pred)[T.1]': 'Class: Flourishing<br>(20% semi-vegetarians)',
-        'C(pred)[T.2]': 'Class: Floundering<br>(10% heavy meat eaters)',
-        'C(region4)[T.Northeast]': 'Region (Northeast)',
-        'C(region4)[T.South]': 'Region (South)',
-        'C(region4)[T.West]': 'Region (West)',
-        'EDUCATION_cont': 'Education',
-        'INCOME_zscore': 'Income',
-    })
+    stargazer.rename_covariates(COVARIATE_DISPLAY_NAMES)
 
     weight_suffix = "_weighted" if do_weight else ""
     filename = f"stargazers{weight_suffix}/{outcome.lower()}.html"
@@ -363,61 +388,112 @@ def write_linear(outcome):
     return write_stargazer(_add_linear_regression, outcome)
 
 
-def write_logistic_coefficient_table(outcomes, filename, _format_outcome=None):
+def write_logistic_coefficient_table(outcomes, filename, _format_outcome=None, display_controls=False):
     return write_coefficient_table(
         [(outcome, _add_logistic_regression) for outcome in outcomes],
-        filename, _format_outcome=_format_outcome
+        filename, _format_outcome=_format_outcome, display_controls=display_controls
     )
 
 
-def write_linear_coefficient_table(outcomes, filename, _format_outcome=None):
+def write_linear_coefficient_table(outcomes, filename, _format_outcome=None, display_controls=False):
     return write_coefficient_table(
         [(outcome, _add_linear_regression) for outcome in outcomes],
-        filename, _format_outcome=_format_outcome
+        filename, _format_outcome=_format_outcome, display_controls=display_controls
     )
 
 
-def write_coefficient_table(outcomes_and_adders, filename, _format_outcome=None):
+def write_coefficient_table(outcomes_and_adders, filename, _format_outcome=None, display_controls=False):
     if _format_outcome is None:
         _format_outcome = lambda x: x
 
-    filename = f"output/cofficients_{filename}.html"
+    controls_label = "_controls" if display_controls else ""
+    filename = f"output/cofficients_{filename}{controls_label}.html"
     html = ""
-    for (outcome, adder) in outcomes_and_adders:
-        model = write_stargazer(adder, outcome)
-        html += "<tr>"
-        html += f'''<td style="text-align: left;">{_format_outcome(outcome)}</td>'''
-        for class_id in [1, 2]:
-            key = f'C(pred)[T.{class_id}]'
-            coeff = round(model.params.to_dict()[key], 2)
-            error = round(model.bse.to_dict()[key], 2)
-            pvalue = model.pvalues.to_dict()[key]
 
-            stars = ''
-            if pvalue < 0.001:
-                stars = '***'
-            elif pvalue < 0.01:
-                stars = '**'
-            elif pvalue < 0.05:
-                stars = '*'
-
-            html += f"<td>{coeff}{stars}<br>({error})</td>"
+    if display_controls:
+        models = {
+            outcome: write_stargazer(adder, outcome)
+            for (outcome, adder) in outcomes_and_adders
+        }
+        a_model = models[outcomes_and_adders[0][0]]
+        colspan = len(a_model.params)
+        html += "<tr><td>&nbsp;</td>"
+        for key in a_model.params.keys():
+            if key != "Intercept":
+                border = "border-right: 1px solid black;" if key == "C(pred)[T.2]" else ""
+                html += f'''
+                    <td style="vertical-align: top; padding: 0 5px;{border}">
+                        {COVARIATE_DISPLAY_NAMES.get(key, key).replace(" (", "<br>(")}
+                    </td>
+                '''
         html += "</tr>"
+        html += f'''
+            <tr><td colspan="{colspan}" style="border-bottom: 1px solid black"></td></tr>
+        '''
+        for (outcome, model) in models.items():
+            html += f'''
+                <tr><td style="text-align:left">{_format_outcome(outcome)}</td>
+            '''
+            for key, value in model.params.to_dict().items():
+                if key != "Intercept":
+                    border = "border-right: 1px solid black;" if key == "C(pred)[T.2]" else ""
+                    coeff = round(model.params.to_dict()[key], 2)
+                    error = round(model.bse.to_dict()[key], 2)
+                    pvalue = model.pvalues.to_dict()[key]
+                    stars = get_stars(pvalue)
+                    html += f'''
+                        <td style="{border}">
+                            {coeff}{stars}<br>
+                            ({error})
+                            <br>({round(pvalue, 20)})
+                        </td>
+                    '''
+            html += "</tr>"
+    else:
+        colspan = 3
+        for (outcome, adder) in outcomes_and_adders:
+            model = write_stargazer(adder, outcome)
+            html += "<tr>"
+            html += f'''<td style="text-align: left;">{_format_outcome(outcome)}</td>'''
+            for class_id in [1, 2]:
+                key = f'C(pred)[T.{class_id}]'
+                coeff = round(model.params.to_dict()[key], 2)
+                error = round(model.bse.to_dict()[key], 2)
+                pvalue = model.pvalues.to_dict()[key]
+                stars = get_stars(pvalue)
 
-    _write_file(filename, f'''
-    <table style="text-align:center;">
-        <tr>
-            <td></td>
-            <td>Flourishing</td>
-            <td>Floundering</td>
-        </tr>
-        {html}
-    </table>
-    ''')
+                html += f"<td>{coeff}{stars}<br>({error})</td>"
+            html += "</tr>"
+            html = f'''
+                <tr>
+                    <td></td>
+                    <td>Successful</td>
+                    <td>Struggling</td>
+                </tr>
+                {html}
+            '''
+
+    html += f'''
+        <tr><td colspan="{colspan}" style="border-bottom: 1px solid black"></td></tr>
+        <tr><td colspan="{colspan}" style="text-align: right"><sup>*</sup>p&lt;0.05; <sup>**</sup>p&lt;0.01; <sup>***</sup>p&lt;0.001</td></tr>
+    '''
+    _write_file(filename, f'''<table style="text-align:center;">{html}</table>''')
 
     return html
 
 
+def get_stars(pvalue):
+    stars = ''
+    if pvalue < 0.001:
+        stars = '***'
+    elif pvalue < 0.01:
+        stars = '**'
+    elif pvalue < 0.05:
+        stars = '*'
+    return stars
+
+
+'''
 # Run regressions
 internal_motivation_html = write_logistic_coefficient_table([
     'MOTIVATIONS_COST',
@@ -426,7 +502,7 @@ internal_motivation_html = write_logistic_coefficient_table([
     'MOTIVATIONS_SOCIAL',
     'MOTIVATIONS_TASTE',
     'MOTIVATIONS_TREND',
-    'MOTIVATIONS_INTERNAL',
+    #'MOTIVATIONS_INTERNAL',
 ], 'motivations_internal', display_motivation)
 
 external_motivation_html = write_logistic_coefficient_table([
@@ -434,24 +510,27 @@ external_motivation_html = write_logistic_coefficient_table([
     'MOTIVATIONS_ENVIRO',
     'MOTIVATIONS_JUSTICE',
     'MOTIVATIONS_RELIGION',
-    'MOTIVATIONS_EXTERNAL',
+    #'MOTIVATIONS_EXTERNAL',
 ], 'motivations_external', display_motivation)
 
 write_logistic_coefficient_table(combination_motivations, 'combined_motivations', display_motivation)
+'''
+write_logistic_coefficient_table(MOTIVATION_KEYS, 'motivations', display_motivation, display_controls=True)
+exit(0)
 
 barrier_html = write_linear_coefficient_table([
     'rBARRIERS_COST',
     'rBARRIERS_INCONVENIENCE',
     'rBARRIERS_MOTIVATION',
     'rBARRIERS_SOCIALISSUES',
-], 'barriers', display_barrier)
+], 'barriers', display_barrier, display_controls=True)
 
 facilitator_html = write_linear_coefficient_table([
     'rBARRIERS_FOODSATISFACTION',
     'rBARRIERS_HEALTH',
     'rBARRIERS_IDENTITY',
     'rTIES',
-], 'facilitators', display_barrier)
+], 'facilitators', display_barrier, display_controls=True)
 
 past_html = write_coefficient_table([
     ("length_total", _add_linear_regression),
@@ -465,6 +544,7 @@ future_html = write_coefficient_table([
 ], 'future', display_other)
 
 
+
 # Write one giant table for paper
 filename = "output/coefficients_all.html"
 _write_file(filename, f"""
@@ -474,8 +554,8 @@ _write_file(filename, f"""
         <table>
         <tr>
             <td></td>
-            <td style="font-weight: bold;">Flourishing</td>
-            <td style="font-weight: bold;">Floundering</td>
+            <td style="font-weight: bold;">Successful</td>
+            <td style="font-weight: bold;">Struggling</td>
         </tr>
         <tr><td style="font-weight: bold; text-align: left;">Motivations (internal)</td></tr>
         {internal_motivation_html}
@@ -487,8 +567,8 @@ _write_file(filename, f"""
         <table>
         <tr>
             <td></td>
-            <td style="font-weight: bold;">Flourishing</td>
-            <td style="font-weight: bold;">Floundering</td>
+            <td style="font-weight: bold;">Successful</td>
+            <td style="font-weight: bold;">Struggling</td>
         </tr>
         <tr><td style="font-weight: bold; text-align: left;">Barriers</td></tr>
         {barrier_html}
