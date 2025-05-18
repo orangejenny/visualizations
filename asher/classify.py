@@ -47,7 +47,6 @@ for key in ['MEATDAILY', 'MAMMALDAILY', 'BIRDDAILY', 'REDDAILY', 'WHITEDAILY', '
 
 # Create diet-specific samples
 #   Primarily interested in omnis and semis
-#   Group chicken-free people with reducers
 meaters = data.loc[data['PREVALENCES'] != 'Vegetarians',:]
 omnis = data.loc[data['PREVALENCES'] == 'Non-Reducing Omnivores',:]
 semis = meaters.loc[data['PREVALENCES'] != 'Non-Reducing Omnivores',:]
@@ -93,13 +92,14 @@ def fit_model(data, num_classes, categories):
 #   4 classes has 2 big and 2 small ones
 #   5 classes has 3 big and 2 small ones
 '''
-for i in range(2, 12):
+for i in range(1, 12):
     print(f"Fitting model with {i} classes...")
-    fit_model(semis, i, colors)
+    fit_model(reducers, i, colors)
 '''
 indicators = ['REDDAILY', 'WHITEDAILY', 'BLUEDAILY']
 
 # Elbow plot comparing different numbers of classes based on log likelihood
+# Omnis also use three classes
 '''
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -118,17 +118,49 @@ plt.show()
 
 
 datasets = {
-    #'non-reducing': omnis,
+    #'omnis': omnis,
     'reducers': reducers,
     #'all non-veg': meaters,
     #'semis': semis,
 }
-greek_letters = [' "Faint" flexitarians', ' "Flourishing" flexitarians', '"Floundering" flexitarians', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta', 'Iota']
-#for num_classes in [2, 3, 4, 5, 6]:
-for num_classes in [3]:
+greek_letters = [' "Superficial"', '  "Successful"', '"Struggling"', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta', 'Iota']
+greek_letters = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta', 'Iota']
+purples = {
+    '3: most meals': '#4B0072',
+    '2: most days': '#7A4CC6',
+    '1: some days': '#9B6DCC',
+    '0: seldom': '#D1A7E0',
+}
+blues = {
+    '3: most meals': '#1E3A5F',
+    '2: most days': '#2196F3',
+    '1: some days': '#6BB9FF',
+    '0: seldom': '#A7C7E7',
+}
+greens = {
+    '3: most meals': '#2C6B2F',
+    '2: most days': '#4CAF50',
+    '1: some days': '#78D58B',
+    '0: seldom': '#A8E6A3',
+}
+yellows = {
+    '3: most meals': '#F57F17',
+    '2: most days': '#FFB300',
+    '1: some days': '#FFEB3B',
+    '0: seldom': '#FFF9C4',
+}
+all_colors =    {
+    'purples': purples,
+    'blues': blues,
+    'greens': greens,
+    'yellows': yellows,
+}
+level_colors = purples
+level_values = level_colors.keys()
+for num_classes in [3, 4]:
     for dataset_label in datasets.keys():
         if not levels:
-            # For continuous visualizations,cap values at 3, because otherwise the lower values aren't distinguishable
+            # For continuous visualizations, cap values at 3, because otherwise the lower values aren't distinguishable
             datasets[dataset_label]['WHITEDAILY'] = datasets[dataset_label].apply(lambda df: min(df['WHITEDAILY'], 3), axis=1)
             datasets[dataset_label]['BLUEDAILY'] = datasets[dataset_label].apply(lambda df: min(df['BLUEDAILY'], 3), axis=1)
 
@@ -138,9 +170,9 @@ for num_classes in [3]:
         (model, predictions) = fit_model(datasets[dataset_label], num_classes, colors)
         cells = predictions.reset_index(names='count').groupby(indicators + ['pred'], as_index=False).count()
 
-        n = predictions.groupby('pred').count()['REDDAILY'].to_list()
-        total = sum(n)
-        n = [round(x * 100 / total) for x in n]
+        class_counts = predictions.groupby('pred').count()['REDDAILY'].to_list()
+        total = sum(class_counts)
+        class_counts = [round(x * 100 / total) for x in class_counts]
         
         # Painfully format data because I am too tired to grasp pandas.melt
         viz_data = None
@@ -153,28 +185,60 @@ for num_classes in [3]:
                 viz_data = subset
             else:
                 viz_data = pd.concat([viz_data, subset])
+
+        # Plot with single bar of overall class proportions
+        '''
+        single_bar_data = pd.DataFrame.from_dict(class_counts)
+        single_bar_data.rename({0: 'percent'}, axis=1, inplace=True)
+        single_bar_data['x'] = 1
+        single_bar_data.reset_index(inplace=True)
+        single_level = '2: most days'   # which color shade to use for single bar graph
+        single_bar_colors = {
+            '  "Superficial"': blues[single_level],
+            '"Successful"': greens[single_level],
+            '   "Struggling"': yellows[single_level],
+        }
+        single_bar_labels = list(single_bar_colors.keys())
+        single_bar_data['label'] = single_bar_data.apply(lambda df: single_bar_labels[df['index']], axis=1)
+        plot = (
+            ggplot(single_bar_data, aes(x = 'x', y = 'percent', fill = 'label'))
+            + geom_bar(position = "fill", stat = "identity")
+            + scale_fill_manual(values=single_bar_colors, limits=single_bar_labels)
+            + labs(x = "", y = "")
+            + theme_classic(base_size=24)
+            + theme(legend_position="none")
+            + coord_flip()
+        )
+        plot.show()
+        '''
         
         value_lookup = ['seldom', 'some days', 'most days', 'most meals']
         if levels == 5:
             value_lookup = ['never'] + value_lookup
         if levels:
             viz_data['value'] = viz_data.apply(lambda df: str(df['value']) + ': ' + value_lookup[df['value']], axis=1)
-        #viz_data['pred'] = viz_data.apply(lambda df: f"{dataset_label} C{df['pred']}/{num_classes} ({n[df['pred']]}%)", axis=1)
-        viz_data['pred'] = viz_data.apply(lambda df: f"{greek_letters[df['pred']]} ({n[df['pred']]}%)", axis=1)
-        plot = (
-            ggplot(viz_data, aes(x = 'color', y = 'count', fill = 'factor(value)' if levels else 'value'))
-            + geom_bar(position = "fill", stat = "identity") + facet_wrap('pred', nrow=1)
-            + labs(x = "", y = "")
-            + theme_classic(base_size=24)
-            + theme(legend_position="left" if num_classes == 2 else "right")
-        )
-        plot.show()
-        #plot.save(filename=f"stacked_class_viz_{levels}_levels/{filename}")
+
+        # Plot of class details
+        viz_data['pred'] = viz_data.apply(lambda df: f"{greek_letters[df['pred']]}{num_classes} ({class_counts[df['pred']]}%)", axis=1)
+        #viz_data['pred'] = viz_data.apply(lambda df: f"{greek_letters[df['pred']]}", axis=1)
+        for colors_label, level_colors in all_colors.items():
+            plot = (
+                ggplot(viz_data, aes(x = 'color', y = 'count', fill = 'factor(value)' if levels else 'value'))
+                + geom_bar(position = "fill", stat = "identity") + facet_wrap('pred', nrow=1)
+                #+ scale_fill_grey(start=0.8, end=0.2)
+                + scale_fill_manual(values=level_colors, limits=list(level_colors.keys()))
+                + labs(x = "", y = "")
+                + theme_classic(base_size=24)
+                + theme(legend_position="none")
+                #+ theme(legend_position="left" if num_classes == 2 else "right")
+            )
+            plot.show()
+            #plot.save(filename=f"stacked_class_viz_{levels}_levels/{colors_label}_{filename}")
 exit(0)
 
 
 # Write output for regress.py to pick up
-label = 'non-reducing'
+label = 'omnis'
 num_classes = 3
 (model, predictions) = fit_model(datasets[label], num_classes, colors)
 output = datasets[label].join(predictions, how='inner', rsuffix='_model')
