@@ -127,12 +127,13 @@ def proportions(df, attr, _format=None, weight=False):
         counts = df.loc[:,[attr, 'Wts']].groupby(attr, observed=True).sum()['Wts'].to_dict()
     else:
         counts = df.groupby(attr, observed=True).count()['ID'].to_dict()
+    binary = set(counts.keys()) == {0, 1}
     total = sum(counts.values())
 
     def _value(value):
         return round(value * 100 / total, 1)
 
-    return {_format(key): _value(value) for key, value in counts.items()}
+    return {_format(key): _value(value) for key, value in counts.items() if not binary or key == 0}
 
 
 def response_count_for_question(data, key):
@@ -185,7 +186,7 @@ def display_motivation(label):
         'TREND': 'Wanting to follow a food trend',
         'INTERNAL': 'Any internal motivation',
         'EXTERNAL': 'Any external motivation',
-    }.get(label, "unknown")
+    }.get(label, label)
 
 
 def display_barrier(label):
@@ -199,7 +200,8 @@ def display_barrier(label):
         'INCONVENIENCE': 'Inconvenient',
         'MOTIVATION': 'Difficult to stay motivated',
         'SOCIALISSUES': 'Creates issues in my social life',
-    }.get(label, "unknown")
+        "TIES": "Strong ties to other flexitarians",
+    }.get(label, label)
 
 
 def display_other(label):
@@ -210,4 +212,18 @@ def display_other(label):
         "rREDUCEFURTHER": "Willingness to further reduce meat in diet",
         "rVEGWILLING": "Willingness to go vegetarian",
         "rTIES": "Strong ties to other flexitarians",
-    }.get(label, "unknown")
+    }.get(label, label)
+
+
+COVARIATE_DISPLAY_NAMES = {
+    'AGE_zscore': 'Age',
+    'C(RACEETHNICITY_dummy)[T.1]': 'Race (non-white)',
+    'C(SEX)[T.Male]': 'Gender (male)',
+    'C(pred)[T.1]': 'Successful',
+    'C(pred)[T.2]': 'Struggling',
+    'C(region4)[T.Northeast]': 'Region (Northeast)',
+    'C(region4)[T.South]': 'Region (South)',
+    'C(region4)[T.West]': 'Region (West)',
+    'EDUCATION_cont': 'Education',
+    'INCOME_zscore': 'Income',
+}
