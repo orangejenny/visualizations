@@ -150,11 +150,11 @@ if _should_run("explore"):
     panel.log_verbose(counts.loc[:,['firstborn', 'total']], "Total number of new first-time parents and others in sample (all waves)")
 
     ### Distributions across panel
-    panel = panel.get_panel()
+    panel_data = panel.get_panel()
     # Ideology: roughly normal, skewing conservative
-    panel.log_verbose(panel.groupby("ideo5_10").count().loc[:,'caseid'], "Overall distribution of ideo5_10")
+    panel.log_verbose(panel_data.groupby("ideo5_10").count().loc[:,'caseid'], "Overall distribution of ideo5_10")
     # Party: not normal, but U-shaped, with more strong Democrats but similar total Dem/Rep
-    panel.log_verbose(panel.groupby("pid7_10").count().loc[:,'caseid'],  "Overall distribution of pid7_10")
+    panel.log_verbose(panel_data.groupby("pid7_10").count().loc[:,'caseid'],  "Overall distribution of pid7_10")
     # Party, among parents: still U-shaped, a little more liberal, also looks like more moderates
     panel.log_verbose(two_years.loc[np.equal(two_years['new_child'], 1),:].groupby("pid7_10").count().loc[:,'caseid'], "Distribution of pid7_10 among new_child")
 
