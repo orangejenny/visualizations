@@ -5,6 +5,7 @@ from plotnine import (
     aes,
     annotate,
     coord_flip,
+    element_rect,
     geom_col,
     geom_hline,
     geom_line,
@@ -90,6 +91,7 @@ basic_plot = (
         + theme_minimal()
         + scale_fill_manual(values=({False: "#669966", True: "#ff9966"}))
         + theme(legend_position="none")
+        + theme(plot_background=element_rect(fill='white'))
         + coord_flip()
         + annotate("text", x=51, y=-8, label="More girls vaccinated", size=10)
         + annotate("text", x=5, y=-17, label="More boys vaccinated", size=10)
@@ -123,6 +125,7 @@ noisy_plot = (
         + geom_hline(yintercept=0, color="#000000", size=0.5, linetype="solid")
         + scale_y_continuous(limits = [-25, 25], labels = lambda labels: [f"{round(x)}%" for x in labels])
         + theme_minimal()
+        + theme(plot_background=element_rect(fill='white'))
         + theme(legend_position="none")
         + labs(x = "Year", y = "HPV vaccination rate gender gap", title = "")
 )
