@@ -34,6 +34,7 @@ def _data_contains(df, field, value):
     return df.loc[df[field].str.endswith(str(value)), :].copy()
 
 # All HPV data
+# Data from CDC's TeenVaxView, specifically https://data.cdc.gov/Teen-Vaccinations/Vaccination-Coverage-among-Adolescents-13-17-Years/ee48-w5t6/data_preview
 data = pd.read_csv("Vaccination_Coverage_among_Adolescents.csv")
 assert set(data['Vaccine/Sample']) == {'HPV'}
 data.drop(['Vaccine/Sample'], axis=1, inplace=True)
